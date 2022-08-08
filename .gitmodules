@@ -1,0 +1,3 @@
+[submodule "VulkanCompute/kompute"]
+	path = VulkanCompute/kompute
+	url = https://github.com/KomputeProject/kompute
