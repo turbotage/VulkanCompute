@@ -7,6 +7,8 @@ module;
 
 export module glsl;
 
+import util;
+
 namespace glsl {
 	
 	export class Function {
@@ -36,6 +38,13 @@ namespace glsl {
 				lhs.m_ArgumentHashes == rhs.m_ArgumentHashes;
 		}
 
+		struct HashFunction {
+			std::size_t operator()(const Function& func) const {
+				std::size_t hash = util::hash_combine(func.m_ArgumentHashes);
+				return util::hash_combine(hash, func.m_FunctionName);
+			}
+		};
+
 	private:
 
 		std::string m_FunctionName;
@@ -45,6 +54,15 @@ namespace glsl {
 
 	};
 
+
+	export class Context {
+	public:
+
+
+	private:
+
+
+	};
 
 
 }

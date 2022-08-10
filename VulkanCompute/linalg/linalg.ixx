@@ -1,8 +1,5 @@
 module;
 
-#include <type_traits>
-#include <concepts>
-#include <memory>
 #include <string>
 #include <optional>
 
@@ -11,233 +8,609 @@ export module linalg;
 import glsl;
 import util;
 
-export using ui8 = std::uint8_t;
-export using ui16 = std::uint16_t;
-export using ui32 = std::uint32_t;
-export using ui64 = std::uint64_t;
-
-
-export template<class T>
-concept fp = std::is_floating_point<T>::value;
-
 // INTERFACE
+namespace glsl {
 namespace linalg {
 	
-	inline void swap(fp auto& elm1, fp auto& elm2);
+	export ::glsl::Function swap(bool single_precission = true);
 
-	inline fp auto abs(fp auto& val);
+	export ::glsl::Function copy_mat(int nrow, int ncol, bool single_precission = true);
 
-	export void square_transpose_i(fp auto* mat, ui16 n);
+	export ::glsl::Function copy_vec(int ndim, bool single_precission = true);
 
-	export void transpose(fp auto* inmat, fp auto* outmat, ui16 n);
+	export ::glsl::Function max_mag(int nrow, int ncol, bool single_precission = true);
+	
+	export ::glsl::Function max_mag_subrow(int nrow, int ncol, bool single_precission = true);
 
-	export std::string glsl_transpose(int nrows, int mcols, bool single_precission = true);
+	export ::glsl::Function max_mag_subcol(int nrow, int ncol, bool single_precission = true);
 
-	export void transpose_submatrix(fp auto* mat, ui16 n, ui16 subidx = 0);
+	export ::glsl::Function row_interchange_i(int nrow, int ncol, bool single_precission = true);
 
-	export void row_interchange(fp auto* mat, ui16 n, ui16 ii, ui16 jj);
+	export ::glsl::Function subrow_interchange_i(int nrow, int ncol, bool single_precission = true);
 
-	export void column_interchange(fp auto* mat, ui16 n, ui16 ii, ui16 jj);
+	export ::glsl::Function col_interchange_i(int nrow, int ncol, bool single_precission = true);
 
-	export void row_column_interchange(fp auto* mat, ui16 n, ui16 ii, ui16 jj);
+	export ::glsl::Function subcol_interchange_i(int nrow, int ncol, bool single_precission = true);
 
-	export void column_row_interchange(fp auto* mat, ui16 n, ui16 ii, ui16 jj);
+	export ::glsl::Function mul_mat_mat(int lnrow, int mid_dim, int rncol, bool single_precission = true);
 
-	export void get_max_diagonal(fp auto* mat, ui16 n, ui16& max_idx, fp auto& max_val, ui16 submat_idx = 0);
-
-	export void get_mag_diagonal(fp auto* mat, ui16 n, ui16& max_idx, fp auto& max_val, ui16 submat_idx = 0);
-
-	export void pivot_max_diagonal(fp auto* mat, ui16 n, fp auto* perm);
-
-	export void pivot_mag_diagonal(fp auto* mat, ui16 n, fp auto* perm);
-
-	export void mul_diag_vec(fp auto* mat, ui16 n, fp auto* vec);
-
-	export void mul_inv_diag_vec(fp auto* mat, ui16 n, fp auto* vec);
-
-	export void mul_mat_mat(fp auto* rmat, ui16 rn, ui16 rm, 
-							fp auto* lmat, ui16 ln, ui16 lm, 
-							fp auto* omat);
-
-	export void mul_mat_vec(fp auto* mat, ui16 n, ui16 m, fp auto* vec, fp auto* ovec);
+	export ::glsl::Function mul_mat_vec(int nrow, int ncol, bool single_precission = true);
 
 
+	// SQUARE
+
+	export ::glsl::Function transpose_square_i(int ndim, bool single_precission = true);
+
+	export ::glsl::Function mul_diag_vec_square_i(int ndim, bool single_precission = true);
+
+	export ::glsl::Function mul_inv_diag_vec_square_i(int ndim, bool single_precission = true);
+
+	export ::glsl::Function mul_mat_mat_square(int ndim, bool single_precission = true);
+
+	export ::glsl::Function mul_mat_vec_square(int ndim, bool single_precission = true);
+
+}
 }
 
 
 // IMPLEMENTATION
+namespace glsl {
 namespace linalg {
 
-	inline void swap(fp auto& elm1, fp auto& elm2)
+	::glsl::Function swap(bool single_precission)
 	{
-		auto temp = elm1;
-		elm1 = elm2;
-		elm2 = temp;
+		static const std::string code = // compute shader
+R"glsl(
+void swap(inout float v1, inout float v2) {
+	float temp = v1;
+	v1 = v2;
+	v2 = temp;
+}
+)glsl";
+
+		std::function<std::string()> code_func = [single_precission]() -> std::string
+		{
+			std::string temp = code;
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"swap",
+			{ size_t(single_precission) },
+			code_func, 
+			std::nullopt);
 	}
 
-	inline fp auto abs(const fp auto& val)
+	::glsl::Function copy_mat(int nrow, int ncol, bool single_precission)
 	{
-		return val > 0.0 ? val : -val;
+		static const std::string code = // compute shader
+R"glsl(
+void copy_mat(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
+	for (int i = 0; i < nrow; ++i) {
+		for (int j = 0; j < ncol; ++j) {
+			omat[i*ncol + j] = imat[i*ncol + j];
+		}
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_mat",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt);
 	}
 
-	void square_transpose_i(fp auto* mat, ui16 n) 
+	::glsl::Function copy_vec(int ndim, bool single_precission)
 	{
-		using T = std::remove_reference<decltype(mat)>::type;
-		T temp;
-		for (ui16 i = 0; i < n; ++i) {
-			for (ui16 j = 0; j < n; ++j) {
-				swap(&mat[i * n + j], &mat[j * n + i]);
+		static const std::string code = // compute shader
+R"glsl(
+void copy_vec(in float ivec[ndim], out float ovec[ndim]) {
+	for (int i = 0; i < ndim; ++i) {
+			ovec[i] = ivec[i];
+		}
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_vec",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	::glsl::Function max_mag(int nrow, int ncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void max_mag(in float mat[nrow*ncol], out int max_row_idx, out int max_col_idx, out float max) {
+	max_row_idx = 0;
+	max_col_idx = 0;
+	max = 0.0;
+	float val;
+	for (int i = 0; i < nrow; ++i) {
+		for (int j = 0; j < ncol; ++j) {
+			val = mat[i*ncol + j];
+			if (val > max) {
+				max_row_idx = i;
+				max_col_idx = j;
+				max = val;
 			}
 		}
 	}
+}
+)glsl";
 
-	void transpose_submatrix(fp auto* mat, ui16 n, ui16 subidx)
-	{
-		using T = std::remove_reference<decltype(mat)>::type;
-		T temp;
-		for (ui16 i = subidx; i < n; ++i) {
-			for (ui16 j = subidx; j < n; ++j) {
-				swap(&mat[i * n + j], &mat[j * n + i]);
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
 			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"max_mag",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	::glsl::Function max_mag_subrow(int nrow, int ncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void max_mag_subrow(in float mat[nrow*ncol], int row, int start_col, out int max_idx, out float max) {
+	max_idx = 0;
+	max = 0.0;
+	float val;
+	for (int i = start_col; i < ncol; ++i) {
+		val = mat[row*ncol + i];
+		if (val > max) {
+			max_idx = i;
+			max = val;
 		}
 	}
+}
+)glsl";
 
-	void row_interchange(fp auto* mat, ui16 n, ui16 ii, ui16 jj)
-	{
-		for (ui16 k = 0; k < n; ++k) {
-			swap(&mat[ii * n + k], &mat[jj * n + k]);
-		}
-	}
-
-	void column_interchange(fp auto* mat, ui16 n, ui16 ii, ui16 jj)
-	{
-		for (ui16 k = 0; k < n; ++k) {
-			swap(&mat[k * n + ii], &mat[k * n + jj]);
-		}
-	}
-
-	void row_column_interchange(fp auto* mat, ui16 n, ui16 ii, ui16 jj)
-	{
-		row_interchange(mat, n, ii, jj);
-		column_interchange(mat, n, ii, jj);
-	}
-
-	void column_row_interchange(fp auto* mat, ui16 n, ui16 ii, ui16 jj)
-	{
-		column_interchange(mat, n, ii, jj);
-		row_interchange(mat, n, ii, jj);
-	}
-
-	void get_max_diagonal(fp auto* mat, ui16 n, ui16& max_idx, fp auto& max_val, ui16 submat_idx)
-	{
-		max_val = 0.0;
-		max_idx = 0;
-
-		for (int i = submat_idx; i < n; ++i) {
-			auto val = mat[i * n + i];
-			if (val > max_val) {
-				max_val = val;
-				max_idx = i;
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
 			}
-		}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"max_mag_subrow",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt);
 	}
 
-	void get_mag_diagonal(fp auto* mat, ui16 n, ui16& max_idx, fp auto& max_val, ui16 submat_idx)
+	::glsl::Function max_mag_subcol(int nrow, int ncol, bool single_precission)
 	{
-		max_val = 0.0;
-		max_idx = 0;
+		static const std::string code = // compute shader
+R"glsl(
+void max_mag_subcol(in float mat[nrow*ncol], int col, int start_row, out int max_idx, out float max) {
+	max_idx = 0;
+	max = 0.0;
+	float val;
+	for (int i = start_row; i < nrow; ++i) {
+		val = mat[i*ncol + col];
+		if (val > max) {
+			max_idx = i;
+			max = val;
+		}
+	}
+}
+)glsl";
 
-		for (int i = submat_idx; i < n; ++i) {
-			auto val = abs(mat[i * n + i]);
-			if (val > max_val) {
-				max_val = val;
-				max_idx = i;
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
 			}
-		}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"max_mag_subcol",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt);
 	}
 
-	void pivot_max_diagonal(fp auto* mat, ui16 n, fp auto* perm)
+	::glsl::Function row_interchange_i(int nrow, int ncol, bool single_precission)
 	{
-		using T = std::remove_reference<decltype(mat)>::type;
+		static const std::string code = // compute shader
+R"glsl(
+void row_interchange_i(inout float mat[nrow*ncol], int ii, int jj) {
+	for (int k = 0; k < ncol; ++k) {
+		swap(mat[ii*ncol + k], mat[jj*ncol + k]);
+	}
+}
+)glsl";
 
-		T max_val;
-		ui16 max_idx;
-
-		for (ui16 i = 0; i < n; ++i) {
-			get_max_diagonal(mat, n, max_idx, max_val, i);
-
-			if (max_idx != i) {
-				row_column_interchange(mat, n, i, max_idx);
-
-				swap(perm[i], perm[max_idx]);
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
 			}
-		}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"row_interchange_i",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::make_optional<std::vector<Function>>({ swap(single_precission) })
+		);
 	}
 
-	void pivot_mag_diagonal(fp auto* mat, ui16 n, fp auto* perm)
+	::glsl::Function subrow_interchange_i(int nrow, int ncol, bool single_precission)
 	{
-		using T = std::remove_reference<decltype(mat)>::type;
+		static const std::string code = // compute shader
+R"glsl(
+void subrow_interchange_i(inout float mat[nrow*ncol], int start_col, int ii, int jj) {
+	for (int k = start_col; k < ncol; ++k) {
+		swap(mat[ii*ncol + k], mat[jj*ncol + k]);
+	}
+}
+)glsl";
 
-		T max_val;
-		ui16 max_idx;
-
-		for (ui16 i = 0; i < n; ++i) {
-			get_mag_diagonal(mat, n, max_idx, max_val, i);
-
-			if (max_idx != i) {
-				row_column_interchange(mat, n, i, max_idx);
-
-				swap(perm[i], perm[max_idx]);
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
 			}
-		}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"subrow_interchange_i",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::make_optional<std::vector<Function>>({ swap(single_precission) })
+		);
 	}
 
-	void mul_diag_vec(fp auto* mat, ui16 n, fp auto* vec)
+	::glsl::Function col_interchange_i(int nrow, int ncol, bool single_precission)
 	{
-		for (ui16 i = 0; i < n; ++i) {
-			vec[i] *= mat[i * n + i];
-		}
+		static const std::string code = // compute shader
+R"glsl(
+void col_interchange_i(inout float mat[nrow*ncol], int ii, int jj) {
+	for (int k = 0; k < nrow; ++k) {
+		swap(mat[k*ncol + ii], mat[k*ncol + jj]);
 	}
+}
+)glsl";
 
-	void mul_inv_diag_vec(fp auto* mat, ui16 n, fp auto* vec)
-	{
-		for (ui16 i = 0; i < n; ++i) {
-			vec[i] /= mat[i * n + i];
-		}
-	}
-
-	void mul_mat_mat(fp auto* rmat, ui16 rn, ui16 rm,
-						fp auto* lmat, ui16 ln, ui16 lm,
-						fp auto* omat)
-	{
-		using T = std::remove_reference<decltype(rmat)>::type;
-
-		for (ui16 i = 0; i < rn; ++i) {
-			for (ui16 j = 0; j < lm; ++j) {
-				T entry = 0.0;
-
-				for (ui16 k = 0; k < rm; ++k) {
-					entry += lmat[i * lm + k] * rmat[k * rm + j];
-				}
-
-				omat[i * lm + j] = entry;
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
 			}
-		}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"col_interchange_i",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::make_optional<std::vector<Function>>({ swap(single_precission) })
+		);
 	}
 
-	void mul_mat_vec(fp auto* omat, ui16 n, ui16 m, fp auto* ovec)
+	::glsl::Function subcol_interchange_i(int nrow, int ncol, bool single_precission)
 	{
-		using T = std::remove_reference<decltype(omat)>::type;
+		static const std::string code = // compute shader
+			R"glsl(
+void col_interchange_i(inout float mat[nrow*ncol], int start_row, int ii, int jj) {
+	for (int k = start_row; k < nrow; ++k) {
+		swap(mat[k*ncol + ii], mat[k*ncol + jj]);
+	}
+}
+)glsl";
 
-		for (ui16 i = 0; i < n; ++i) {
-			T entry = 0.0;
-
-			for (ui16 j = 0; j < m; ++j) {
-				entry += omat[i * m + j] * ovec[j];
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
 			}
+			return temp;
+		};
 
-			ovec[i] = entry;
-		}
+		return ::glsl::Function(
+			"col_interchange_i",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::make_optional<std::vector<Function>>({ swap(single_precission) })
+		);
 	}
 
+	::glsl::Function mul_mat_mat(int lnrow, int mid_dim, int rncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void mul_mat_mat(in float lmat[lnrow*mid_dim], in float rmat[mid_dim*rncol], out float omat[lnrow*rncol]) {
+	float entry;
+	for (int i = 0; i < lnrow; ++i) {
+		for (int j = 0; j < rncol; ++j) {
+			entry = 0.0;
+			for (int k = 0; k < mid_dim; ++k) {
+				entry += lmat[i*mid_dim + k] * rmat[k*rncol + j];
+			}
+			omat[i*rncol + j] = entry;
+		}
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [lnrow, mid_dim, rncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "lnrow", std::to_string(lnrow));
+			util::replace_all(temp, "mid_dim", std::to_string(mid_dim));
+			util::replace_all(temp, "rncol", std::to_string(rncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"mul_mat_mat",
+			{ size_t(lnrow), size_t(mid_dim), size_t(rncol), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function mul_mat_vec(int nrow, int ncol, bool single_precission) 
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void mul_mat_vec(in float lmat[nrow*ncol], in float rvec[ncol], out float ovec[nrow]) {
+	float entry;
+	for (int i = 0; i < nrow; ++i) {
+		entry = 0.0;
+		for (int j = 0; j < ncol; ++j) {
+			entry += lmat[i*ncol + j] * rvec[j];
+		}
+		ovec[i] = entry;
+	}
+}
+)glsl";
+		
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"mul_mat_vec",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+	
+
+	// SQUARE
+
+	::glsl::Function transpose_square_i(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void transpose_square_i(inout float mat[ndim*ndim]) {
+	for (int i = 1; i < ndim; ++i) {
+		for (int j = 0; j < i; ++j) {
+			swap(mat[i*ndim + j], mat[j*n + i]);
+		}
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+				util::replace_all(temp, "ndim", std::to_string(ndim));
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"transpose_square_i",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::make_optional<std::vector<Function>>({ swap(single_precission) })
+		);
+
+	}
+
+	::glsl::Function mul_diag_vec_square_i(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void mul_diag_vec_square_i(in float mat[ndim*ndim], inout float vec[ndim]) {
+	for (int k = 0; k < ndim; ++k) {
+		vec[k] *= mat[i*ndim + i];
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+				util::replace_all(temp, "ndim", std::to_string(ndim));
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"mul_diag_vec_square_i",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function mul_inv_diag_vec_square_i(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void mul_inv_diag_vec_square_i(in float mat[ndim*ndim], inout float vec[ndim]) {
+	for (int k = 0; k < ndim; ++k) {
+		vec[k] /= mat[i*ndim + i];
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+		
+		return ::glsl::Function(
+			"mul_inv_diag_vec_square_i",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function mul_mat_mat_square(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void mul_mat_mat_square(in float lmat[ndim*ndim], in float rmat[ndim*ndim], inout float omat[ndim*ndim]) {
+	float entry;
+	for (int i = 0; i < ndim; ++i) {
+		for (int j = 0; j < ndim; ++j) {
+			entry = 0.0;
+			for (int k = 0; k < ndim; ++k) {
+				entry += lmat[i*ndim + k] * rmat[k*ndim + j];
+			}
+			omat[i*ndim + j] = entry;
+		}
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"mul_mat_mat_square",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function mul_mat_vec_square(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void mul_mat_vec_square(in float lmat[ndim*ndim], in float rvec[ndim], inout float ovec[ndim]) {
+	float entry;
+	for (int i = 0; i < ndim; ++i) {
+		entry = 0.0;
+		for (int j = 0; j < ndim; ++j) {
+			entry += lmat[i*ndim + j] * rvec[j];
+		}
+		ovec[i] = entry;
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"mul_mat_vec_square",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+}
 }

@@ -15,12 +15,12 @@ add_executable(VulkanCompute
 	"VulkanCompute.cpp" 
 	"VulkanCompute.h" 
 	"linalg/symm.ixx"  
-	"linalg/linalg.ixx"
-	"linalg/solver.ixx"
+	
+	
 	"util.ixx" 
 	"linalg/glsl.ixx" 
-	"linalg/linalg_glsl.ixx" 
-	"linalg/solver_glsl.ixx")
+	"linalg/linalg.ixx" 
+	"linalg/solver.ixx")
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 
