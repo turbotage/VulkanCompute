@@ -7,6 +7,7 @@ export module symm;
 import linalg;
 
 // INTERFACE
+/*
 namespace linalg {
 namespace symm {
 	
@@ -143,3 +144,6 @@ namespace symm {
 
 }
 }
+
+
+*/

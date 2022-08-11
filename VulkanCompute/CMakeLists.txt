@@ -12,15 +12,12 @@ add_subdirectory("kompute" ${CMAKE_CURRENT_BINARY_DIR}/kompute_build)
 
 # Add source to this project's executable.
 add_executable(VulkanCompute 
-	"VulkanCompute.cpp" 
-	"VulkanCompute.h" 
-	"linalg/symm.ixx"  
-	
-	
+	"VulkanCompute.cpp"  
 	"util.ixx" 
 	"linalg/glsl.ixx" 
 	"linalg/linalg.ixx" 
-	"linalg/solver.ixx")
+	"linalg/solver.ixx"
+	"linalg/symm.ixx")
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 
