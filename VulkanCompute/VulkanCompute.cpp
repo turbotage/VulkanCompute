@@ -6,7 +6,7 @@
 
 import glsl;
 import linalg;
-
+import solver;
 
 static std::vector<uint32_t>
 compileSource(const std::string& source)
@@ -30,19 +30,41 @@ compileSource(const std::string& source)
 int main() {
 
 	glsl::Shader shader;
-	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_in1"));
-	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 1, "float", "global_in2"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_in"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 1, "float", "global_out"));
 
 	static std::string code =
 		R"glsl(
-#define N 4
+#define N 3
+
+float mat[N*N];
+float omat[N*N];
+int pivot[N];
 
 void main() {
 	uint index = gl_GlobalInvocationID.x;
-	swap(global_in1[N*index], global_in2[N*index]);
-	swap(global_in1[N*index + 1], global_in2[N*index + 1]);
-	swap(global_in1[N*index + 2], global_in2[N*index + 2]);
-	swap(global_in1[N*index + 3], global_in2[N*index + 3]);
+	uint startindex = index*N*N;	
+
+	// Copy global mat into temp matrix
+	for (int i = 0; i < N; ++i) {
+		for (int j = 0; j < N; ++j) {
+			mat[i*N + j] = global_in[startindex + i*N + j];
+		}
+	}
+
+	// Perform LU decomp
+
+	lu(mat, pivot);
+
+	//mul_unit_lower_upper_square(mat, mat, omat);
+
+	// Copy global mat into temp matrix
+	for (int i = 0; i < N; ++i) {
+		for (int j = 0; j < N; ++j) {
+			global_out[startindex + i*N + j] = mat[i*N + j];
+		}
+	}
+
 }
 )glsl";
 
@@ -52,7 +74,12 @@ void main() {
 		return temp;
 	};
 
-	glsl::Function func("main", {}, code_func, std::make_optional<std::vector<glsl::Function>>({ glsl::linalg::swap() }));
+	glsl::Function func("main", {}, code_func, 
+		std::make_optional<std::vector<glsl::Function>>({ 
+			glsl::linalg::solver::lu(3),
+			//glsl::linalg::mul_unit_lower_upper_square(3),
+		})
+	);
 
 	shader.addFunction(func);
 
@@ -67,18 +94,28 @@ void main() {
 	kp::Manager mgr;
 
 	auto tensor1 = mgr.tensor({
-		/* work1 */ 1.0, 2.0, 3.0, 4.0,
-		/* work2 */ 5.0, 6.0, 7.0, 8.0,
-		/* work3 */ 9.0, 10.0, 11.0, 12.0 });
+		/* work1 - row 1 */ 1.0, 2.0, 3.0,
+		/* work1 - row 2 */ 4.0, 5.0, 6.0,
+		/* work1 - row 3 */ 7.0, 8.0, 9.0,
+		
+		/* work2 - row 1 */ 3.0, 1.0, 1.0,
+		/* work2 - row 2 */ 1.0, 5.0, 1.0,
+		/* work2 - row 3 */ 1.0, 1.0, 9.0,
+		});
 
 	auto tensor2 = mgr.tensor({
-		/* work1 */ 10.0, 20.0, 30.0, 40.0,
-		/* work2 */ 50.0, 60.0, 70.0, 80.0,
-		/* work3 */ 90.0, 100.0, 110.0, 120.0 });
+		/* work1 - row 1 */ 0.0, 0.0, 0.0,
+		/* work1 - row 2 */ 0.0, 0.0, 0.0,
+		/* work1 - row 3 */ 0.0, 0.0, 0.0,
+
+		/* work2 - row 1 */ 0.0, 0.0, 0.0,
+		/* work2 - row 2 */ 0.0, 0.0, 0.0,
+		/* work2 - row 3 */ 0.0, 0.0, 0.0,
+		});
 
 	std::vector<std::shared_ptr<kp::Tensor>> params = { tensor1, tensor2 };
 
-	kp::Workgroup wg({ 3,1,1 });
+	kp::Workgroup wg({ 2,1,1 });
 	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
 
 	mgr.sequence()
@@ -87,17 +124,29 @@ void main() {
 		->record<kp::OpTensorSyncLocal>(params)
 		->eval();
 
-	std::cout << "tensor1: { ";
-	for (const float& elem : tensor1->vector()) {
-		std::cout << elem << "  ";
+	std::cout << "tensor1: [ \n";
+	auto v1 = tensor1->vector();
+	for (int k = 0; k < 2; ++k) {
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				std::cout << v1[k*3*3 + i*3 + j] << "  ";
+			}
+			std::cout << "\n";
+		}
 	}
-	std::cout << "}" << std::endl;
+	std::cout << "]" << std::endl;
 
-	std::cout << "tensor2: { ";
-	for (const float& elem : tensor2->vector()) {
-		std::cout << elem << "  ";
+	std::cout << "tensor2: [ \n";
+	v1 = tensor2->vector();
+	for (int k = 0; k < 2; ++k) {
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				std::cout << v1[k * 3 * 3 + i * 3 + j] << "  ";
+			}
+			std::cout << "\n";
+		}
 	}
-	std::cout << "}" << std::endl;
+	std::cout << "]" << std::endl;
 
 	return 0;
 }

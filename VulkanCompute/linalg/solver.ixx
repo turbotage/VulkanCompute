@@ -308,16 +308,16 @@ void backward_subs_unit_t(in float mat[ndim*ndim], in float rhs[ndim], out float
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void lu(in float mat[ndim*ndim], out float pivot[ndim]) {
+void lu(inout float mat[ndim*ndim], out int pivot[ndim]) {
 	float val;
 	for (int k = 0; k < ndim - 2; ++k) {
 		int max_row_idx;
 		float max_row_value;
-		max_mag_subrow(mat, k, max_row_idx, max_row_value);		
+		max_mag_subrow(mat, k, k, max_row_idx, max_row_value);		
 		row_interchange_i(mat, k, max_row_idx);
 		pivot[k] = max_row_idx;
 		
-		val = A[k*ndim + k];
+		val = mat[k*ndim + k];
 		if (val > machine_eps) {
 			for (int i = k + 1; i < ndim; ++i) {
 				mat[i*ndim + k] /= val; 
@@ -325,7 +325,7 @@ void lu(in float mat[ndim*ndim], out float pivot[ndim]) {
 			
 			for (int i = k + 1; i < ndim; ++i) {
 				for (int j = k + 1; j < ndim; ++j) {
-					mat[i*ndim + j] -= mat[i*ndim + k]*mat[k*ndim + j]
+					mat[i*ndim + j] -= mat[i*ndim + k]*mat[k*ndim + j];
 				}
 			}
 		}
@@ -351,7 +351,10 @@ void lu(in float mat[ndim*ndim], out float pivot[ndim]) {
 			"lu",
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({ max_mag_subrow(ndim, ndim, single_precission), row_interchange_i(ndim, ndim, single_precission) })
+			std::make_optional<std::vector<Function>>({ 
+				max_mag_subrow(ndim, ndim, single_precission), 
+				row_interchange_i(ndim, ndim, single_precission) 
+				})
 		);
 	}
 

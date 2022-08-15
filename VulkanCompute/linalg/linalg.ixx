@@ -47,6 +47,8 @@ namespace linalg {
 
 	export ::glsl::Function mul_mat_mat_square(int ndim, bool single_precission = true);
 
+	export ::glsl::Function mul_unit_lower_upper_square(int ndim, bool single_precission = true);
+
 	export ::glsl::Function mul_mat_vec_square(int ndim, bool single_precission = true);
 
 }
@@ -572,6 +574,44 @@ void mul_mat_mat_square(in float lmat[ndim*ndim], in float rmat[ndim*ndim], inou
 
 		return ::glsl::Function(
 			"mul_mat_mat_square",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+	
+	::glsl::Function mul_unit_lower_upper_square(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void mul_unit_lower_upper_square(in float lmat[ndim*ndim], in float rmat[ndim*ndim], inout float omat[ndim*ndim]) {
+	float entry;
+	int kmax;
+	for (int i = 0; i < ndim; ++i) {
+		for (int j = 0; j < ndim; ++j) {
+			entry = (i == j) ? rmat[j] : lmat[i*ndim] * rmat[j];
+			kmax = (i < j) ? i : j;
+			for (int k = 1; k < kmax; ++k) {
+				entry += (i == k) ? rmat[k*ndim + j] : lmat[i*ndim + k] * rmat[k*ndim + j];
+			}
+			omat[i*ndim + j] = entry;
+		}
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"mul_unit_lower_upper_square",
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
