@@ -14,10 +14,11 @@ add_subdirectory("kompute" ${CMAKE_CURRENT_BINARY_DIR}/kompute_build)
 add_executable(VulkanCompute 
 	"VulkanCompute.cpp"  
 	"util.ixx" 
-	"linalg/glsl.ixx" 
+	"glsl.ixx" 
 	"linalg/linalg.ixx" 
 	"linalg/solver.ixx"
-	"linalg/symm.ixx")
+	"linalg/symm.ixx" 
+	"expression.ixx")
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 
@@ -25,5 +26,9 @@ set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 target_link_libraries(VulkanCompute
 				# Libraries from kompute
 				kompute)
+
+find_package(SymEngine CONFIG REQUIRED)
+message(${SYMENGINE_LIBRARIES})
+target_link_libraries(VulkanCompute symengine)
 
 # TODO: Add tests and install targets if needed.

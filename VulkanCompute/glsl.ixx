@@ -5,6 +5,7 @@ module;
 #include <vector>
 #include <functional>
 #include <unordered_set>
+#include <fstream>
 
 export module glsl;
 
@@ -12,6 +13,26 @@ import util;
 
 namespace glsl {
 	
+
+	export std::vector<uint32_t>
+		compileSource(const std::string& source)
+	{
+		std::ofstream fileOut("tmp_kp_shader.comp");
+		fileOut << source;
+		fileOut.close();
+		if (system(
+			std::string(
+				"glslangValidator -V tmp_kp_shader.comp -o tmp_kp_shader.comp.spv")
+			.c_str()))
+			throw std::runtime_error("Error running glslangValidator command");
+		std::ifstream fileStream("tmp_kp_shader.comp.spv", std::ios::binary);
+		std::vector<char> buffer;
+		buffer.insert(
+			buffer.begin(), std::istreambuf_iterator<char>(fileStream), {});
+		return { (uint32_t*)buffer.data(),
+				 (uint32_t*)(buffer.data() + buffer.size()) };
+	}
+
 	export class Function {
 	public:
 
@@ -155,7 +176,6 @@ layout (local_size_x = 1) in;
 		//std::unordered_set<Function, Function::HashFunction> m_Functions;
 
 	};
-
 
 }
 

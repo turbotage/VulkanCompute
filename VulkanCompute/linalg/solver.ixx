@@ -310,7 +310,7 @@ void backward_subs_unit_t(in float mat[ndim*ndim], in float rhs[ndim], out float
 R"glsl(
 void lu(inout float mat[ndim*ndim], out int pivot[ndim]) {
 	float val;
-	for (int k = 0; k < ndim - 2; ++k) {
+	for (int k = 0; k < ndim - 1; ++k) {
 		int max_row_idx;
 		float max_row_value;
 		max_mag_subrow(mat, k, k, max_row_idx, max_row_value);		
@@ -354,7 +354,7 @@ void lu(inout float mat[ndim*ndim], out int pivot[ndim]) {
 			std::make_optional<std::vector<Function>>({ 
 				max_mag_subrow(ndim, ndim, single_precission), 
 				row_interchange_i(ndim, ndim, single_precission) 
-				})
+			})
 		);
 	}
 
