@@ -509,7 +509,7 @@ void mul_mat_transpose(in float mat[nrow*ncol], inout float omat[nrow*nrow]) {
 	{
 		static const std::string code = // compute shader
 			R"glsl(
-void mul_transpose_mat(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
+void mul_transpose_mat_add(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
 	float entry;
 	for (int i = 0; i < ncol; ++i) {
 		for (int j = 0; j <= i; ++j) {
@@ -538,7 +538,7 @@ void mul_transpose_mat(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
 		};
 
 		return ::glsl::Function(
-			"mul_transpose_mat",
+			"mul_transpose_mat_add",
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
@@ -549,7 +549,7 @@ void mul_transpose_mat(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
 	{
 		static const std::string code = // compute shader
 			R"glsl(
-void mul_transpose_mat(in float mat[nrow*ncol], inout float omat[ncol*ncol]) {
+void mul_transpose_mat_add(in float mat[nrow*ncol], inout float omat[ncol*ncol]) {
 	float entry;
 	for (int i = 0; i < ncol; ++i) {
 		for (int j = 0; j <= i; ++j) {
@@ -578,7 +578,7 @@ void mul_transpose_mat(in float mat[nrow*ncol], inout float omat[ncol*ncol]) {
 		};
 
 		return ::glsl::Function(
-			"mul_transpose_mat",
+			"mul_transpose_mat_add",
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt

@@ -16,6 +16,7 @@ import util;
 import glsl;
 import linalg;
 import solver;
+import expression;
 
 /*
 void test_glsl() {
@@ -177,117 +178,117 @@ void main() {
 }
 */
 
-void test_expr_glsl() {
+void test_expr_res_glsl() {
 	glsl::Shader shader;
 	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_param"));
 	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 1, "float", "global_const"));
-	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 1, "float", "global_residuals"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 2, "float", "global_data"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 3, "float", "global_residuals"));
 
 	static std::string code =
-		R"glsl(
-
-float param[nparam];
-float const[ndata*nconst];
+R"glsl(
 
 void main() {
-	uint index = gl_GlobalInvocationID.x;
-	uint startindex = index*ndim*ndim;	
 
+	float param[nparam];
+	float consts[ndata*nconst];
+	float data[ndata];
+	float residuals[ndata];
+
+	uint index = gl_GlobalInvocationID.x;
+	uint startindex = index*nparam;	
+
+	// copy params
 	for (int i = 0; i < nparam; ++i) {
-		param[i] = global_param[i];
+		param[i] = global_param[startindex + i];
 	}
 	
-	for (int i = 0; i < 
-
-	// Perform LU decomp
-
-	lu(mat, pivot);
-
-	mul_unit_lower_upper_square(mat, mat, omat);
-
-	// Copy global mat into temp matrix
-	for (int i = 0; i < ndim; ++i) {
-		for (int j = 0; j < ndim; ++j) {
-			global_out[startindex + i*ndim + j] = omat[i*ndim + j];
+	startindex = index*ndata*nconst;
+	// copy consts
+	for (int i = 0; i < ndata; ++i) {
+		for (int j = 0; j < nconst; ++j) {
+			consts[i*nconst + j] = global_const[startindex + i*nconst + j];
 		}
+	}
+
+	startindex = index*ndata;
+	// copy data
+	for (int i = 0; i < ndata; ++i) {
+		data[i] = global_data[startindex + i];
+	}
+
+	mod_residuals(param, consts, data, residuals);
+
+	startindex = index*ndata;
+	// copy back residuals
+	for (int i = 0; i < ndata; ++i) {
+		global_residuals[startindex + i] = residuals[i];
 	}
 
 }
 )glsl";
 
-	int ndim = 3;
-	unsigned int nmat = 1000000;
+	int ndata = 4;
+	int nparam = 2;
+	int nconst = 2;
 
-	std::function<std::string()> code_func = [ndim]() -> std::string
+	std::function<std::string()> code_func = [ndata, nparam, nconst]() -> std::string
 	{
 		std::string temp = code;
-		util::replace_all(temp, "ndim", std::to_string(ndim));
+		util::replace_all(temp, "ndata", std::to_string(ndata));
+		util::replace_all(temp, "nparam", std::to_string(nparam));
+		util::replace_all(temp, "nconst", std::to_string(nconst));
 		return temp;
 	};
 
 	glsl::Function func("main", {}, code_func,
 		std::make_optional<std::vector<glsl::Function>>({
-			glsl::linalg::solver::lu(3),
-			glsl::linalg::mul_unit_lower_upper_square(3),
-			})
-			);
+			glsl::expression::residual("mod", "x1+x2+y1-y2", ndata, nparam, nconst)
+		})
+	);
 
 	shader.addFunction(func);
+	
 
 	std::string glsl_shader = shader.compile();
 
 	std::cout << glsl_shader << std::endl;
 
 	auto spirv = glsl::compileSource(glsl_shader);
-
+	
 	std::string spirv_str(spirv.begin(), spirv.end());
 
 	kp::Manager mgr;
 
+	auto data = mgr.tensor({
+		1.0, 2.0, 3.0, 4.0, // work1
+		5.0, 6.0, 7.0, 8.0	// work2
+		});
+	
+	auto param = mgr.tensor({
+		1.0, 10.0,	// work1
+		5.0, 7.0	// work2
+		});
 
+	auto consts = mgr.tensor({
+		0.0, 1.0,	// work1
+		1.0, 1.0,
+		2.0, 1.0,
+		3.0, 1.0,
+		4.0, 0.0,	// work2
+		8.0, 0.0,
+		12.0, 0.0,
+		16.0, 0.0,
+		});
 
-	//auto tensor1 = mgr.tensor({
-	//	1.0, 2.0, 3.0, // work1 - row 1
-	//	4.0, 5.0, 6.0, // work1 - row 2
-	//	7.0, 8.0, 9.0, // work1 - row 3
-	//
-	//	3.0, 1.0, 1.0, // work2 - row 1
-	//	1.0, 5.0, 1.0, // work2 - row 2
-	//	1.0, 1.0, 9.0, // work2 - row 3
-	//	});
-	//
-	//
-	//
-	//auto tensor2 = mgr.tensor({
-	//	0.0, 0.0, 0.0,	// work1 - row 1
-	//	0.0, 0.0, 0.0,	// work1 - row 2
-	//	0.0, 0.0, 0.0,	// work1 - row 3
-	//
-	//	0.0, 0.0, 0.0,	// work2 - row 1
-	//	0.0, 0.0, 0.0,	// work2 - row 2
-	//	0.0, 0.0, 0.0,	// work2 - row 3
-	//	});
+	auto residuals = mgr.tensor({
+		0.0, 0.0, 0.0, 0.0, // work1
+		0.0, 0.0, 0.0, 0.0, // work2
+		});
 
+	std::vector<std::shared_ptr<kp::Tensor>> params = { param, consts, data, residuals };
 
-
-	std::vector<float> t1(nmat * ndim);
-	std::vector<float> t2(nmat * ndim);
-
-
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<float> dist(0, 10);
-	for (int i = 0; i < nmat * ndim; ++i) {
-		t1[i] = dist(gen);
-	}
-
-
-	auto tensor1 = mgr.tensor(t1);
-	auto tensor2 = mgr.tensor(t2);
-
-	std::vector<std::shared_ptr<kp::Tensor>> params = { tensor1, tensor2 };
-
-	kp::Workgroup wg({ nmat,1,1 });
+	kp::Workgroup wg({ 2,1,1 });
 	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
 
 	auto start = std::chrono::steady_clock::now();
@@ -304,44 +305,212 @@ void main() {
 		<< std::endl;
 
 
-	bool print = false;
+	bool print = true;
 	if (print) {
-		std::cout << "tensor1: [ \n";
-		auto v1 = tensor1->vector();
-		for (int k = 0; k < 2; ++k) {
-			for (int i = 0; i < 3; ++i) {
-				for (int j = 0; j < 3; ++j) {
-					std::cout << v1[k * 3 * 3 + i * 3 + j] << "  ";
-				}
-				std::cout << "\n";
+		auto res = residuals->vector();
+		std::string printr = "residuals: \n";
+		for (int i = 0; i < 2; ++i) {
+			for (int j = 0; j < ndata; ++j) {
+				printr += std::to_string(res[i * ndata + j]) + "  ";
 			}
+			printr += "\n";
 		}
-		std::cout << "]" << std::endl;
-		std::cout << "[" << std::endl;
-
-		std::cout << "tensor2: [ \n";
-		v1 = tensor2->vector();
-		for (int k = 0; k < 2; ++k) {
-			for (int i = 0; i < 3; ++i) {
-				for (int j = 0; j < 3; ++j) {
-					std::cout << v1[k * 3 * 3 + i * 3 + j] << "  ";
-				}
-				std::cout << "\n";
-			}
-		}
-		std::cout << "]" << std::endl;
+		std::cout << printr;
 	}
 }
 
+void test_expr_res_jac_hes_glsl() {
+	glsl::Shader shader;
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_param"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 1, "float", "global_const"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 2, "float", "global_data"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 3, "float", "global_residuals"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 4, "float", "global_jacobian"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 5, "float", "global_hessian"));
+
+	static std::string code =
+		R"glsl(
+
+void main() {
+
+	float param[nparam];
+	float consts[ndata*nconst];
+	float data[ndata];
+	float residuals[ndata];
+	float jacobian[ndata*nparam];
+	float hessian[nparam*nparam];
+
+	uint index = gl_GlobalInvocationID.x;
+
+	// copy params
+	uint startindex = index*nparam;	
+	for (int i = 0; i < nparam; ++i) {
+		param[i] = global_param[startindex + i];
+	}
+	
+	// copy consts
+	startindex = index*ndata*nconst;
+	for (int i = 0; i < ndata; ++i) {
+		for (int j = 0; j < nconst; ++j) {
+			consts[i*nconst + j] = global_const[startindex + i*nconst + j];
+		}
+	}
+
+	// copy data
+	startindex = index*ndata;
+	for (int i = 0; i < ndata; ++i) {
+		data[i] = global_data[startindex + i];
+	}
+
+	mod_lsq_residual_jacobian_hessian(param, consts, data, residuals, jacobian, hessian);
+
+	// copy back residuals
+	startindex = index*ndata;
+	for (int i = 0; i < ndata; ++i) {
+		global_residuals[startindex + i] = residuals[i];
+	}
+
+	
+	// copy back jacobian
+	startindex = index*ndata*nparam;
+	for (int i = 0; i < ndata; ++i) {
+		for (int j = 0; j < nparam; ++j) {
+			global_jacobian[startindex + i*nparam + j] = jacobian[i*nparam + j];
+		}
+	}
+
+	// copy back hessian
+	startindex = index*nparam*nparam;
+	for (int i = 0; i < nparam; ++i) {
+		for (int j = 0; j < nparam; ++j) {
+			global_hessian[startindex + i*nparam + j] = hessian[i*nparam + j];
+		}
+	}
+
+}
+)glsl";
+
+	int ndata = 4;
+	int nparam = 2;
+	int nconst = 2;
+
+	std::function<std::string()> code_func = [ndata, nparam, nconst]() -> std::string
+	{
+		std::string temp = code;
+		util::replace_all(temp, "ndata", std::to_string(ndata));
+		util::replace_all(temp, "nparam", std::to_string(nparam));
+		util::replace_all(temp, "nconst", std::to_string(nconst));
+		return temp;
+	};
+
+	glsl::Function func("main", {}, code_func,
+		std::make_optional<std::vector<glsl::Function>>({
+			glsl::expression::lsq_residual_jacobian_hessian("mod", "sin(x0)*y1*x0+cos(x1)*y0*x0", ndata, nparam, nconst)
+			})
+	);
+
+	shader.addFunction(func);
+
+
+	std::string glsl_shader = shader.compile();
+
+	std::cout << glsl_shader << std::endl;
+
+	auto spirv = glsl::compileSource(glsl_shader);
+
+	std::string spirv_str(spirv.begin(), spirv.end());
+
+	kp::Manager mgr;
+
+	auto data = mgr.tensor({
+		1.0, 2.0, 3.0, 4.0, // work1
+		5.0, 6.0, 7.0, 8.0	// work2
+		});
+
+	auto param = mgr.tensor({
+		1.0, 10.0,	// work1
+		5.0, 7.0	// work2
+		});
+
+	auto consts = mgr.tensor({
+		0.0, 1.0,	// work1
+		1.0, 1.0,
+		2.0, 1.0,
+		3.0, 1.0,
+		4.0, 1.0,	// work2
+		8.0, 1.0,
+		12.0, 1.0,
+		16.0, 1.0,
+		});
+
+	auto residuals = mgr.tensor({
+		0.0, 0.0, 0.0, 0.0, // work1
+		0.0, 0.0, 0.0, 0.0, // work2
+		});
+
+	auto jacobian = mgr.tensor(std::vector<float>(2 * ndata * nparam, 0.0f));
+	auto hessian = mgr.tensor(std::vector<float>(2 * nparam * nparam, 0.0f));
+
+	std::vector<std::shared_ptr<kp::Tensor>> params = { param, consts, data, residuals, jacobian, hessian };
+
+	kp::Workgroup wg({ 2,1,1 });
+	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
+
+	auto start = std::chrono::steady_clock::now();
+
+	mgr.sequence()
+		->record<kp::OpTensorSyncDevice>(params)
+		->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpTensorSyncLocal>(params)
+		->eval();
+
+	auto end = std::chrono::steady_clock::now();
+
+	std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+		<< std::endl;
+
+
+	bool print = true;
+	if (print) {
+		auto res = residuals->vector();
+		auto jac = jacobian->vector();
+		auto hes = hessian->vector();
+		std::string printr = ""; 
+		for (int i = 0; i < 2; ++i) {
+			printr += "residuals: \n";
+			for (int j = 0; j < ndata; ++j) {
+				printr += std::to_string(res[i * ndata + j]) + "  ";
+			}
+			printr += "\n jacobian: \n";
+			for (int j = 0; j < ndata; ++j) {
+				for (int k = 0; k < nparam; ++k) {
+					printr += std::to_string(jac[i*ndata*nparam + j*nparam + k]) + "  ";
+				}
+				printr += "\n";
+			}
+			printr += "\n hessian: \n";
+			for (int j = 0; j < nparam; ++j) {
+				for (int k = 0; k < nparam; ++k) {
+					printr += std::to_string(hes[i*nparam*nparam + j*nparam + k]) + "  ";
+				}
+				printr += "\n";
+			}
+		}
+
+		std::cout << printr;
+	}
+}
+
+
 void test_expr() {
 	using SymEngine::Expression;
-	auto x = SymEngine::Symbol("x");
-	auto y = SymEngine::Symbol("y");
+	auto x = SymEngine::Symbol("x1");
+	auto y = SymEngine::Symbol("y1");
 	std::map<const std::string, const SymEngine::RCP<const SymEngine::Basic>> symbol_map;
-	symbol_map.emplace("x", x.rcp_from_this());
-	symbol_map.emplace("y", y.rcp_from_this());
+	symbol_map.emplace("x1", x.rcp_from_this());
+	symbol_map.emplace("y1", y.rcp_from_this());
 
-	Expression test1 = Expression(SymEngine::parse("x+x-y+(x+y)^2+cos(x)^2+sin(x)^2", true));
+	Expression test1 = Expression(SymEngine::parse("x1+x1-y1+(x1+y1)^2+cos(x1)^2+sin(x1)^2", true));
 	Expression simplified1 = Expression(SymEngine::simplify(test1));
 
 	std::cout << test1 << std::endl;
@@ -362,6 +531,7 @@ void test_expr() {
 
 int main() {
 	
+	test_expr_res_jac_hes_glsl();
 
 	return 0;
 }

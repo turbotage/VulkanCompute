@@ -151,12 +151,12 @@ namespace glsl {
 
 		std::string compile() {
 			std::string ret = 
-R"(
+R"glsl(
 #version 450
 
 layout (local_size_x = 1) in;
 
-)";
+)glsl";
 			
 			for (auto& bind : m_Bindings) {
 				ret += bind->operator()() + "\n";
