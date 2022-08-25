@@ -15,15 +15,19 @@ import linalg;
 namespace glsl {
 namespace expression {
 
+namespace nlsq {
+
 	export ::glsl::Function residual(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission = true);
 
-	export ::glsl::Function lsq_residual_jacobian_hessian(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission = true);
+	export ::glsl::Function residual_jacobian_hessian(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission = true);
 
+}
 }
 }
 
 namespace glsl {
 namespace expression {
+namespace nlsq {
 
 
 	std::string change_params_to_array_params(const std::string& expression, int nparam, int nconst) 
@@ -92,7 +96,11 @@ RESIDUAL_EXPRESSION
 	std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> expr_diff_diff2(std::string expression, int nparam) 
 	{
 		auto expr = SymEngine::parse(expression);
-		std::vector<SymEngine::RCP<const SymEngine::Basic>> diffs_sym(nparam);
+
+		
+
+
+		std::vector < SymEngine::RCP <const SymEngine::Basic>> diffs_sym(nparam);
 		std::vector<std::string> diffs(nparam);
 		for (int i = 0; i < nparam; ++i) {
 			 auto sym = SymEngine::symbol("x" + std::to_string(i));
@@ -223,5 +231,6 @@ HESSIAN_EXPRESSIONS
 
 	}
 
+}
 }
 }
