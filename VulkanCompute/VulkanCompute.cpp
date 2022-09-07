@@ -1,5 +1,7 @@
 ﻿// VulkanCompute.cpp : Defines the entry point for the application.
 //
+
+#include <vector>
 #include <kompute/Kompute.hpp>
 #include <memory>
 #include <optional>
@@ -16,7 +18,7 @@ import util;
 import glsl;
 import linalg;
 import solver;
-import expression;
+import symbolic;
 
 /*
 void test_glsl() {
@@ -243,7 +245,7 @@ void main() {
 
 	glsl::Function func("main", {}, code_func,
 		std::make_optional<std::vector<glsl::Function>>({
-			glsl::expression::residual("mod", "x1+x2+y1-y2", ndata, nparam, nconst)
+			glsl::symbolic::nlsq::nlsq_residual("mod", "x1+x2+y1-y2", ndata, nparam, nconst, true)
 		})
 	);
 
@@ -405,7 +407,7 @@ void main() {
 
 	glsl::Function func("main", {}, code_func,
 		std::make_optional<std::vector<glsl::Function>>({
-			glsl::expression::lsq_residual_jacobian_hessian("mod", "sin(x0)*y1*x0+cos(x1)*y0*x0", ndata, nparam, nconst)
+			glsl::symbolic::nlsq::nlsq_residual_jacobian_hessian("mod", "sin(x0)*y1*x0+cos(x1)*y0*x0", ndata, nparam, nconst, true)
 			})
 	);
 
@@ -504,34 +506,28 @@ void main() {
 
 void test_expr() {
 	using SymEngine::Expression;
-	auto x = SymEngine::Symbol("x1");
-	auto y = SymEngine::Symbol("y1");
-	std::map<const std::string, const SymEngine::RCP<const SymEngine::Basic>> symbol_map;
-	symbol_map.emplace("x1", x.rcp_from_this());
-	symbol_map.emplace("y1", y.rcp_from_this());
+	auto x = SymEngine::symbol("x1");
+	auto y = SymEngine::symbol("y1");
 
-	Expression test1 = Expression(SymEngine::parse("x1+x1-y1+(x1+y1)^2+cos(x1)^2+sin(x1)^2", true));
-	Expression simplified1 = Expression(SymEngine::simplify(test1));
+	//std::map<const std::string, const SymEngine::RCP<const SymEngine::Basic>> symbol_map;
+	//symbol_map.emplace("x1", x.rcp_from_this());
+	//symbol_map.emplace("y1", y.rcp_from_this());
 
-	std::cout << test1 << std::endl;
-	std::cout << simplified1 << std::endl;
+	auto parsed = SymEngine::parse("cosh(x1)^2+sinh(y1)^2", true);
+	
+	std::cout << parsed->__str__() << std::endl;
 
-	Expression test1x = test1.diff(x.rcp_from_this_cast<SymEngine::Symbol>());
-	Expression test1y = test1.diff(y.rcp_from_this_cast<SymEngine::Symbol>());
+	auto parsedx = parsed->diff(x);
+	auto parsedy = parsed->diff(y);
 
-	std::cout << test1x << std::endl;
-	std::cout << test1y << std::endl;
+	std::cout << parsedx->__str__() << std::endl;
+	std::cout << parsedy->__str__() << std::endl;
 
-	Expression simplified1x = simplified1.diff(x.rcp_from_this_cast<SymEngine::Symbol>());
-	Expression simplified1y = simplified1.diff(y.rcp_from_this_cast<SymEngine::Symbol>());
-
-	std::cout << simplified1x << std::endl;
-	std::cout << simplified1y << std::endl;
 }
 
 int main() {
 	
-	test_expr_res_jac_hes_glsl();
+	test_expr();
 
 	return 0;
 }

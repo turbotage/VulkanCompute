@@ -6,30 +6,29 @@ module;
 #include <symengine/simplify.h>
 #include <symengine/parser.h>
 
-export module expression;
+export module symbolic;
 
 import util;
 import glsl;
 import linalg;
 
 namespace glsl {
-namespace expression {
-
+namespace symbolic {
 namespace nlsq {
 
-	export ::glsl::Function residual(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission = true);
+	export ::glsl::Function nlsq_residual(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission = true);
 
-	export ::glsl::Function residual_jacobian_hessian(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission = true);
+	export ::glsl::Function nlsq_residual_jacobian_hessian(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission = true);
 
 }
 }
 }
 
 namespace glsl {
-namespace expression {
+namespace symbolic {
 namespace nlsq {
-
-
+	
+	// helpers
 	std::string change_params_to_array_params(const std::string& expression, int nparam, int nconst) 
 	{
 		std::string temp_expression = expression;
@@ -47,45 +46,6 @@ namespace nlsq {
 		return temp_expression;
 	}
 
-	::glsl::Function residual(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission)
-	{
-		static const std::string code = // compute shader
-R"glsl(
-void NAME_residual(in float params[nparam], in float consts[ndata*nconst], in float data[ndata], out float residuals[ndata]) {
-	for (int i = 0; i < ndata; ++i) {
-RESIDUAL_EXPRESSION
-	}
-}
-)glsl";
-
-		auto rexpr = change_params_to_array_params(expression, nparam, nconst);
-		std::string resexpr = "\t\tresiduals[i] = " + rexpr + " - data[i];";
-
-		std::function<std::string()> code_func = 
-			[ndata, nparam, nconst, expression_name, resexpr, single_precission]() -> std::string
-		{
-			std::string temp = code;
-			util::replace_all(temp, "NAME_residual", expression_name + "_residual");
-			util::replace_all(temp, "RESIDUAL_EXPRESSION", resexpr);
-			util::replace_all(temp, "ndata", std::to_string(ndata));
-			util::replace_all(temp, "nparam", std::to_string(nparam));
-			util::replace_all(temp, "nconst", std::to_string(nconst));
-			if (!single_precission) {
-				util::replace_all(temp, "float", "double");
-			}
-			return temp;
-		};
-
-		std::hash<std::string> hasher;
-
-		return ::glsl::Function(
-			expression_name + "_residual",
-			{ hasher(expression), size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
-			code_func,
-			std::nullopt
-		);
-	}
-
 	std::string sym_to_str(const SymEngine::RCP<const SymEngine::Basic>& sym)
 	{
 		std::ostringstream sstream;
@@ -97,10 +57,8 @@ RESIDUAL_EXPRESSION
 	{
 		auto expr = SymEngine::parse(expression);
 
-		
 
-
-		std::vector < SymEngine::RCP <const SymEngine::Basic>> diffs_sym(nparam);
+		std::vector <SymEngine::RCP <const SymEngine::Basic>> diffs_sym(nparam);
 		std::vector<std::string> diffs(nparam);
 		for (int i = 0; i < nparam; ++i) {
 			 auto sym = SymEngine::symbol("x" + std::to_string(i));
@@ -123,11 +81,52 @@ RESIDUAL_EXPRESSION
 		return std::make_tuple(sym_to_str(expr), diffs, diff2s);
 	}
 
-	::glsl::Function lsq_residual_jacobian_hessian(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission)
+	// IMPL
+
+	::glsl::Function nlsq_residual(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void NAME_lsq_residual_jacobian_hessian(
+void NAME_nlsq_residual(in float params[nparam], in float consts[ndata*nconst], in float data[ndata], out float residuals[ndata]) {
+	for (int i = 0; i < ndata; ++i) {
+RESIDUAL_EXPRESSION
+	}
+}
+)glsl";
+
+		auto rexpr = change_params_to_array_params(expression, nparam, nconst);
+		std::string resexpr = "\t\tresiduals[i] = " + rexpr + " - data[i];";
+
+		std::function<std::string()> code_func = 
+			[ndata, nparam, nconst, expression_name, resexpr, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "NAME_nlsq_residual", expression_name + "_nlsq_residual");
+			util::replace_all(temp, "RESIDUAL_EXPRESSION", resexpr);
+			util::replace_all(temp, "ndata", std::to_string(ndata));
+			util::replace_all(temp, "nparam", std::to_string(nparam));
+			util::replace_all(temp, "nconst", std::to_string(nconst));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		std::hash<std::string> hasher;
+
+		return ::glsl::Function(
+			expression_name + "_nlsq_residual",
+			{ hasher(expression), size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function nlsq_residual_jacobian_hessian(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void NAME_nlsq_residual_jacobian_hessian(
 	in float params[nparam],
 	in float consts[ndata*nconst],
 	in float data[ndata],
@@ -205,7 +204,7 @@ HESSIAN_EXPRESSIONS
 			[ndata, nparam, nconst, expression_name, resexpr, jacexpr, hesexpr, single_precission]() -> std::string
 		{
 			std::string temp = code;
-			util::replace_all(temp, "NAME_lsq_residual_jacobian_hessian", expression_name + "_lsq_residual_jacobian_hessian");
+			util::replace_all(temp, "NAME_nlsq_residual_jacobian_hessian", expression_name + "_nlsq_residual_jacobian_hessian");
 			util::replace_all(temp, "RESIDUAL_EXPRESSIONS", resexpr);
 			util::replace_all(temp, "JACOBIAN_EXPRESSIONS", jacexpr);
 			util::replace_all(temp, "HESSIAN_EXPRESSIONS", hesexpr);
@@ -219,9 +218,9 @@ HESSIAN_EXPRESSIONS
 		};
 
 		std::hash<std::string> hasher;
-
+		
 		return ::glsl::Function(
-			expression_name + "_lsq_residual_jacobian_hessian",
+			expression_name + "_nlsq_residual_jacobian_hessian",
 			{ hasher(expression), size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission)},
 			code_func,
 			std::make_optional<std::vector<Function>>({
