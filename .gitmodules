@@ -1,0 +1,3 @@
+[submodule "VulkanCompute/external/kompute"]
+	path = VulkanCompute/external/kompute
+	url = https://github.com/KomputeProject/kompute
