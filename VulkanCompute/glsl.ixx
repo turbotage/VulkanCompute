@@ -12,7 +12,6 @@ export module glsl;
 import util;
 
 namespace glsl {
-	
 
 	export std::vector<uint32_t>
 		compileSource(const std::string& source)

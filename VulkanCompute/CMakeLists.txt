@@ -27,7 +27,7 @@ add_executable(VulkanCompute
 	"expression/algebra/unary/neg.ixx"
 	"expression/algebra/unary/trig.ixx"
 	"expression/algebra/unary/unary.ixx"
-	"expression/algebra/binary/add.ixx" "expression/algebra/binary/div.ixx")
+	"expression/algebra/binary/add.ixx" "expression/algebra/binary/div.ixx" "expression/algebra/binary/mul.ixx" "expression/algebra/binary/pow.ixx" "expression/algebra/binary/sub.ixx" "expression/nodex.ixx")
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 
