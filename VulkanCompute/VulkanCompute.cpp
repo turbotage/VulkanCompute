@@ -503,7 +503,6 @@ void main() {
 	}
 }
 
-
 void test_expr() {
 	using SymEngine::Expression;
 	auto x = SymEngine::symbol("x1");
@@ -513,7 +512,7 @@ void test_expr() {
 	//symbol_map.emplace("x1", x.rcp_from_this());
 	//symbol_map.emplace("y1", y.rcp_from_this());
 
-	auto parsed = SymEngine::parse("cosh(x1)^2+sinh(y1)^2", true);
+	auto parsed = SymEngine::parse("cosh(x1)^2+sinh(y1)^2+abs(sin(x1))", true);
 	
 	std::cout << parsed->__str__() << std::endl;
 
@@ -521,6 +520,9 @@ void test_expr() {
 	auto parsedy = parsed->diff(y);
 
 	std::cout << parsedx->__str__() << std::endl;
+
+	
+
 	std::cout << parsedy->__str__() << std::endl;
 
 }

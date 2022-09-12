@@ -73,6 +73,7 @@ namespace expression {
 	export struct DefaultFunctionIDs {
 		enum {
 			// FunctionTokens
+			// 
 			// Binary
 			POW_ID = DefaultOperatorIDs::SUB_ID + 1,
 
@@ -95,7 +96,10 @@ namespace expression {
 			TANH_ID,
 			ASINH_ID,
 			ACOSH_ID,
-			ATANH_ID
+			ATANH_ID,
+
+			// Special
+			DERIVATIVE_ID,
 		};
 	};
 
@@ -121,6 +125,8 @@ namespace expression {
 		{DefaultFunctionIDs::ASINH_ID, "asinh"},
 		{DefaultFunctionIDs::ACOSH_ID, "acosh"},
 		{DefaultFunctionIDs::ATANH_ID, "atanh"},
+
+		{DefaultFunctionIDs::DERIVATIVE_ID, "derivative"}
 	};
 
 
