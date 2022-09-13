@@ -13,12 +13,12 @@ add_subdirectory("external/kompute" ${CMAKE_CURRENT_BINARY_DIR}/kompute_build)
 add_executable(VulkanCompute 
 	"VulkanCompute.cpp"
 	"util.ixx"
-	"glsl.ixx" 
-	"linalg/linalg.ixx" 
+	"glsl.ixx"
+	"linalg/linalg.ixx"
 	"linalg/solver.ixx"
-	"linalg/symm.ixx" 
+	"linalg/symm.ixx"
 	"symbolic.ixx"
-	"vc.ixx" 
+	"vc.ixx"
 	"expression/parser/token.ixx" 
 	"expression/parser/lexer.ixx" 
 	"expression/parser/defaultexp.ixx"
@@ -32,7 +32,8 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/mul.ixx"
 	"expression/algebra/binary/pow.ixx"
 	"expression/algebra/binary/sub.ixx"
-	 "expression/nodes.ixx")
+	"expression/nodes.ixx"
+	"expression/expr.ixx")
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 
