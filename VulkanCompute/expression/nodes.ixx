@@ -147,7 +147,7 @@ namespace expression {
 		NegNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -162,7 +162,8 @@ namespace expression {
 		MulNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child)
 			: Node(left_child->context)
 		{
-			children = { std::move(left_child), std::move(right_child) };
+			children.emplace_back(std::move(left_child));
+			children.emplace_back(std::move(right_child));
 		}
 
 		std::string str() override {
@@ -176,7 +177,8 @@ namespace expression {
 		DivNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child)
 			: Node(left_child->context)
 		{
-			children = { std::move(left_child), std::move(right_child) };
+			children.emplace_back(std::move(left_child));
+			children.emplace_back(std::move(right_child));
 		}
 
 		std::string str() override {
@@ -191,7 +193,8 @@ namespace expression {
 		AddNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child)
 			: Node(left_child->context)
 		{
-			children = { std::move(left_child), std::move(right_child) };
+			children.emplace_back(std::move(left_child));
+			children.emplace_back(std::move(right_child));
 		}
 
 		std::string str() override {
@@ -206,7 +209,8 @@ namespace expression {
 		SubNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child)
 			: Node(left_child->context)
 		{
-			children = { std::move(left_child), std::move(right_child) };
+			children.emplace_back(std::move(left_child));
+			children.emplace_back(std::move(right_child));
 		}
 
 		std::string str() override {
@@ -221,7 +225,8 @@ namespace expression {
 		PowNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child)
 			: Node(left_child->context)
 		{
-			children = { std::move(left_child), std::move(right_child) };
+			children.emplace_back(std::move(left_child));
+			children.emplace_back(std::move(right_child));
 		}
 
 		std::string str() override {
@@ -238,7 +243,7 @@ namespace expression {
 		SgnNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 		
 		std::string str() override {
@@ -253,7 +258,7 @@ namespace expression {
 		AbsNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -268,7 +273,7 @@ namespace expression {
 		SqrtNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -283,7 +288,7 @@ namespace expression {
 		ExpNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -298,7 +303,7 @@ namespace expression {
 		LogNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -313,7 +318,7 @@ namespace expression {
 		SinNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -328,7 +333,7 @@ namespace expression {
 		CosNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -343,7 +348,7 @@ namespace expression {
 		TanNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -358,7 +363,7 @@ namespace expression {
 		AsinNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -373,7 +378,7 @@ namespace expression {
 		AcosNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -388,7 +393,7 @@ namespace expression {
 		AtanNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -403,7 +408,7 @@ namespace expression {
 		SinhNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -418,7 +423,7 @@ namespace expression {
 		CoshNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -433,7 +438,7 @@ namespace expression {
 		TanhNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -448,7 +453,7 @@ namespace expression {
 		AsinhNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -463,7 +468,7 @@ namespace expression {
 		AcoshNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -478,7 +483,7 @@ namespace expression {
 		AtanhNode(std::unique_ptr<Node> child)
 			: Node(child->context)
 		{
-			children = { std::move(child) };
+			children.emplace_back(std::move(child));
 		}
 
 		std::string str() override {
@@ -493,7 +498,8 @@ namespace expression {
 		DerivativeNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child)
 			: Node(left_child->context)
 		{
-			children = { std::move(left_child), std::move(right_child) };
+			children.emplace_back(std::move(left_child));
+			children.emplace_back(std::move(right_child));
 		}
 
 		std::string str() override {
