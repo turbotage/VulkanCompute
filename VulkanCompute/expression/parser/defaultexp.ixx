@@ -63,7 +63,7 @@ namespace expression {
 	export std::unordered_map<int32_t, std::string> DEFAULT_OPERATOR_MAPS = {
 		// Operators
 		{DefaultOperatorIDs::NEG_ID, "-"},
-		{DefaultOperatorIDs::POW_ID, "^"},
+		{DefaultOperatorIDs::POW_ID, "**"},
 		{DefaultOperatorIDs::MUL_ID, "*"},
 		{DefaultOperatorIDs::DIV_ID, "/"},
 		{DefaultOperatorIDs::ADD_ID, "+"},
@@ -80,7 +80,6 @@ namespace expression {
 			// Unary
 			ABS_ID,
 			SQRT_ID,
-			SQUARE_ID,
 			EXP_ID,
 			LOG_ID,
 
@@ -109,7 +108,6 @@ namespace expression {
 
 		{DefaultFunctionIDs::ABS_ID, "abs"},
 		{DefaultFunctionIDs::SQRT_ID, "sqrt"},
-		{DefaultFunctionIDs::SQUARE_ID, "square"},
 		{DefaultFunctionIDs::EXP_ID, "exp"},
 		{DefaultFunctionIDs::LOG_ID, "log"},
 

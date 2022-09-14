@@ -33,7 +33,8 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/pow.ixx"
 	"expression/algebra/binary/sub.ixx"
 	"expression/nodes.ixx"
-	 "expression/expr.ixx")
+	"expression/nodes.cpp"
+	"expression/expr.ixx") 
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 

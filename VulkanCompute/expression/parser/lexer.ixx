@@ -75,7 +75,6 @@ namespace expression {
 
 			functions.emplace_back(DefaultFunctionIDs::ABS_ID, 1);
 			functions.emplace_back(DefaultFunctionIDs::SQRT_ID, 1);
-			functions.emplace_back(DefaultFunctionIDs::SQUARE_ID, 1);
 			functions.emplace_back(DefaultFunctionIDs::EXP_ID, 1);
 			functions.emplace_back(DefaultFunctionIDs::LOG_ID, 1);
 
@@ -91,12 +90,13 @@ namespace expression {
 			functions.emplace_back(DefaultFunctionIDs::ASINH_ID, 1);
 			functions.emplace_back(DefaultFunctionIDs::ACOSH_ID, 1);
 			functions.emplace_back(DefaultFunctionIDs::ATANH_ID, 1);
+			functions.emplace_back(DefaultFunctionIDs::DERIVATIVE_ID, 2);
 
 			operator_id_name_map = DEFAULT_OPERATOR_MAPS;
 			function_id_name_map = DEFAULT_FUNCTION_MAPS;
 		}
 
-		LexContext(LexContext&) = default;
+		LexContext(const LexContext&) = default;
 		LexContext& operator=(LexContext&) = default;
 
 		LexContext(LexContext&&) = default;
@@ -133,8 +133,8 @@ namespace expression {
 	export class Lexer {
 	public:
 
-		Lexer(LexContext&& lex_context) 
-			: m_LexContext(std::move(lex_context))
+		Lexer(const LexContext& lex_context) 
+			: m_LexContext(lex_context)
 		{
 		}
 
@@ -166,6 +166,10 @@ namespace expression {
 			lexed_tokens.erase(lexed_tokens.begin());
 
 			return lexed_tokens;
+		}
+
+		const LexContext& context() const {
+			return m_LexContext;
 		}
 
 	private:

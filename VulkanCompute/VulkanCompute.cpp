@@ -12,13 +12,14 @@
 #include <symengine/simplify.h>
 #include <symengine/parser.h>
 #include <symengine/parser/parser.h>
-
+#include <string>
 
 import util;
 import glsl;
 import linalg;
 import solver;
 import symbolic;
+import expr;
 
 /*
 void test_glsl() {
@@ -503,7 +504,7 @@ void main() {
 	}
 }
 
-void test_expr() {
+void test_symengine_expr() {
 	using SymEngine::Expression;
 	auto x = SymEngine::symbol("x1");
 	auto y = SymEngine::symbol("y1");
@@ -524,6 +525,28 @@ void test_expr() {
 	
 
 	std::cout << parsedy->__str__() << std::endl;
+
+}
+
+void test_expr() {
+	std::string expr = "abs(S0*(1+FA*exp(-TI/T1)+exp(-TR/T1)))";
+	std::vector<std::string> vars = { "S0", "FA", "TI", "T1", "TR" };
+
+	expression::Expression expression(expr, vars);
+
+	std::cout << expression.str() << std::endl;
+	std::cout << expression.glsl_str() << std::endl;
+
+	std::cout << expression.diff("S0")->str() << std::endl;
+	std::cout << expression.diff("S0")->glsl_str() << std::endl;
+
+	std::cout << expression.diff("T1")->str() << std::endl;
+	std::cout << expression.diff("T1")->glsl_str() << std::endl;
+
+	std::cout << expression.diff("S0")->diff("S0")->str() << std::endl;
+	std::cout << expression.diff("S0")->diff("T1")->str() << std::endl;
+	std::cout << expression.diff("T1")->diff("S0")->str() << std::endl;
+	std::cout << expression.diff("T1")->diff("T1")->str() << std::endl;
 
 }
 

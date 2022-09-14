@@ -2,6 +2,9 @@ module;
 
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <locale>
+#include <functional>
 
 export module util;
 
@@ -44,6 +47,22 @@ namespace util {
         for (int i = 0; i < hashes.size(); ++i) {
             ret = hash_combine(ret, hashes[i]);
         }
+        return ret;
+    }
+
+    export std::string to_lower_case(const std::string& str) {
+        std::string ret = str;
+        std::transform(ret.begin(), ret.end(), ret.begin(), [](unsigned char c) { return std::tolower(c); });
+        return ret;
+    }
+
+    export std::string remove_whitespace(const std::string& str) {
+        std::string ret = str;
+        ret.erase(std::remove_if(ret.begin(), ret.end(),
+            [](char& c) {
+                return std::isspace<char>(c, std::locale::classic());
+            }),
+            ret.end());
         return ret;
     }
 

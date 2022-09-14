@@ -34,7 +34,7 @@ namespace expression {
 
 
 
-	std::deque<std::unique_ptr<Token>> Shunter::shunt(std::vector<std::unique_ptr<Token>>&& tokens)
+	export std::deque<std::unique_ptr<Token>> Shunter::shunt(std::vector<std::unique_ptr<Token>>&& tokens)
 	{
 		auto toks = std::move(tokens);
 
@@ -83,7 +83,7 @@ namespace expression {
 		return ret;
 	}
 
-	void Shunter::handle_operator(const OperatorToken& op)
+	export void Shunter::handle_operator(const OperatorToken& op)
 	{
 		while (!m_OperatorStack.empty()) {
 			auto& ptok_back = m_OperatorStack.back();
@@ -110,7 +110,7 @@ namespace expression {
 		}
 	}
 
-	void Shunter::handle_rparen()
+	export void Shunter::handle_rparen()
 	{
 		if (!shift_until(LeftParenToken())) {
 			throw std::runtime_error("missmatched parenthesis");
@@ -125,7 +125,7 @@ namespace expression {
 		}
 	}
 
-	bool Shunter::shift_until(const Token& stop)
+	export bool Shunter::shift_until(const Token& stop)
 	{
 		int32_t stacksize = m_OperatorStack.size();
 		for (int32_t i = 0; i < stacksize; ++i) {

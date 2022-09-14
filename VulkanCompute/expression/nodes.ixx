@@ -3,11 +3,11 @@ module;
 #include <memory>
 #include <stdexcept>
 #include <vector>
-/*
+#include <string>
+
 #include <symengine/expression.h>
 #include <symengine/simplify.h>
 #include <symengine/parser.h>
-*/
 
 export module nodes;
 
@@ -58,8 +58,12 @@ namespace expression {
 		
 	}
 
+	class Expression;
+
 	export class Node {
 	public:
+
+		Node(Node&&) = default;
 
 		Node(const LexContext& context)
 			: context(context)
@@ -73,6 +77,12 @@ namespace expression {
 
 		virtual std::string str() = 0;
 
+		virtual std::string glsl_str() = 0;
+
+		void fill_variable_list(std::set<std::string>& vars);
+
+		std::unique_ptr<Node> diff(const std::string& x);
+
 	public:
 		const LexContext& context;
 		std::vector<std::unique_ptr<Node>> children;
@@ -85,7 +95,7 @@ namespace expression {
 		TokenNode(const Token& tok, const LexContext& context)
 			: Node(copy_token(tok), context)
 		{
-
+			
 		}
 
 		std::string str() override {
@@ -111,10 +121,7 @@ namespace expression {
 					return context.function_id_name_map.at(id);
 				}
 			case TokenType::VARIABLE_TYPE:
-				{
-					const VariableToken& vtok = dynamic_cast<const VariableToken&>(*pToken);
-					return vtok.name;
-				}
+				throw std::runtime_error("Variables should be stored in VariableNodes not TokenNodes");
 			case TokenType::NUMBER_TYPE:
 				{
 					const NumberToken& ntok = dynamic_cast<const NumberToken&>(*pToken);
@@ -139,7 +146,35 @@ namespace expression {
 			}
 		}
 
+		std::string glsl_str() override {
+			return str();
+		}
+
 	};
+
+	export class VariableNode : public Node {
+	public:
+
+		VariableNode(const VariableToken& token, const LexContext& context)
+			: Node(context), m_VarToken(token)
+		{}
+
+		std::string str() override {
+			return m_VarToken.name;
+		}
+
+		std::string glsl_str() override {
+			return str();
+		}
+
+	private:
+		VariableToken m_VarToken;
+	};
+
+	export std::unique_ptr<Node> node_from_token(const Token& tok, const LexContext& context)
+	{
+		return std::make_unique<TokenNode>(tok, context);
+	}
 
 	export class NegNode : public Node {
 	public:
@@ -152,6 +187,10 @@ namespace expression {
 
 		std::string str() override {
 			return "(-" + children[0]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "(-" + children[0]->glsl_str() + ")";
 		}
 
 	};
@@ -169,6 +208,11 @@ namespace expression {
 		std::string str() override {
 			return "(" + children[0]->str() + "*" + children[1]->str() + ")";
 		}
+
+		std::string glsl_str() override {
+			return "(" + children[0]->glsl_str() + "*" + children[1]->glsl_str() + ")";
+		}
+
 	};
 
 	export class DivNode : public Node {
@@ -183,6 +227,10 @@ namespace expression {
 
 		std::string str() override {
 			return "(" + children[0]->str() + "/" + children[1]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "(" + children[0]->glsl_str() + "/" + children[1]->glsl_str() + ")";
 		}
 
 	};
@@ -201,6 +249,10 @@ namespace expression {
 			return "(" + children[0]->str() + "+" + children[1]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "(" + children[0]->glsl_str() + "+" + children[1]->glsl_str() + ")";
+		}
+
 	};
 
 	export class SubNode : public Node {
@@ -215,6 +267,10 @@ namespace expression {
 
 		std::string str() override {
 			return "(" + children[0]->str() + "-" + children[1]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "(" + children[0]->glsl_str() + "-" + children[1]->glsl_str() + ")";
 		}
 
 	};
@@ -232,6 +288,10 @@ namespace expression {
 		std::string str() override {
 			return "pow(" + children[0]->str() + "," + children[1]->str() + ")";
 		}
+		
+		std::string glsl_str() override {
+			return "pow(" + children[0]->glsl_str() + "," + children[1]->glsl_str() + ")";
+		}
 
 	};
 
@@ -245,9 +305,13 @@ namespace expression {
 		{
 			children.emplace_back(std::move(child));
 		}
-		
+
 		std::string str() override {
-			return "sign(" + children[0]->str() + ")";
+			return "sgn(" + children[0]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "sign(" + children[0]->glsl_str() + ")";
 		}
 
 	};
@@ -265,6 +329,10 @@ namespace expression {
 			return "abs(" + children[0]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "abs(" + children[0]->glsl_str() + ")";
+		}
+
 	};
 
 	export class SqrtNode : public Node {
@@ -278,6 +346,10 @@ namespace expression {
 
 		std::string str() override {
 			return "sqrt(" + children[0]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "sqrt(" + children[0]->glsl_str() + ")";
 		}
 
 	};
@@ -295,6 +367,10 @@ namespace expression {
 			return "exp(" + children[0]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "exp(" + children[0]->glsl_str() + ")";
+		}
+
 	};
 
 	export class LogNode : public Node {
@@ -308,6 +384,10 @@ namespace expression {
 
 		std::string str() override {
 			return "log(" + children[0]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "log(" + children[0]->glsl_str() + ")";
 		}
 
 	};
@@ -325,6 +405,10 @@ namespace expression {
 			return "sin(" + children[0]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "sin(" + children[0]->glsl_str() + ")";
+		}
+
 	};
 
 	export class CosNode : public Node {
@@ -338,6 +422,10 @@ namespace expression {
 
 		std::string str() override {
 			return "cos(" + children[0]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "cos(" + children[0]->glsl_str() + ")";
 		}
 
 	};
@@ -355,6 +443,10 @@ namespace expression {
 			return "tan(" + children[0]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "tan(" + children[0]->glsl_str() + ")";
+		}
+
 	};
 
 	export class AsinNode : public Node {
@@ -368,6 +460,10 @@ namespace expression {
 
 		std::string str() override {
 			return "asin(" + children[0]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "asin(" + children[0]->glsl_str() + ")";
 		}
 
 	};
@@ -385,6 +481,10 @@ namespace expression {
 			return "acos(" + children[0]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "acos(" + children[0]->glsl_str() + ")";
+		}
+
 	};
 
 	export class AtanNode : public Node {
@@ -398,6 +498,10 @@ namespace expression {
 
 		std::string str() override {
 			return "atan(" + children[0]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "atan(" + children[0]->glsl_str() + ")";
 		}
 
 	};
@@ -415,6 +519,10 @@ namespace expression {
 			return "sinh(" + children[0]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "sinh(" + children[0]->glsl_str() + ")";
+		}
+
 	};
 
 	export class CoshNode : public Node {
@@ -428,6 +536,10 @@ namespace expression {
 
 		std::string str() override {
 			return "cosh(" + children[0]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "cosh(" + children[0]->glsl_str() + ")";
 		}
 
 	};
@@ -445,6 +557,10 @@ namespace expression {
 			return "tanh(" + children[0]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "tanh(" + children[0]->glsl_str() + ")";
+		}
+
 	};
 
 	export class AsinhNode : public Node {
@@ -458,6 +574,10 @@ namespace expression {
 
 		std::string str() override {
 			return "asinh(" + children[0]->str() + ")";
+		}
+
+		std::string glsl_str() override {
+			return "asinh(" + children[0]->glsl_str() + ")";
 		}
 
 	};
@@ -475,6 +595,10 @@ namespace expression {
 			return "acosh(" + children[0]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "acosh(" + children[0]->glsl_str() + ")";
+		}
+
 	};
 
 	export class AtanhNode : public Node {
@@ -490,29 +614,26 @@ namespace expression {
 			return "atanh(" + children[0]->str() + ")";
 		}
 
+		std::string glsl_str() override {
+			return "atanh(" + children[0]->glsl_str() + ")";
+		}
+
 	};
 
 	export class DerivativeNode : public Node {
 	public:
 
-		DerivativeNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child)
-			: Node(left_child->context)
-		{
-			children.emplace_back(std::move(left_child));
-			children.emplace_back(std::move(right_child));
-		}
+		DerivativeNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child);
 
 		std::string str() override {
-			auto child_ptr = dynamic_cast<const AbsNode*>(children[0].get());
-			if (child_ptr != nullptr) {
-				auto& under_abs_child = child_ptr->children[0];
-				std::string rstr = "sign(" + under_abs_child->str() + ")*(";
-				//rstr += SymEngine::parse(under_abs_child->str())->diff(SymEngine::symbol(children[1]->str()))->__str__() + ")";
-				return rstr;
-			}
-
-			return "";
+			return children[0]->str();
 		}
+
+		std::string glsl_str() override {
+			return children[0]->glsl_str();
+		}
+
+	private:
 
 	};
 
