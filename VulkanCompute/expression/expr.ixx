@@ -9,6 +9,8 @@ module;
 #include <vector>
 #include <tuple>
 #include <algorithm>
+#include <set>
+#include <iterator>
 
 #include <symengine/expression.h>
 #include <symengine/simplify.h>
@@ -28,16 +30,45 @@ namespace expression {
 	using ExpressionCreationMap = std::unordered_map<int32_t,
 		std::function<void(const Token&, std::vector<std::unique_ptr<Node>>&)>>;
 
-	export class Expression;
-	export Expression expression_creator(const std::string& expression, std::vector<std::string> variables);
+	export void symengine_get_args(const SymEngine::RCP<const SymEngine::Basic>& subexpr, std::set<std::string>& args) 
+	{
+		auto vec_args = subexpr->get_args();
 
-	export class Expression : public Node {
+		if (vec_args.size() == 0) {
+			if (SymEngine::is_a_Number(*subexpr)) {
+				return;
+			}
+			else if (SymEngine::is_a<SymEngine::FunctionSymbol>(*subexpr)) {
+				return;
+			}
+			else if (SymEngine::is_a<SymEngine::Constant>(*subexpr)) {
+				return;
+			}
+
+			args.insert(subexpr->__str__());
+		}
+		else {
+			for (auto& varg : vec_args) {
+				symengine_get_args(varg, args);
+			}
+		}
+	}
+
+	export class Expression;
+	export Expression expression_creator(const std::string& expression, LexContext& context);
+	export Expression expression_creator(const std::string& expression, const std::vector<std::string>& variables);
+
+	class Expression : public Node {
 	public:
 
 		Expression(Expression&&) = default;
 
-		Expression(const std::string& expression, std::vector<std::string> variables)
+		Expression(const std::string& expression, const std::vector<std::string>& variables)
 			: Expression(expression_creator(expression, variables)) 
+		{}
+
+		Expression(const std::string& expression, LexContext& context)
+			: Expression(expression_creator(expression, context))
 		{}
 
 		Expression(std::unique_ptr<Node> root_child)
@@ -48,7 +79,7 @@ namespace expression {
 
 		Expression(const LexContext& context, const std::deque<std::unique_ptr<Token>>& tokens,
 			const ExpressionCreationMap& creation_map)
-			: Node(context), m_Context(context)
+			: m_Context(context), Node(m_Context)
 		{
 			std::vector<std::unique_ptr<Node>> nodes;
 
@@ -77,29 +108,7 @@ namespace expression {
 			return children[0]->glsl_str();
 		}
 
-		/*
-		std::string diff_str(const std::string& x) {
-			return diff(x)->str();
-		}
-
-		std::string diff_glsl_str(const std::string& x) {
-			return diff(x)->glsl_str();
-		}
-		*/
-
-		/*
-		Expression diff_expr(const std::string& x) {
-			std::string expr_str = str();
-			auto parsed = SymEngine::parse(expr_str);
-			auto xsym = SymEngine::symbol(util::to_lower_case(x));
-			auto diffstr = parsed->diff(xsym);
-			expr_str = diffstr->__str__();
-			expr_str = util::to_lower_case(util::remove_whitespace(expr_str));
-			return Expression(expr_str, m_Variables);
-		}
-		*/
-
-		static ExpressionCreationMap default_expression_creation_map(const LexContext& context) {
+		static ExpressionCreationMap default_expression_creation_map(LexContext& context) {
 			return ExpressionCreationMap{
 				// Fixed Tokens
 				{FixedIDs::UNITY_ID,
@@ -358,7 +367,27 @@ namespace expression {
 						nodes.push_back(std::make_unique<DerivativeNode>(std::move(lc), std::move(rc)));
 					}
 				},
+				{ DefaultFunctionIDs::SUBS_ID,
+				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+					{
+						const FunctionToken* ftok = dynamic_cast<const FunctionToken*>(&tok);
+						if (ftok == nullptr) {
+							throw std::runtime_error("SUBS_ID creation map token was not a FunctionToken");
+						}
 
+						if (ftok->n_inputs % 2 != 1)
+							throw std::runtime_error("SubsNode expects an odd number of arguments");
+
+						std::vector<std::unique_ptr<Node>> children;
+						children.reserve(ftok->n_inputs);
+						for (int i = 0; i < ftok->n_inputs; ++i) {
+							children.push_back(std::move(nodes.back()));
+							nodes.pop_back();
+						}
+
+						nodes.push_back(std::make_unique<SubsNode>(std::move(children)));
+					}
+				}
 			};
 		}
 		
@@ -371,17 +400,32 @@ namespace expression {
 		std::vector<std::string> m_Variables;
 	};
 
-	export Expression expression_creator(const std::string& expression, std::vector<std::string> variables)
+	Expression expression_creator(const std::string& expression, LexContext& context) 
+	{
+		std::string expr = util::to_lower_case(util::remove_whitespace(expression));
+
+		Lexer lexer(context);
+
+		auto toks = lexer.lex(expr);
+
+		Shunter shunter;
+		auto shunter_toks = shunter.shunt(std::move(toks));
+
+		return Expression(context, shunter_toks, Expression::default_expression_creation_map(context));
+	}
+
+	Expression expression_creator(const std::string& expression, const std::vector<std::string>& variables)
 	{
 		std::string expr = util::to_lower_case(util::remove_whitespace(expression));
 
 		LexContext context;
-		for (auto& var : variables) {
-			std::transform(var.begin(), var.end(), var.begin(), [](unsigned char c) { return std::tolower(c); });
+		for (auto var : variables) {
+			var = util::to_lower_case(var);
 			context.variables.emplace_back(var);
+			context.variable_assumptions.insert(SymEngine::contains(SymEngine::symbol(var), SymEngine::reals()));
 		}
 
-		Lexer lexer(std::move(context));
+		Lexer lexer(context);
 
 		auto toks = lexer.lex(expr);
 

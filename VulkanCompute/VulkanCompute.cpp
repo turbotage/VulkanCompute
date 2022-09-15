@@ -514,16 +514,13 @@ void test_symengine_expr() {
 	//symbol_map.emplace("y1", y.rcp_from_this());
 
 	auto parsed = SymEngine::parse("cosh(x1)^2+sinh(y1)^2+abs(sin(x1))", true);
-	
+
 	std::cout << parsed->__str__() << std::endl;
 
 	auto parsedx = parsed->diff(x);
 	auto parsedy = parsed->diff(y);
 
 	std::cout << parsedx->__str__() << std::endl;
-
-	
-
 	std::cout << parsedy->__str__() << std::endl;
 
 }
@@ -543,10 +540,82 @@ void test_expr() {
 	std::cout << expression.diff("T1")->str() << std::endl;
 	std::cout << expression.diff("T1")->glsl_str() << std::endl;
 
+	
 	std::cout << expression.diff("S0")->diff("S0")->str() << std::endl;
 	std::cout << expression.diff("S0")->diff("T1")->str() << std::endl;
 	std::cout << expression.diff("T1")->diff("S0")->str() << std::endl;
 	std::cout << expression.diff("T1")->diff("T1")->str() << std::endl;
+	
+
+}
+
+void test_symengine() {
+
+	auto x1 = SymEngine::symbol("x1");
+	auto x2 = SymEngine::symbol("x2");
+	auto x3 = SymEngine::symbol("x3");
+
+	auto x1asm = SymEngine::contains(x1, SymEngine::reals());
+	auto x2asm = SymEngine::contains(x2, SymEngine::reals());
+	auto x3asm = SymEngine::contains(x3, SymEngine::reals());
+
+	SymEngine::set_basic sb;
+	sb.insert(x1asm);
+	sb.insert(x2asm);
+	sb.insert(x3asm);
+
+	SymEngine::Assumptions abs(sb);
+
+	std::cout << abs.is_real(x1) << std::endl;
+	std::cout << abs.is_real(x2) << std::endl;
+	std::cout << abs.is_real(x3) << std::endl;
+
+	std::string expr = "abs(S0*(1+FA*exp(-TI/T1)+exp(-TR/T1)))";
+	std::vector<std::string> vars = { "S0", "FA", "TI", "T1", "TR" };
+
+	expression::Expression expression(expr, vars);
+
+	auto diff1str = expression.diff("T1")->str();
+
+	std::cout << "diff1: " << diff1str << "\n\n";
+
+	auto diff1 = SymEngine::parse(diff1str);
+
+	auto diff2 = diff1->diff(SymEngine::symbol("t1"));
+
+	std::cout << "diff2: " << diff2->__str__() << "\n\n";
+
+
+	std::set<std::string> args;
+	std::function<void(const SymEngine::RCP<const SymEngine::Basic>&)> get_args;
+	get_args = [&args, &get_args](const SymEngine::RCP<const SymEngine::Basic>& subexpr) {
+		auto vec_args = subexpr->get_args();
+
+		if (vec_args.size() == 0) {
+			if (SymEngine::is_a_Number(*subexpr)) {
+				return;
+			}
+			else if (SymEngine::is_a<SymEngine::FunctionSymbol>(*subexpr)) {
+				return;
+			}
+			else if (SymEngine::is_a<SymEngine::Constant>(*subexpr)) {
+				return;
+			}
+
+			args.insert(subexpr->__str__());
+		}
+		else {
+			for (auto& varg : vec_args) {
+				get_args(varg);
+			}
+		}
+	};
+
+	get_args(diff2);
+
+	for (auto& arg : args) {
+		std::cout << "arg: " << arg << std::endl;
+	}
 
 }
 

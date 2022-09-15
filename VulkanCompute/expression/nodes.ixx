@@ -65,15 +65,21 @@ namespace expression {
 
 		Node(Node&&) = default;
 
-		Node(const LexContext& context)
-			: context(context)
+		Node(LexContext& ctext)
+			: context(ctext)
 		{}
 
-		Node(std::unique_ptr<NumberBaseToken> base_token, const LexContext& context)
-			: pToken(std::move(base_token)), context(context)
-		{
+		Node(std::vector<std::unique_ptr<Node>>&& childs)
+			: children(std::move(childs)), context(childs[0]->context)
+		{}
 
-		}
+		Node(std::vector<std::unique_ptr<Node>>&& childs, LexContext& ctext)
+			: children(std::move(childs)), context(ctext)
+		{}
+
+		Node(std::unique_ptr<NumberBaseToken> base_token, LexContext& ctext)
+			: pToken(std::move(base_token)), context(ctext)
+		{}
 
 		virtual std::string str() = 0;
 
@@ -84,7 +90,7 @@ namespace expression {
 		std::unique_ptr<Node> diff(const std::string& x);
 
 	public:
-		const LexContext& context;
+		LexContext& context;
 		std::vector<std::unique_ptr<Node>> children;
 		std::unique_ptr<NumberBaseToken> pToken;
 	};
@@ -92,7 +98,7 @@ namespace expression {
 	export class TokenNode : public Node {
 	public:
 
-		TokenNode(const Token& tok, const LexContext& context)
+		TokenNode(const Token& tok, LexContext& context)
 			: Node(copy_token(tok), context)
 		{
 			
@@ -155,7 +161,7 @@ namespace expression {
 	export class VariableNode : public Node {
 	public:
 
-		VariableNode(const VariableToken& token, const LexContext& context)
+		VariableNode(const VariableToken& token, LexContext& context)
 			: Node(context), m_VarToken(token)
 		{}
 
@@ -171,7 +177,7 @@ namespace expression {
 		VariableToken m_VarToken;
 	};
 
-	export std::unique_ptr<Node> node_from_token(const Token& tok, const LexContext& context)
+	export std::unique_ptr<Node> node_from_token(const Token& tok, LexContext& context)
 	{
 		return std::make_unique<TokenNode>(tok, context);
 	}
@@ -632,6 +638,19 @@ namespace expression {
 		std::string glsl_str() override {
 			return children[0]->glsl_str();
 		}
+
+	private:
+
+	};
+
+	export class SubsNode : public Node {
+	public:
+
+		SubsNode(std::vector<std::unique_ptr<Node>>&& childs);
+
+		std::string str() override;
+
+		std::string glsl_str() override;
 
 	private:
 

@@ -99,6 +99,7 @@ namespace expression {
 
 			// Special
 			DERIVATIVE_ID,
+			SUBS_ID,
 		};
 	};
 
@@ -124,7 +125,8 @@ namespace expression {
 		{DefaultFunctionIDs::ACOSH_ID, "acosh"},
 		{DefaultFunctionIDs::ATANH_ID, "atanh"},
 
-		{DefaultFunctionIDs::DERIVATIVE_ID, "derivative"}
+		{DefaultFunctionIDs::DERIVATIVE_ID, "derivative"},
+		{DefaultFunctionIDs::SUBS_ID, "subs"}
 	};
 
 

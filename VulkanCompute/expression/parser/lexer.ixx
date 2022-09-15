@@ -8,6 +8,10 @@ module;
 #include <string>
 #include <regex>
 
+#include <symengine/expression.h>
+#include <symengine/simplify.h>
+#include <symengine/parser.h>
+
 export module lexer;
 
 import vc;
@@ -114,10 +118,11 @@ namespace expression {
 		VariableToken				variable;
 
 
-		std::vector<UnaryOperatorToken>	unary_operators;
-		std::vector<BinaryOperatorToken> binary_operators;
-		std::vector<FunctionToken>		functions;
-		std::vector<VariableToken>		variables;
+		std::vector<UnaryOperatorToken>		unary_operators;
+		std::vector<BinaryOperatorToken>	binary_operators;
+		std::vector<FunctionToken>			functions;
+		std::vector<VariableToken>			variables;
+		SymEngine::set_basic				variable_assumptions;
 
 		std::unordered_map<int32_t, std::string> operator_id_name_map;
 		std::unordered_map<int32_t, std::string> function_id_name_map;
@@ -319,8 +324,19 @@ namespace expression {
 					if (parenthasis_diff != 0)
 						throw std::runtime_error("Parenthasis after function: " + funcstr + ", did not match");
 
+					// This is a variable input function recreate that token with determined number of inputs
+					if (func.n_inputs == -1) {
+						return std::make_pair(expr.substr(name_length), FunctionToken(
+							func.id,
+							number_of_commas + 1,
+							func.commutative,
+							func.commutative_inputs,
+							func.anti_commutative_inputs
+						));
+					}
+
 					if (number_of_commas != (func.n_inputs - 1))
-						throw std::runtime_error("NumberToken of commas used in function: " + funcstr + ", was not consistent with expected number of inputs");
+						throw std::runtime_error("Number of commas used in function: " + funcstr + ", was not consistent with expected number of inputs");
 
 					return std::make_pair(expr.substr(name_length), func);
 				}
