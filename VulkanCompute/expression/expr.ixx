@@ -11,6 +11,7 @@ module;
 #include <algorithm>
 #include <set>
 #include <iterator>
+#include <optional>
 
 #include <symengine/expression.h>
 #include <symengine/simplify.h>
@@ -24,6 +25,7 @@ import lexer;
 import defaultexp;
 import shunter;
 import util;
+import glsl;
 
 namespace expression {
 
@@ -52,6 +54,12 @@ namespace expression {
 				symengine_get_args(varg, args);
 			}
 		}
+	}
+
+	export std::string symengine_parse(const std::string& to_parse)
+	{
+		auto p = SymEngine::parse(to_parse);
+		return p->__str__();
 	}
 
 	export class Expression;
@@ -104,8 +112,8 @@ namespace expression {
 			return children[0]->str();
 		}
 
-		std::string glsl_str() override {
-			return children[0]->glsl_str();
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return children[0]->glsl_str(symtext);
 		}
 
 		static ExpressionCreationMap default_expression_creation_map(LexContext& context) {
@@ -356,6 +364,14 @@ namespace expression {
 						nodes.push_back(std::move(node));
 					}
 				},
+				{ DefaultFunctionIDs::SGN_ID,
+				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes) 
+					{
+						auto node = std::make_unique<SgnNode>(std::move(nodes.back()));
+						nodes.pop_back();
+						nodes.push_back(std::move(node));
+					}
+				},
 				{ DefaultFunctionIDs::DERIVATIVE_ID,
 				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
@@ -390,8 +406,6 @@ namespace expression {
 				}
 			};
 		}
-		
-	private:
 
 	private:
 

@@ -4,6 +4,7 @@ module;
 #include <set>
 #include <memory>
 #include <vector>
+#include <complex>
 
 #include <symengine/expression.h>
 #include <symengine/simplify.h>
@@ -42,10 +43,10 @@ std::unique_ptr<expression::Node> expression::Node::diff(const std::string& x)
 
 	context.variables.reserve(vars.size());
 	for (auto& var : vars) {
-		if (std::find(context.variables.begin(), context.variables.end(), var) == context.variables.end()) {
-			context.variables.emplace_back(var, context);
+		if (!util::contains(context.variables, var)) {
+			context.variables.emplace_back(var);
+			context.variable_assumptions.insert(SymEngine::contains(SymEngine::symbol(var), SymEngine::reals()));
 		}
-		context.variable_assumptions.insert(SymEngine::contains(SymEngine::symbol(var), SymEngine::reals()));
 	}
 	
 	SymEngine::Assumptions assum2(context.variable_assumptions);
@@ -55,14 +56,13 @@ std::unique_ptr<expression::Node> expression::Node::diff(const std::string& x)
 	auto dexpr_str = util::to_lower_case(
 			util::remove_whitespace(sim_dexpr->__str__()));
 
-	auto ret = std::make_unique<expression::Expression>(dexpr_str, context);
-	return ret;
+	return std::make_unique<Expression>(dexpr_str, context);
 }
 
 expression::DerivativeNode::DerivativeNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child)
 	: Node(left_child->context)
 {
-	auto var_ptr = dynamic_cast<const VariableNode*>(right_child.get());
+	const VariableNode* var_ptr = dynamic_cast<const VariableNode*>(right_child.get());
 	if (var_ptr == nullptr) {
 		throw std::runtime_error("Right argument in DerivativeNode must be a VariableNode");
 	}
@@ -81,6 +81,12 @@ expression::DerivativeNode::DerivativeNode(std::unique_ptr<Node> left_child, std
 		return;
 	}
 	
+	auto sgn_ptr = dynamic_cast<const SgnNode*>(left_child.get());
+	if (sgn_ptr != nullptr) {
+		children.clear();
+		children.emplace_back(std::make_unique<TokenNode>(ZeroToken(), context));
+		return;
+	}
 
 	// This is the derivative of something non special
 	{
@@ -93,12 +99,13 @@ expression::DerivativeNode::DerivativeNode(std::unique_ptr<Node> left_child, std
 expression::SubsNode::SubsNode(std::vector<std::unique_ptr<Node>>&& childs)
 	: Node(std::move(childs))
 {
+	throw std::runtime_error("Not Implemented Yet!");
 }
 
 std::string expression::SubsNode::str() {
-	return "";
+	return children[0]->str();
 }
 
-std::string expression::SubsNode::glsl_str() {
-	return "";
+std::string expression::SubsNode::glsl_str(const glsl::SymbolicContext& symtext) {
+	return children[0]->glsl_str(symtext);
 }

@@ -11,12 +11,13 @@ export module symbolic;
 import util;
 import glsl;
 import linalg;
+import expr;
 
 namespace glsl {
 namespace symbolic {
 namespace nlsq {
 
-	export ::glsl::Function nlsq_residual(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission = true);
+	export ::glsl::Function nlsq_residual(const expression::Expression& expr, int ndata, int nparam, int nconst, bool single_precission = true);
 
 	export ::glsl::Function nlsq_residual_jacobian_hessian(std::string expression_name, std::string expression, int ndata, int nparam, int nconst, bool single_precission = true);
 
@@ -28,30 +29,7 @@ namespace glsl {
 namespace symbolic {
 namespace nlsq {
 	
-	// helpers
-	std::string change_params_to_array_params(const std::string& expression, int nparam, int nconst) 
-	{
-		std::string temp_expression = expression;
-		// make param replacements
-		for (int i = 0; i < nparam; ++i) {
-			auto istr = std::to_string(i);
-			int nreplacements = util::replace_all(temp_expression, "x" + istr, "params[" + istr + "]");
-		}
 
-		for (int i = 0; i < nconst; ++i) {
-			auto istr = std::to_string(i);
-			int nreplacements = util::replace_all(temp_expression, "y" + istr, "consts[i*" + std::to_string(nconst) + "+" + istr + "]");
-		}
-
-		return temp_expression;
-	}
-
-	std::string sym_to_str(const SymEngine::RCP<const SymEngine::Basic>& sym)
-	{
-		std::ostringstream sstream;
-		sstream << SymEngine::Expression(sym);
-		return sstream.str();
-	}
 
 	std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> expr_diff_diff2(std::string expression, int nparam) 
 	{

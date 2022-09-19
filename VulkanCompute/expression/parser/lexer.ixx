@@ -24,12 +24,16 @@ namespace expression {
 
 		LexContext()
 		{
+			auto no_token = std::make_shared<NoToken>();
+			auto left_paren = std::make_shared<LeftParenToken>();
+			auto comma = std::make_shared<CommaToken>();
+
 			// 0
 			unary_operators.emplace_back(
 				DefaultOperatorIDs::NEG_ID,												// id
 				DefaultOperatorPrecedence::NEG_PRECEDENCE,								// precedence
 				false,																	// is_left_associative
-				std::vector<vc::refw<Token>>{no_token, left_paren, comma});				// allowed_tokens
+				std::vector<std::shared_ptr<Token>>{no_token, left_paren, comma});		// allowed_tokens
 
 
 
@@ -40,7 +44,7 @@ namespace expression {
 				false,																	// is_left_associative
 				false,																	// commutative
 				false,																	// anti_commutative
-				std::vector<vc::refw<Token>>{no_token, left_paren, comma});				// disallowed_tokens
+				std::vector<std::shared_ptr<Token>>{no_token, left_paren, comma});				// disallowed_tokens
 			// 1
 			binary_operators.emplace_back(
 				DefaultOperatorIDs::MUL_ID,												// id
@@ -48,7 +52,7 @@ namespace expression {
 				true,																	// is_left_associative
 				true,																	// commutative
 				false,																	// anti_commutative
-				std::vector<vc::refw<Token>>{no_token, left_paren, comma});				// disallowed_tokens
+				std::vector<std::shared_ptr<Token>>{no_token, left_paren, comma});				// disallowed_tokens
 			// 2
 			binary_operators.emplace_back(
 				DefaultOperatorIDs::DIV_ID,												// id
@@ -56,7 +60,7 @@ namespace expression {
 				true,																	// is_left_associative
 				false,																	// commutative
 				false,																	// anti_commutative
-				std::vector<vc::refw<Token>>{no_token, left_paren, comma});				// disallowed_tokens
+				std::vector<std::shared_ptr<Token>>{no_token, left_paren, comma});				// disallowed_tokens
 			// 3
 			binary_operators.emplace_back(
 				DefaultOperatorIDs::ADD_ID,												// id
@@ -64,7 +68,7 @@ namespace expression {
 				true,																	// is_left_associative
 				true,																	// commutative
 				false,																	// anti_commutative
-				std::vector<vc::refw<Token>>{no_token, left_paren, comma});				// disallowed_tokens
+				std::vector<std::shared_ptr<Token>>{no_token, left_paren, comma});				// disallowed_tokens
 			// 4
 			binary_operators.emplace_back(
 				DefaultOperatorIDs::SUB_ID,												// id
@@ -72,7 +76,7 @@ namespace expression {
 				true,																	// is_left_associative
 				false,																	// commutative
 				true,																	// anti_commutative
-				std::vector<vc::refw<Token>>{no_token, left_paren, comma});				// disallowed_tokens
+				std::vector<std::shared_ptr<Token>>{no_token, left_paren, comma});				// disallowed_tokens
 
 
 			functions.emplace_back(DefaultFunctionIDs::POW_ID, 2);
@@ -94,10 +98,13 @@ namespace expression {
 			functions.emplace_back(DefaultFunctionIDs::ASINH_ID, 1);
 			functions.emplace_back(DefaultFunctionIDs::ACOSH_ID, 1);
 			functions.emplace_back(DefaultFunctionIDs::ATANH_ID, 1);
+			functions.emplace_back(DefaultFunctionIDs::SGN_ID, 1);
 			functions.emplace_back(DefaultFunctionIDs::DERIVATIVE_ID, 2);
+			functions.emplace_back(DefaultFunctionIDs::SUBS_ID, -1);
 
 			operator_id_name_map = DEFAULT_OPERATOR_MAPS;
 			function_id_name_map = DEFAULT_FUNCTION_MAPS;
+
 		}
 
 		LexContext(const LexContext&) = default;
@@ -106,16 +113,18 @@ namespace expression {
 		LexContext(LexContext&&) = default;
 
 		// Fixed tokens
-		NoToken						no_token;
-		LeftParenToken				left_paren;
-		RightParenToken				right_paren;
-		CommaToken					comma;
-		UnityToken					unity;
-		NegUnityToken				neg_unity_token;
-		ZeroToken					zero;
-		NanToken					nan_token;
-		NumberToken					number;
-		VariableToken				variable;
+		/*
+		NoToken				no_token;
+		LeftParenToken		left_paren;
+		RightParenToken		right_paren;
+		CommaToken			comma;
+		UnityToken			unity;
+		NegUnityToken		neg_unity_token;
+		ZeroToken			zero;
+		NanToken			nan_token;
+		NumberToken			number;
+		VariableToken		variable;
+		*/
 
 
 		std::vector<UnaryOperatorToken>		unary_operators;
@@ -265,7 +274,7 @@ namespace expression {
 				if (expr.rfind(opstr, 0) == 0) {
 					int32_t previous_token_id = lexed_tokens.back()->get_id();
 					for (auto& allowed_op : uop.allowed_left_tokens) {
-						if (allowed_op.get().get_id() == previous_token_id) {
+						if (allowed_op->get_id() == previous_token_id) {
 							return std::make_pair(expr.substr(opstr.length()), uop);
 						}
 					}
@@ -285,7 +294,7 @@ namespace expression {
 				if (expr.rfind(opstr, 0) == 0) {
 					int32_t previous_token_id = lexed_tokens.back()->get_id();
 					for (auto& disallowed_op : bop.disallowed_left_tokens) {
-						if (disallowed_op.get().get_id() == previous_token_id) {
+						if (disallowed_op->get_id() == previous_token_id) {
 							throw std::runtime_error("token with token-id: " + std::to_string(previous_token_id) + " is disallowed before binary operator with token-id: " + std::to_string(bop.get_id()));
 						}
 					}
@@ -317,7 +326,9 @@ namespace expression {
 							parenthasis_diff -= 1;
 						}
 						else if (expr.at(i) == FixedTokens::COMMA_CHAR) {
-							number_of_commas += 1;
+							if (parenthasis_diff == 1) {
+								number_of_commas += 1;
+							}
 						}
 					}
 

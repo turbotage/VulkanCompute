@@ -13,6 +13,7 @@ export module nodes;
 
 import lexer;
 import token;
+import glsl;
 
 namespace expression {
 
@@ -70,8 +71,11 @@ namespace expression {
 		{}
 
 		Node(std::vector<std::unique_ptr<Node>>&& childs)
-			: children(std::move(childs)), context(childs[0]->context)
-		{}
+			: context(childs[0]->context)
+		{
+			children = std::move(childs);
+			childs.clear();
+		}
 
 		Node(std::vector<std::unique_ptr<Node>>&& childs, LexContext& ctext)
 			: children(std::move(childs)), context(ctext)
@@ -83,7 +87,7 @@ namespace expression {
 
 		virtual std::string str() = 0;
 
-		virtual std::string glsl_str() = 0;
+		virtual std::string glsl_str(const glsl::SymbolicContext& symtext) = 0;
 
 		void fill_variable_list(std::set<std::string>& vars);
 
@@ -152,7 +156,7 @@ namespace expression {
 			}
 		}
 
-		std::string glsl_str() override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
 			return str();
 		}
 
@@ -169,8 +173,8 @@ namespace expression {
 			return m_VarToken.name;
 		}
 
-		std::string glsl_str() override {
-			return str();
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return symtext.get_glsl_var_name(m_VarToken.name);
 		}
 
 	private:
@@ -195,8 +199,8 @@ namespace expression {
 			return "(-" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "(-" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "(-" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -215,8 +219,8 @@ namespace expression {
 			return "(" + children[0]->str() + "*" + children[1]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "(" + children[0]->glsl_str() + "*" + children[1]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "(" + children[0]->glsl_str(symtext) + "*" + children[1]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -235,8 +239,8 @@ namespace expression {
 			return "(" + children[0]->str() + "/" + children[1]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "(" + children[0]->glsl_str() + "/" + children[1]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "(" + children[0]->glsl_str(symtext) + "/" + children[1]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -255,8 +259,8 @@ namespace expression {
 			return "(" + children[0]->str() + "+" + children[1]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "(" + children[0]->glsl_str() + "+" + children[1]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "(" + children[0]->glsl_str(symtext) + "+" + children[1]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -275,8 +279,8 @@ namespace expression {
 			return "(" + children[0]->str() + "-" + children[1]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "(" + children[0]->glsl_str() + "-" + children[1]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "(" + children[0]->glsl_str(symtext) + "-" + children[1]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -295,8 +299,8 @@ namespace expression {
 			return "pow(" + children[0]->str() + "," + children[1]->str() + ")";
 		}
 		
-		std::string glsl_str() override {
-			return "pow(" + children[0]->glsl_str() + "," + children[1]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "pow(" + children[0]->glsl_str(symtext) + "," + children[1]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -316,8 +320,8 @@ namespace expression {
 			return "sgn(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "sign(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "sign(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -335,8 +339,8 @@ namespace expression {
 			return "abs(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "abs(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "abs(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -354,8 +358,8 @@ namespace expression {
 			return "sqrt(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "sqrt(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "sqrt(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -373,8 +377,8 @@ namespace expression {
 			return "exp(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "exp(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "exp(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -392,8 +396,8 @@ namespace expression {
 			return "log(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "log(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "log(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -411,8 +415,8 @@ namespace expression {
 			return "sin(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "sin(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "sin(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -430,8 +434,8 @@ namespace expression {
 			return "cos(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "cos(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "cos(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -449,8 +453,8 @@ namespace expression {
 			return "tan(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "tan(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "tan(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -468,8 +472,8 @@ namespace expression {
 			return "asin(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "asin(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "asin(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -487,8 +491,8 @@ namespace expression {
 			return "acos(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "acos(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "acos(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -506,8 +510,8 @@ namespace expression {
 			return "atan(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "atan(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "atan(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -525,8 +529,8 @@ namespace expression {
 			return "sinh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "sinh(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "sinh(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -544,8 +548,8 @@ namespace expression {
 			return "cosh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "cosh(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "cosh(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -563,8 +567,8 @@ namespace expression {
 			return "tanh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "tanh(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "tanh(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -582,8 +586,8 @@ namespace expression {
 			return "asinh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "asinh(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "asinh(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -601,8 +605,8 @@ namespace expression {
 			return "acosh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "acosh(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "acosh(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -620,8 +624,8 @@ namespace expression {
 			return "atanh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str() override {
-			return "atanh(" + children[0]->glsl_str() + ")";
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return "atanh(" + children[0]->glsl_str(symtext) + ")";
 		}
 
 	};
@@ -635,8 +639,8 @@ namespace expression {
 			return children[0]->str();
 		}
 
-		std::string glsl_str() override {
-			return children[0]->glsl_str();
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+			return children[0]->glsl_str(symtext);
 		}
 
 	private:
@@ -650,7 +654,7 @@ namespace expression {
 
 		std::string str() override;
 
-		std::string glsl_str() override;
+		std::string glsl_str(const glsl::SymbolicContext& symtext) override;
 
 	private:
 

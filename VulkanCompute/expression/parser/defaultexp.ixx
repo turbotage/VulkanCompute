@@ -98,6 +98,7 @@ namespace expression {
 			ATANH_ID,
 
 			// Special
+			SGN_ID,
 			DERIVATIVE_ID,
 			SUBS_ID,
 		};
@@ -125,6 +126,7 @@ namespace expression {
 		{DefaultFunctionIDs::ACOSH_ID, "acosh"},
 		{DefaultFunctionIDs::ATANH_ID, "atanh"},
 
+		{DefaultFunctionIDs::SGN_ID, "sgn"},
 		{DefaultFunctionIDs::DERIVATIVE_ID, "derivative"},
 		{DefaultFunctionIDs::SUBS_ID, "subs"}
 	};

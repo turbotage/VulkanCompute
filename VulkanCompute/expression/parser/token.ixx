@@ -227,6 +227,11 @@ namespace expression {
 		{
 		}
 
+		friend bool operator==(const VariableToken& lhs, const VariableToken& rhs) 
+		{
+			return lhs.name == rhs.name;
+		}
+
 		const std::string name;
 
 		std::int32_t get_id() const override
@@ -394,12 +399,12 @@ namespace expression {
 		UnaryOperatorToken(UnaryOperatorToken&&) = default;
 
 		UnaryOperatorToken(std::int32_t id, std::int32_t precedence, bool is_left_associative,
-			const std::vector<vc::refw<expression::Token>>& allowed_left_tokens)
+			const std::vector<std::shared_ptr<expression::Token>>& allowed_left_tokens)
 			: OperatorToken(id, precedence, is_left_associative), allowed_left_tokens(allowed_left_tokens)
 		{
 		}
 
-		const std::vector<vc::refw<expression::Token>> allowed_left_tokens;
+		const std::vector<std::shared_ptr<expression::Token>> allowed_left_tokens;
 
 		std::int32_t get_operator_type() const override
 		{
@@ -426,14 +431,14 @@ namespace expression {
 
 		BinaryOperatorToken(std::int32_t id, std::int32_t precedence, bool is_left_associative,
 			bool commutative, bool anti_commutative,
-			const std::vector<vc::refw<expression::Token>>& disallowed_left_tokens)
+			const std::vector<std::shared_ptr<expression::Token>>& disallowed_left_tokens)
 			: OperatorToken(id, precedence, is_left_associative), commutative(commutative), anti_commutative(anti_commutative), disallowed_left_tokens(disallowed_left_tokens)
 		{
 		}
 
 		const bool commutative = false;
 		const bool anti_commutative = false;
-		const std::vector<vc::refw<expression::Token>> disallowed_left_tokens;
+		const std::vector<std::shared_ptr<expression::Token>> disallowed_left_tokens;
 
 		std::int32_t get_operator_type() const override
 		{

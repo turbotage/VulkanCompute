@@ -526,27 +526,42 @@ void test_symengine_expr() {
 }
 
 void test_expr() {
-	std::string expr = "abs(S0*(1+FA*exp(-TI/T1)+exp(-TR/T1)))";
-	std::vector<std::string> vars = { "S0", "FA", "TI", "T1", "TR" };
+	std::string expr = "abs(s0*(1+fa*exp(-ti/t1)+exp(-tr/t1)))";
+	std::vector<std::string> vars = { "s0", "fa", "ti", "t1", "tr" };
+
+	auto start = std::chrono::steady_clock::now();
 
 	expression::Expression expression(expr, vars);
 
+
+
+	std::cout << "expression: " << std::endl;
 	std::cout << expression.str() << std::endl;
-	std::cout << expression.glsl_str() << std::endl;
+	//std::cout << expression.glsl_str() << std::endl;
 
-	std::cout << expression.diff("S0")->str() << std::endl;
-	std::cout << expression.diff("S0")->glsl_str() << std::endl;
+	std::cout << "first derivative: " << std::endl;
+	std::cout << "s0: " << std::endl;
+	std::cout << expression.diff("s0")->str() << std::endl;
+	//std::cout << expression.diff("S0")->glsl_str() << std::endl;
+	std::cout << "t1: " << std::endl;
+	std::cout << expression.diff("t1")->str() << std::endl;
+	//std::cout << expression.diff("T1")->glsl_str() << std::endl;
 
-	std::cout << expression.diff("T1")->str() << std::endl;
-	std::cout << expression.diff("T1")->glsl_str() << std::endl;
-
+	std::cout << "second derivative: " << std::endl;
+	std::cout << "(s0,s0)" << std::endl;
+	std::cout << expression.diff("s0")->diff("s0")->str() << std::endl;
+	std::cout << "(s0,t1)" << std::endl;
+	std::cout << expression.diff("s0")->diff("t1")->str() << std::endl;
+	std::cout << "(t1,s0)" << std::endl;
+	std::cout << expression.diff("t1")->diff("s0")->str() << std::endl;
+	std::cout << "(t1,t1)" << std::endl;
+	std::cout << expression.diff("t1")->diff("t1")->str() << std::endl;
 	
-	std::cout << expression.diff("S0")->diff("S0")->str() << std::endl;
-	std::cout << expression.diff("S0")->diff("T1")->str() << std::endl;
-	std::cout << expression.diff("T1")->diff("S0")->str() << std::endl;
-	std::cout << expression.diff("T1")->diff("T1")->str() << std::endl;
-	
+	auto end = std::chrono::steady_clock::now();
 
+	std::cout << "Elapsed time in microseconds: "
+		<< std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+		<< " ms" << std::endl;
 }
 
 void test_symengine() {
