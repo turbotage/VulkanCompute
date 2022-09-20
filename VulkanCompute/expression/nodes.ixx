@@ -85,13 +85,17 @@ namespace expression {
 			: pToken(std::move(base_token)), context(ctext)
 		{}
 
-		virtual std::string str() = 0;
+		virtual std::string str() const = 0;
 
-		virtual std::string glsl_str(const glsl::SymbolicContext& symtext) = 0;
+		virtual std::string glsl_str(const glsl::SymbolicContext& symtext) const = 0;
+
+		virtual std::unique_ptr<Node> copy(LexContext& context) const = 0;
 
 		void fill_variable_list(std::set<std::string>& vars);
 
-		std::unique_ptr<Node> diff(const std::string& x);
+		std::unique_ptr<Expression> diff(const std::string& x) const;
+
+		bool child_is_variable(int i) const;
 
 	public:
 		LexContext& context;
@@ -108,7 +112,7 @@ namespace expression {
 			
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			switch (pToken->get_token_type()) {
 			case TokenType::NO_TOKEN_TYPE:
 				throw std::runtime_error("An expression graph cannot contain a NO_TOKEN_TYPE token");
@@ -156,8 +160,12 @@ namespace expression {
 			}
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return str();
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<TokenNode>(*pToken, context);
 		}
 
 	};
@@ -169,12 +177,16 @@ namespace expression {
 			: Node(context), m_VarToken(token)
 		{}
 
-		std::string str() override {
+		std::string str() const override {
 			return m_VarToken.name;
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return symtext.get_glsl_var_name(m_VarToken.name);
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<VariableNode>(m_VarToken, context);
 		}
 
 	private:
@@ -195,12 +207,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "(-" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "(-" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<NegNode>(children[0]->copy(context));
 		}
 
 	};
@@ -215,12 +231,16 @@ namespace expression {
 			children.emplace_back(std::move(right_child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "(" + children[0]->str() + "*" + children[1]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "(" + children[0]->glsl_str(symtext) + "*" + children[1]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<MulNode>(children[0]->copy(context), children[1]->copy(context));
 		}
 
 	};
@@ -235,12 +255,16 @@ namespace expression {
 			children.emplace_back(std::move(right_child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "(" + children[0]->str() + "/" + children[1]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "(" + children[0]->glsl_str(symtext) + "/" + children[1]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<DivNode>(children[0]->copy(context), children[1]->copy(context));
 		}
 
 	};
@@ -255,12 +279,16 @@ namespace expression {
 			children.emplace_back(std::move(right_child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "(" + children[0]->str() + "+" + children[1]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "(" + children[0]->glsl_str(symtext) + "+" + children[1]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<AddNode>(children[0]->copy(context), children[1]->copy(context));
 		}
 
 	};
@@ -275,12 +303,16 @@ namespace expression {
 			children.emplace_back(std::move(right_child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "(" + children[0]->str() + "-" + children[1]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "(" + children[0]->glsl_str(symtext) + "-" + children[1]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<SubNode>(children[0]->copy(context), children[1]->copy(context));
 		}
 
 	};
@@ -295,12 +327,16 @@ namespace expression {
 			children.emplace_back(std::move(right_child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "pow(" + children[0]->str() + "," + children[1]->str() + ")";
 		}
 		
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "pow(" + children[0]->glsl_str(symtext) + "," + children[1]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<PowNode>(children[0]->copy(context), children[1]->copy(context));
 		}
 
 	};
@@ -316,12 +352,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "sgn(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "sign(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<SgnNode>(children[0]->copy(context));
 		}
 
 	};
@@ -335,12 +375,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "abs(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "abs(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<AbsNode>(children[0]->copy(context));
 		}
 
 	};
@@ -354,12 +398,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "sqrt(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "sqrt(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<SqrtNode>(children[0]->copy(context));
 		}
 
 	};
@@ -373,12 +421,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "exp(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "exp(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<ExpNode>(children[0]->copy(context));
 		}
 
 	};
@@ -392,12 +444,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "log(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "log(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<LogNode>(children[0]->copy(context));
 		}
 
 	};
@@ -411,12 +467,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "sin(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "sin(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<SinNode>(children[0]->copy(context));
 		}
 
 	};
@@ -430,12 +490,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "cos(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "cos(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<CosNode>(children[0]->copy(context));
 		}
 
 	};
@@ -449,12 +513,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "tan(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "tan(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<TanNode>(children[0]->copy(context));
 		}
 
 	};
@@ -468,12 +536,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "asin(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "asin(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<AsinNode>(children[0]->copy(context));
 		}
 
 	};
@@ -487,12 +559,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "acos(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "acos(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<AcosNode>(children[0]->copy(context));
 		}
 
 	};
@@ -506,12 +582,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "atan(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "atan(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<AtanNode>(children[0]->copy(context));
 		}
 
 	};
@@ -525,12 +605,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "sinh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "sinh(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<SinhNode>(children[0]->copy(context));
 		}
 
 	};
@@ -544,12 +628,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "cosh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "cosh(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<CoshNode>(children[0]->copy(context));
 		}
 
 	};
@@ -563,12 +651,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "tanh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "tanh(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<TanhNode>(children[0]->copy(context));
 		}
 
 	};
@@ -582,12 +674,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "asinh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "asinh(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<AsinhNode>(children[0]->copy(context));
 		}
 
 	};
@@ -601,12 +697,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "acosh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "acosh(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<AcoshNode>(children[0]->copy(context));
 		}
 
 	};
@@ -620,12 +720,16 @@ namespace expression {
 			children.emplace_back(std::move(child));
 		}
 
-		std::string str() override {
+		std::string str() const override {
 			return "atanh(" + children[0]->str() + ")";
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return "atanh(" + children[0]->glsl_str(symtext) + ")";
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<AtanhNode>(children[0]->copy(context));
 		}
 
 	};
@@ -635,12 +739,16 @@ namespace expression {
 
 		DerivativeNode(std::unique_ptr<Node> left_child, std::unique_ptr<Node> right_child);
 
-		std::string str() override {
+		std::string str() const override {
 			return children[0]->str();
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override {
 			return children[0]->glsl_str(symtext);
+		}
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			return std::make_unique<DerivativeNode>(children[0]->copy(context), children[1]->copy(context));
 		}
 
 	private:
@@ -652,9 +760,20 @@ namespace expression {
 
 		SubsNode(std::vector<std::unique_ptr<Node>>&& childs);
 
-		std::string str() override;
+		std::string str() const override;
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override;
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override;
+
+		std::unique_ptr<Node> copy(LexContext& context) const override {
+			std::vector<std::unique_ptr<Node>> copied_children;
+			copied_children.reserve(children.size());
+
+			for (auto& child : children) {
+				copied_children.push_back(std::move(child->copy(context)));
+			}
+
+			return std::make_unique<SubsNode>(std::move(copied_children));
+		}
 
 	private:
 

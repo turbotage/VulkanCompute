@@ -30,7 +30,7 @@ import glsl;
 namespace expression {
 
 	using ExpressionCreationMap = std::unordered_map<int32_t,
-		std::function<void(const Token&, std::vector<std::unique_ptr<Node>>&)>>;
+		std::function<void(LexContext&, const Token&, std::vector<std::unique_ptr<Node>>&)>>;
 
 	export void symengine_get_args(const SymEngine::RCP<const SymEngine::Basic>& subexpr, std::set<std::string>& args) 
 	{
@@ -63,7 +63,7 @@ namespace expression {
 	}
 
 	export class Expression;
-	export Expression expression_creator(const std::string& expression, LexContext& context);
+	export Expression expression_creator(const std::string& expression, const LexContext& context);
 	export Expression expression_creator(const std::string& expression, const std::vector<std::string>& variables);
 
 	class Expression : public Node {
@@ -75,14 +75,21 @@ namespace expression {
 			: Expression(expression_creator(expression, variables)) 
 		{}
 
-		Expression(const std::string& expression, LexContext& context)
+		Expression(const std::string& expression, const LexContext& context)
 			: Expression(expression_creator(expression, context))
 		{}
 
-		Expression(std::unique_ptr<Node> root_child)
-			: Node(root_child->context)
+		Expression(const std::unique_ptr<Node>& root_child, const LexContext& context)
+			: m_Context(context), Node(m_Context)
 		{
-			children.emplace_back(std::move(root_child));
+			children.emplace_back(root_child->copy(m_Context));
+			m_Expression = root_child->str();
+		}
+
+		Expression(const std::unique_ptr<Node>& root_child, const LexContext& context, const std::string& expr)
+			: m_Context(context), Node(m_Context), m_Expression(expr)
+		{
+			children.emplace_back(root_child->copy(m_Context));
 		}
 
 		Expression(const LexContext& context, const std::deque<std::unique_ptr<Token>>& tokens,
@@ -93,7 +100,7 @@ namespace expression {
 
 			for (auto& token : tokens) {
 				auto creation_func = creation_map.at(token->get_id());
-				creation_func(*token, nodes);
+				creation_func(m_Context, *token, nodes);
 			}
 
 			if (nodes.size() != 1)
@@ -108,49 +115,56 @@ namespace expression {
 			children.emplace_back(std::move(nodes[0]));
 		}
 
-		std::string str() override {
+		std::string str() const override 
+		{
 			return children[0]->str();
 		}
 
-		std::string glsl_str(const glsl::SymbolicContext& symtext) override {
+		std::string glsl_str(const glsl::SymbolicContext& symtext) const override 
+		{
 			return children[0]->glsl_str(symtext);
 		}
 
-		static ExpressionCreationMap default_expression_creation_map(LexContext& context) {
+		std::unique_ptr<Node> copy(LexContext& context) const override
+		{
+			return std::make_unique<Expression>(children[0], context, m_Expression);
+		}
+
+		static ExpressionCreationMap default_expression_creation_map() {
 			return ExpressionCreationMap{
 				// Fixed Tokens
 				{FixedIDs::UNITY_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						nodes.push_back(node_from_token(tok, context));
 					}
 				},
 				{FixedIDs::NEG_UNITY_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						nodes.push_back(node_from_token(tok, context));
 					}
 				},
 				{FixedIDs::ZERO_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						nodes.push_back(node_from_token(tok, context));
 					}
 				},
 				{FixedIDs::NAN_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						nodes.push_back(node_from_token(tok, context));
 					}
 				},
 				{FixedIDs::NUMBER_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						nodes.push_back(node_from_token(tok, context));
 					}
 				},
 				{FixedIDs::VARIABLE_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						const VariableToken& vtok = static_cast<const VariableToken&>(tok);
 						nodes.push_back(std::make_unique<VariableNode>(vtok, context));
@@ -158,7 +172,7 @@ namespace expression {
 				},
 				// Operators
 				{DefaultOperatorIDs::NEG_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<NegNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -166,7 +180,7 @@ namespace expression {
 					}
 				},
 				{DefaultOperatorIDs::POW_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto rc = std::move(nodes.back());
 						nodes.pop_back();
@@ -177,7 +191,7 @@ namespace expression {
 					}
 				},
 				{DefaultOperatorIDs::MUL_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto rc = std::move(nodes.back());
 						nodes.pop_back();
@@ -188,7 +202,7 @@ namespace expression {
 					}
 				},
 				{DefaultOperatorIDs::DIV_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto rc = std::move(nodes.back());
 						nodes.pop_back();
@@ -199,7 +213,7 @@ namespace expression {
 					}
 				},
 				{DefaultOperatorIDs::ADD_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto rc = std::move(nodes.back());
 						nodes.pop_back();
@@ -210,7 +224,7 @@ namespace expression {
 					}
 				},
 				{DefaultOperatorIDs::SUB_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto rc = std::move(nodes.back());
 						nodes.pop_back();
@@ -223,7 +237,7 @@ namespace expression {
 				// Functions
 				// Binary
 				{ DefaultFunctionIDs::POW_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto rc = std::move(nodes.back());
 						nodes.pop_back();
@@ -236,7 +250,7 @@ namespace expression {
 
 				// Unary
 				{ DefaultFunctionIDs::ABS_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<AbsNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -244,7 +258,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::SQRT_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<SqrtNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -252,7 +266,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::EXP_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<ExpNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -260,7 +274,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::LOG_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<LogNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -269,7 +283,7 @@ namespace expression {
 				},
 				// Trig
 				{DefaultFunctionIDs::SIN_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<SinNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -277,7 +291,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::COS_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<CosNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -285,7 +299,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::TAN_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<TanNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -293,7 +307,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::ASIN_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<AsinNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -301,7 +315,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::ACOS_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<AcosNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -309,7 +323,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::ATAN_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<AtanNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -317,7 +331,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::SINH_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<SinhNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -325,7 +339,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::COSH_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<CoshNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -333,7 +347,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::TANH_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<TanhNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -341,7 +355,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::ASINH_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<AsinhNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -349,7 +363,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::ACOSH_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<AcoshNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -357,7 +371,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::ATANH_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<AtanhNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -365,7 +379,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::SGN_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes) 
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto node = std::make_unique<SgnNode>(std::move(nodes.back()));
 						nodes.pop_back();
@@ -373,7 +387,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::DERIVATIVE_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						auto rc = std::move(nodes.back());
 						nodes.pop_back();
@@ -384,7 +398,7 @@ namespace expression {
 					}
 				},
 				{ DefaultFunctionIDs::SUBS_ID,
-				[&context](const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
+				[](LexContext& context, const Token& tok, std::vector<std::unique_ptr<Node>>& nodes)
 					{
 						const FunctionToken* ftok = dynamic_cast<const FunctionToken*>(&tok);
 						if (ftok == nullptr) {
@@ -407,6 +421,11 @@ namespace expression {
 			};
 		}
 
+		const LexContext& get_context() const
+		{
+			return m_Context;
+		}
+
 	private:
 
 		LexContext m_Context;
@@ -414,7 +433,7 @@ namespace expression {
 		std::vector<std::string> m_Variables;
 	};
 
-	Expression expression_creator(const std::string& expression, LexContext& context) 
+	Expression expression_creator(const std::string& expression, const LexContext& context) 
 	{
 		std::string expr = util::to_lower_case(util::remove_whitespace(expression));
 
@@ -425,7 +444,7 @@ namespace expression {
 		Shunter shunter;
 		auto shunter_toks = shunter.shunt(std::move(toks));
 
-		return Expression(context, shunter_toks, Expression::default_expression_creation_map(context));
+		return Expression(context, shunter_toks, Expression::default_expression_creation_map());
 	}
 
 	Expression expression_creator(const std::string& expression, const std::vector<std::string>& variables)
@@ -445,7 +464,7 @@ namespace expression {
 
 		Shunter shunter;
 		auto shunter_toks = shunter.shunt(std::move(toks));
-		return Expression(context, shunter_toks, Expression::default_expression_creation_map(context));
+		return Expression(context, shunter_toks, Expression::default_expression_creation_map());
 	}
 
 }

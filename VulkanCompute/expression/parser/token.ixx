@@ -40,9 +40,6 @@ namespace expression {
 	export class Token {
 	public:
 
-		Token() = default;
-		Token(const Token&) = default;
-
 		virtual std::int32_t get_id() const = 0;
 
 		virtual std::int32_t get_token_type() const = 0;
@@ -52,6 +49,7 @@ namespace expression {
 	export class NoToken : public Token {
 	public:
 		NoToken() = default;
+		NoToken(const NoToken&) = default;
 
 		std::int32_t get_id() const override
 		{
@@ -70,7 +68,6 @@ namespace expression {
 	public:
 
 		LeftParenToken() = default;
-
 		LeftParenToken(const LeftParenToken&) = default;
 
 		std::int32_t get_id() const override
@@ -89,7 +86,6 @@ namespace expression {
 	public:
 
 		RightParenToken() = default;
-
 		RightParenToken(const RightParenToken&) = default;
 
 		std::int32_t get_id() const override
@@ -108,7 +104,6 @@ namespace expression {
 	public:
 
 		CommaToken() = default;
-
 		CommaToken(const CommaToken&) = default;
 
 		std::int32_t get_id() const override
@@ -125,6 +120,10 @@ namespace expression {
 
 	export class NumberBaseToken : public Token {
 	public:
+
+		NumberBaseToken(const NumberBaseToken& other) 
+			: sizes(other.sizes)
+		{}
 
 		NumberBaseToken(const std::vector<int64_t>& sizes)
 			: sizes(sizes)
@@ -220,7 +219,9 @@ namespace expression {
 		{
 		}
 
-		VariableToken(const VariableToken&) = default;
+		VariableToken(const VariableToken& other) 
+			: Token(other), name(other.name)
+		{}
 
 		VariableToken(const std::string& name)
 			: name(name)
@@ -245,6 +246,16 @@ namespace expression {
 		}
 
 	};
+
+	export std::vector<std::string> strs_from_vartoks(const std::vector<VariableToken>& toks)
+	{
+		std::vector<std::string> ret;
+		ret.reserve(toks.size());
+		for (auto& tok : toks) {
+			ret.emplace_back(tok.name);
+		}
+		return ret;
+	}
 
 	export class ZeroToken : public NumberBaseToken {
 	public:
@@ -359,11 +370,9 @@ namespace expression {
 	public:
 
 		OperatorToken(const OperatorToken& other)
-			: id(other.id), precedence(other.precedence), is_left_associative(other.is_left_associative)
+			: Token(other), id(other.id), precedence(other.precedence), is_left_associative(other.is_left_associative)
 		{
 		}
-
-		OperatorToken(OperatorToken&&) = default;
 
 		OperatorToken(std::int32_t id, std::int32_t precedence, bool is_left_associative)
 			: id(id), precedence(precedence), is_left_associative(is_left_associative)
@@ -436,8 +445,8 @@ namespace expression {
 		{
 		}
 
-		const bool commutative = false;
-		const bool anti_commutative = false;
+		const bool commutative;
+		const bool anti_commutative;
 		const std::vector<std::shared_ptr<expression::Token>> disallowed_left_tokens;
 
 		std::int32_t get_operator_type() const override
@@ -450,12 +459,10 @@ namespace expression {
 	public:
 
 		FunctionToken(const FunctionToken& other)
-			: id(other.id), n_inputs(other.n_inputs), commutative(other.commutative),
+			: Token(other), id(other.id), n_inputs(other.n_inputs), commutative(other.commutative),
 			commutative_inputs(other.commutative_inputs), anti_commutative_inputs(other.anti_commutative_inputs)
 		{
 		}
-
-		FunctionToken& operator=(const FunctionToken&) = default;
 
 		FunctionToken(std::int32_t id, std::int32_t n_inputs, bool commutative = false)
 			: id(id), n_inputs(n_inputs), commutative(commutative)
@@ -472,7 +479,7 @@ namespace expression {
 
 		const std::int32_t id;
 		const std::int32_t n_inputs;
-		const bool commutative = false;
+		const bool commutative;
 		const std::vector<std::vector<int>> commutative_inputs;
 		const std::vector<std::pair<int, int>> anti_commutative_inputs;
 

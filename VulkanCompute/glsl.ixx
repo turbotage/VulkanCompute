@@ -6,6 +6,7 @@ module;
 #include <functional>
 #include <unordered_set>
 #include <fstream>
+#include <set>
 
 export module glsl;
 
@@ -191,16 +192,37 @@ layout (local_size_x = 1) in;
 
 		uint32_t get_params_index(const std::string& name) const 
 		{
-			return params_map.at(name);
+			for (auto& v : params_map) {
+				if (v.first == name)
+					return v.second;
+			}
+			throw std::runtime_error("Name was not in params in SymbolicContext");
+		}
+
+		const std::string& get_params_name(size_t index) const
+		{
+			for (auto& v : params_map) {
+				if (v.second == index)
+					return v.first;
+			}
+			throw std::runtime_error("Index was not in params in SymbolicContext");
 		}
 
 		uint32_t get_consts_index(const std::string& name) const
 		{
-			return consts_map.at(name);
+			for (auto& v : consts_map) {
+				if (v.first == name)
+					return v.second;
+			}
+			throw std::runtime_error("Name was not in consts in SymbolicContext");
 		}
 
-		const std::string& get_params_name() const {
-			return params_name;
+		const std::string& get_consts_name(size_t index) const {
+			for (auto& v : consts_map) {
+				if (v.second == index)
+					return v.first;
+			}
+			throw std::runtime_error("Index was not in consts in SymbolicContext");
 		}
 
 		const std::string& get_consts_name() const {
@@ -220,20 +242,22 @@ layout (local_size_x = 1) in;
 			glsl::eSymbolicType stype = symtype_map.at(name);
 
 			if (stype == glsl::eSymbolicType::PARAM_TYPE) {
-				uint32_t index = params_map.at(name);
+				uint32_t index = get_params_index(name);
 				return params_name + "[" + std::to_string(index) + "]";
 			}
 
 			if (stype == glsl::eSymbolicType::CONST_TYPE) {
-				uint32_t index = consts_map.at(name);
+				uint32_t index = get_consts_index(name);
 				return consts_name + "[" + consts_iterable_by + "*" + ndata_name + "+" + std::to_string(index) + "]";
 			}
 
 			throw std::runtime_error("Variable was neither const nor param");
 		}
 
-		std::unordered_map<std::string, uint32_t> params_map;
-		std::unordered_map<std::string, uint32_t> consts_map;
+
+
+		std::set<std::pair<std::string, uint32_t>> params_map;
+		std::set<std::pair<std::string, uint32_t>> consts_map;
 
 		std::unordered_map<std::string, eSymbolicType> symtype_map;
 

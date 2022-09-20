@@ -67,8 +67,9 @@ namespace util {
     }
 
     export template<typename Container> requires std::ranges::range<Container>
-    bool contains(Container const& c, typename Container::const_reference v)
+    bool container_contains(const Container& c, typename Container::const_reference v)
     {
         return std::find(c.begin(), c.end(), v) != c.end();
     }
+
 }

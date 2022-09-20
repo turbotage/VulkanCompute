@@ -17,6 +17,7 @@ export module lexer;
 import vc;
 import token;
 import defaultexp;
+import util;
 
 namespace expression {
 
@@ -107,8 +108,46 @@ namespace expression {
 
 		}
 
-		LexContext(const LexContext&) = default;
-		LexContext& operator=(LexContext&) = default;
+		LexContext(const LexContext& other)
+			: unary_operators(other.unary_operators),
+			binary_operators(other.binary_operators),
+			functions(other.functions),
+			variables(other.variables),
+			variable_assumptions(other.variable_assumptions),
+			operator_id_name_map(other.operator_id_name_map),
+			function_id_name_map(other.function_id_name_map)
+		{
+		}
+
+		LexContext& operator=(const LexContext& other)
+		{
+			{
+				std::vector<UnaryOperatorToken> uot(other.unary_operators.begin(), other.unary_operators.end());
+				unary_operators.swap(uot);
+			}
+
+			{
+				std::vector<BinaryOperatorToken> bot(other.binary_operators.begin(), other.binary_operators.end());
+				binary_operators.swap(bot);
+			}
+
+			{
+				std::vector<FunctionToken> fot(other.functions.begin(), other.functions.end());
+				functions.swap(fot);
+			}
+
+			{
+				std::vector<VariableToken> vot(other.variables.begin(), other.variables.end());
+				variables.swap(vot);
+			}
+
+			variable_assumptions = other.variable_assumptions;
+
+			operator_id_name_map = other.operator_id_name_map;
+			function_id_name_map = other.operator_id_name_map;
+
+			return *this;
+		}
 
 		LexContext(LexContext&&) = default;
 
@@ -136,9 +175,24 @@ namespace expression {
 		std::unordered_map<int32_t, std::string> operator_id_name_map;
 		std::unordered_map<int32_t, std::string> function_id_name_map;
 
-
-
 	};
+
+	export LexContext combine_contexts(const LexContext& c1, const LexContext& c2)
+	{
+		LexContext ret = c1;
+
+		for (auto& var : c2.variables) {
+			if (!util::container_contains(ret.variables, var)) {
+				ret.variables.emplace_back(var);
+			}
+		}
+
+		for (auto& var : c2.variable_assumptions) {
+			ret.variable_assumptions.insert(var);
+		}
+
+		return ret;
+	}
 
 	namespace {
 		static std::regex scientific_regex("^([\\d]+(.\\d+)?(?:e-?\\d+)?)?(i?)", std::regex_constants::ECMAScript | std::regex_constants::icase);
