@@ -8,7 +8,6 @@ set(DKOMPUTE_VK_API_MINOR_VERSION 3)
 
 add_subdirectory("external/kompute" ${CMAKE_CURRENT_BINARY_DIR}/kompute_build)
 
-
 # Add source to this project's executable.
 add_executable(VulkanCompute 
 	"VulkanCompute.cpp"
@@ -32,12 +31,15 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/mul.ixx"
 	"expression/algebra/binary/pow.ixx"
 	"expression/algebra/binary/sub.ixx"
-	"expression/nodes.ixx"
-	"expression/nodes.cpp"
-	"expression/expr.ixx") 
+	"expression/expr.ixx" 
+	"expression/expr.cpp") 
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 
+if (MSVC)
+	target_compile_options(VulkanCompute PUBLIC "/JMC")
+	target_compile_options(VulkanCompute PUBLIC "/MP")
+endif()
 
 target_link_libraries(VulkanCompute
 				# Libraries from kompute

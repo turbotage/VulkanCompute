@@ -44,6 +44,7 @@ namespace linalg {
 
 	export ::glsl::Function mul_mat_vec(int nrow, int ncol, bool single_precission = true);
 
+	export ::glsl::Function mat_set_zero(int nrow, int ncol, bool single_precission = true);
 
 	// SQUARE
 
@@ -469,7 +470,7 @@ void mul_mat_transpose(in float mat[nrow*ncol], out float omat[nrow*nrow]) {
 	{
 		static const std::string code = // compute shader
 			R"glsl(
-void mul_mat_transpose(in float mat[nrow*ncol], inout float omat[nrow*nrow]) {
+void mul_mat_transpose_add(in float mat[nrow*ncol], inout float omat[nrow*nrow]) {
 	float entry;
 	for (int i = 0; i < nrow; ++i) {
 		for (int j = 0; j <= i; ++j) {
@@ -509,13 +510,13 @@ void mul_mat_transpose(in float mat[nrow*ncol], inout float omat[nrow*nrow]) {
 	{
 		static const std::string code = // compute shader
 			R"glsl(
-void mul_transpose_mat_add(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
+void mul_transpose_mat(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
 	float entry;
 	for (int i = 0; i < ncol; ++i) {
 		for (int j = 0; j <= i; ++j) {
 			entry = 0.0;
 			for (int k = 0; k < nrow; ++k) {
-				entry += mat[i*ncol + k] * mat[j*ncol + k];
+				entry += mat[k*ncol + i] * mat[k*ncol + j];
 			}
 			omat[i*ncol + j] = entry;
 			if (i != j) {
@@ -538,7 +539,7 @@ void mul_transpose_mat_add(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
 		};
 
 		return ::glsl::Function(
-			"mul_transpose_mat_add",
+			"mul_transpose_mat",
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
@@ -555,7 +556,7 @@ void mul_transpose_mat_add(in float mat[nrow*ncol], inout float omat[ncol*ncol])
 		for (int j = 0; j <= i; ++j) {
 			entry = 0.0;
 			for (int k = 0; k < nrow; ++k) {
-				entry += mat[i*ncol + k] * mat[j*ncol + k];
+				entry += mat[k*ncol + i] * mat[k*ncol + j];
 			}
 			omat[i*ncol + j] += entry;
 			if (i != j) {
@@ -620,6 +621,37 @@ void mul_mat_vec(in float lmat[nrow*ncol], in float rvec[ncol], out float ovec[n
 		);
 	}
 	
+	::glsl::Function mat_set_zero(int nrow, int ncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void mat_set_zero(inout float mat[nrow*ncol]) {
+	for (int i = 0; i < nrow; ++i) {
+		for (int j = 0; j < ncol; ++j) {
+			mat[i*ncol + j] = 0;
+		}
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"mat_set_zero",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
 
 	// SQUARE
 

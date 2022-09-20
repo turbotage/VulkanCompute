@@ -185,6 +185,38 @@ layout (local_size_x = 1) in;
 	export class SymbolicContext {
 	public:
 
+		void insert_const(const std::pair<std::string, uint32_t>& cp)
+		{
+			if (symtype_map.contains(cp.first))
+				throw std::runtime_error("const name already existed in SymbolicContext");
+
+			for (auto& p : consts_map) {
+				if (p.first == cp.first)
+					throw std::runtime_error("const name already existed in SymbolicContext");
+				if (p.second == cp.second)
+					throw std::runtime_error("const index already existed in SymbolicContext");
+			}
+			
+			symtype_map.insert({ cp.first, eSymbolicType::CONST_TYPE });
+			consts_map.insert(cp);
+		}
+
+		void insert_param(const std::pair<std::string, uint32_t>& pp)
+		{
+			if (symtype_map.contains(pp.first))
+				throw std::runtime_error("const name already existed in SymbolicContext");
+
+			for (auto& p : params_map) {
+				if (p.first == pp.first)
+					throw std::runtime_error("const name already existed in SymbolicContext");
+				if (p.second == pp.second)
+					throw std::runtime_error("const index already existed in SymbolicContext");
+			}
+
+			symtype_map.insert({ pp.first, eSymbolicType::PARAM_TYPE });
+			params_map.insert(pp);
+		}
+
 		eSymbolicType get_symtype(const std::string& name) const 
 		{
 			return symtype_map.at(name);
@@ -248,13 +280,11 @@ layout (local_size_x = 1) in;
 
 			if (stype == glsl::eSymbolicType::CONST_TYPE) {
 				uint32_t index = get_consts_index(name);
-				return consts_name + "[" + consts_iterable_by + "*" + ndata_name + "+" + std::to_string(index) + "]";
+				return consts_name + "[" + consts_iterable_by + "*" + nconst_name + "+" + std::to_string(index) + "]";
 			}
 
 			throw std::runtime_error("Variable was neither const nor param");
 		}
-
-
 
 		std::set<std::pair<std::string, uint32_t>> params_map;
 		std::set<std::pair<std::string, uint32_t>> consts_map;
@@ -268,6 +298,7 @@ layout (local_size_x = 1) in;
 		std::string params_iterable_by = "i";
 
 		std::string ndata_name = "ndata";
+		std::string nconst_name = "nconst";
 	};
 
 }
