@@ -56,6 +56,36 @@ namespace util {
         return ret;
     }
 
+    export std::string add_whitespace_until(const std::string& str, int until) {
+        if (str.size() > until) {
+            return std::string(str.begin(), str.begin() + until);
+        }
+
+        std::string ret = str;
+        ret.reserve(until);
+        for (int i = str.size(); i <= until; ++i) {
+            ret += ' ';
+        }
+        return ret;
+    }
+
+    export std::string add_line_numbers(const std::string& str, int max_number_length = 5) {
+        int until = 5;
+        std::string ret = str;
+        ret.insert(0, util::add_whitespace_until(std::to_string(1), until) + "\t|");
+        int k = 2;
+        for (int i = until; i < ret.size(); ++i) {
+            if (ret[i] == '\n') {
+                if (i + 1 > ret.size())
+                    return ret;
+                ret.insert(i+1, util::add_whitespace_until(std::to_string(k), until) + "\t|");
+                i += until+2;
+                ++k;
+            }
+        }
+        return ret;
+    }
+
     export std::string remove_whitespace(const std::string& str) {
         std::string ret = str;
         ret.erase(std::remove_if(ret.begin(), ret.end(),

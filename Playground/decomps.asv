@@ -1,0 +1,28 @@
+
+A = [10*eps, 1; 1, 0]
+try chol(A);
+    disp('Matrix is symmetric positive definite.')
+catch ME
+    disp('Matrix is not symmetric positive definite')
+end
+
+
+[L1,D1] = ldl(A);
+M1 = L1 * D1 * L1.'
+
+% GLSL LDL IMPL
+L2 = [1,0; 0.577350, 1];
+D2 = diag([1.732051, 0.577350]);
+
+M2 = L2 * D2 * L2.'
+
+% GLSL GMW81 IMPL
+
+M3 = M2;
+M3 = [1, 1; 1, 1.];
+M3
+try chol(M3);
+    disp('Matrix is symmetric positive definite.')
+catch ME
+    disp('Matrix is not symmetric positive definite')
+end

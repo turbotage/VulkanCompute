@@ -20,6 +20,7 @@ import linalg;
 import solver;
 import symbolic;
 import expr;
+import symm;
 
 /*
 void test_glsl() {
@@ -36,7 +37,7 @@ int pivot[ndim];
 
 void main() {
 	uint index = gl_GlobalInvocationID.x;
-	uint startindex = index*ndim*ndim;	
+	uint startindex = index*ndim*ndim;
 
 	// Copy global mat into temp matrix
 	for (int i = 0; i < ndim; ++i) {
@@ -419,7 +420,6 @@ void main() {
 
 	shader.addFunction(func);
 
-
 	std::string glsl_shader = shader.compile();
 
 	std::cout << glsl_shader << std::endl;
@@ -678,7 +678,7 @@ void main() {
 	}
 }
 
-void test_expr_res_jac_hes_glsl_time_many(int n = 1000000) {
+void test_expr_res_jac_hes_glsl_time_many(int n = 1000000, int runs = 5, bool print = false) {
 	glsl::Shader shader;
 	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_param"));
 	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 1, "float", "global_const"));
@@ -781,7 +781,7 @@ void main() {
 
 	std::string glsl_shader = shader.compile();
 
-	std::cout << glsl_shader << std::endl;
+	//std::cout << glsl_shader << std::endl;
 
 	auto spirv = glsl::compileSource(glsl_shader);
 
@@ -806,19 +806,18 @@ void main() {
 	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
 
 	auto start = std::chrono::steady_clock::now();
-
-	mgr.sequence()
-		->record<kp::OpTensorSyncDevice>(params)
-		->record<kp::OpAlgoDispatch>(algo)
-		->record<kp::OpTensorSyncLocal>(params)
-		->eval();
+	
+	auto r = mgr.sequence()->record<kp::OpTensorSyncDevice>(params);
+	for (int i = 0; i < runs; ++i) {
+		r = r->record<kp::OpAlgoDispatch>(algo);
+	}
+	r->record<kp::OpTensorSyncLocal>(params)->eval();
 
 	auto end = std::chrono::steady_clock::now();
 
 	std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
 		<< std::endl;
 
-	bool print = true;
 	if (print) {
 		auto res = residuals->vector();
 		auto jac = jacobian->vector();
@@ -849,12 +848,215 @@ void main() {
 	}
 }
 
+void test_ldl() {
+
+	glsl::Shader shader;
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_mat"));
+
+	static std::string code =
+R"glsl(
+void main() {
+	float mat[ndim*ndim];
+
+	uint index = gl_GlobalInvocationID.x;
+	uint startindex = index*ndim*ndim;
+
+	// copy mat
+	for (int i = 0; i < ndim; ++i) {
+		for (int j = 0; j < ndim; ++j) {
+			mat[i*ndim + j] = global_mat[i*ndim + j];
+		}
+	}
+	
+	ldl(mat);
+
+	// copy back mat
+	for (int i = 0; i < ndim; ++i) {
+		for (int j = 0; j < ndim; ++j) {
+			global_mat[i*ndim + j] = mat[i*ndim + j];
+		}
+	}
+
+}
+)glsl";
+
+	int n = 1;
+	int ndim = 3;
+
+	std::function<std::string()> code_func = [ndim]() -> std::string
+	{
+		std::string temp = code;
+		util::replace_all(temp, "ndim", std::to_string(ndim));
+		return temp;
+	};
+
+	glsl::Function func("main", {}, code_func, std::make_optional<std::vector<glsl::Function>>({
+		glsl::linalg::ldl(ndim, true)
+		}));
+
+	shader.addFunction(func);
+
+	std::string glsl_shader = shader.compile();
+
+	std::cout << util::add_line_numbers(glsl_shader) << std::endl;
+
+	auto spirv = glsl::compileSource(glsl_shader);
+
+	kp::Manager mgr;
+
+	auto mat = mgr.tensor({
+		3,2,1,
+		2,4,2,
+		1,2,5
+		});
+
+	std::vector<std::shared_ptr<kp::Tensor>> params = { mat };
+
+	kp::Workgroup wg({ (size_t)n,1,1 });
+	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
+
+	auto start = std::chrono::steady_clock::now();
+
+	mgr.sequence()
+		->record<kp::OpTensorSyncDevice>(params)
+		->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpTensorSyncLocal>(params)
+		->eval();
+
+	auto end = std::chrono::steady_clock::now();
+
+	std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+		<< std::endl;
+
+	bool print = true;
+	if (print) {
+		auto res = mat->vector();
+		std::string printr = "mat: \n";
+		for (int i = 0; i < n; ++i) {
+			for (int j = 0; j < ndim; ++j) {
+				for (int k = 0; k < ndim; ++k) {
+					printr += std::to_string(res[i*ndim*ndim + j*ndim + k]) + "  ";
+				}
+				printr += "\n";
+			}
+		}
+		std::cout << printr;
+	}
+
+}
+
+void test_gmw81() {
+
+	glsl::Shader shader;
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_mat"));
+
+	static std::string code =
+R"glsl(
+void main() {
+	float mat[ndim*ndim];
+
+	uint index = gl_GlobalInvocationID.x;
+	uint startindex = index*ndim*ndim;
+
+	// copy mat
+	for (int i = 0; i < ndim; ++i) {
+		for (int j = 0; j < ndim; ++j) {
+			mat[i*ndim + j] = global_mat[i*ndim + j];
+		}
+	}
+	
+	gmw81(mat);
+
+	// copy back mat
+	for (int i = 0; i < ndim; ++i) {
+		for (int j = 0; j < ndim; ++j) {
+			global_mat[i*ndim + j] = mat[i*ndim + j];
+		}
+	}
+
+}
+)glsl";
+
+	int n = 1;
+	int ndim = 3;
+
+	std::function<std::string()> code_func = [ndim]() -> std::string
+	{
+		std::string temp = code;
+		util::replace_all(temp, "ndim", std::to_string(ndim));
+		return temp;
+	};
+
+	glsl::Function func("main", {}, code_func, std::make_optional<std::vector<glsl::Function>>({
+		glsl::linalg::gmw81(ndim, true)
+		}));
+
+	shader.addFunction(func);
+
+	std::string glsl_shader = shader.compile();
+
+	std::cout << util::add_line_numbers(glsl_shader) << std::endl;
+
+	auto spirv = glsl::compileSource(glsl_shader);
+
+	kp::Manager mgr;
+
+	auto mat = mgr.tensor({
+		0.9,2,1,
+		2,4,2,
+		1,2,5
+		});
+
+	std::vector<std::shared_ptr<kp::Tensor>> params = { mat };
+
+	kp::Workgroup wg({ (size_t)n,1,1 });
+	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
+
+	auto start = std::chrono::steady_clock::now();
+
+	mgr.sequence()
+		->record<kp::OpTensorSyncDevice>(params)
+		->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpTensorSyncLocal>(params)
+		->eval();
+
+	auto end = std::chrono::steady_clock::now();
+
+	std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+		<< std::endl;
+
+	bool print = true;
+	if (print) {
+		auto res = mat->vector();
+		std::string printr = "mat: \n";
+		for (int i = 0; i < n; ++i) {
+			for (int j = 0; j < ndim; ++j) {
+				for (int k = 0; k < ndim; ++k) {
+					printr += std::to_string(res[i * ndim * ndim + j * ndim + k]) + "  ";
+				}
+				printr += "\n";
+			}
+		}
+		std::cout << printr;
+	}
+
+}
+
+
 int main() {
 	
-	test_expr_res_glsl();
-	test_expr_res_jac_glsl();
-	test_expr_res_jac_hes_glsl();
-	//test_expr_res_jac_hes_glsl_time_many(10000000);
+	//test_expr_res_glsl();
+	//test_expr_res_jac_glsl();
+	//test_expr_res_jac_hes_glsl();
+	test_expr_res_jac_hes_glsl_time_many(1000000, 0);
+	test_expr_res_jac_hes_glsl_time_many(1000000, 1);
+	test_expr_res_jac_hes_glsl_time_many(1000000, 2);
+	test_expr_res_jac_hes_glsl_time_many(1000000, 3);
+	test_expr_res_jac_hes_glsl_time_many(1000000, 4);
+	test_expr_res_jac_hes_glsl_time_many(1000000, 5);
+
+	//test_ldl();
+	//test_gmw81();
 
 	return 0;
 }
