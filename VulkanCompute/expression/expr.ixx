@@ -449,10 +449,10 @@ namespace expression {
 
 		static ExpressionCreationMap default_expression_creation_map();
 
-		const LexContext& get_context() const
-		{
-			return m_Context;
-		}
+		const LexContext& get_context() const;
+
+		const std::string& get_expression() const;
+
 
 	private:
 

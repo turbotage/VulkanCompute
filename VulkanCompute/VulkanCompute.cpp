@@ -22,7 +22,7 @@ import symbolic;
 import expr;
 import symm;
 
-
+/*
 void test_expr_res_glsl(bool print = true) {
 	glsl::Shader shader;
 	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_param"));
@@ -908,7 +908,12 @@ void main() {
 	}
 
 }
+*/
 
+void test_new_gensystem()
+{
+	glsl::Shader shader;
+}
 
 int main() {
 	
@@ -924,8 +929,10 @@ int main() {
 	test_expr_res_jac_hes_glsl_time_many(1000000, 5);
 	*/
 
-	//test_ldl();
+	/*
+	test_ldl();
 	test_gmw81();
+	*/
 
 	return 0;
 }

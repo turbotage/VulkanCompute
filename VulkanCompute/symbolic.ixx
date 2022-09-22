@@ -43,13 +43,13 @@ namespace nlsq {
 
 	// IMPL
 
-	::glsl::Function nlsq_residuals(const std::string& id,
+	::glsl::Function nlsq_residuals(
 		const expression::Expression& expr, const glsl::SymbolicContext& context, 
 		int ndata, int nparam, int nconst, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void NAME_nlsq_residuals(in float params[nparam], in float consts[ndata*nconst], in float data[ndata], out float residuals[ndata]) {
+void nlsq_residuals_HASH(in float params[nparam], in float consts[ndata*nconst], in float data[ndata], out float residuals[ndata]) {
 	for (int i = 0; i < ndata; ++i) {
 RESIDUAL_EXPRESSION
 	}
@@ -59,10 +59,9 @@ RESIDUAL_EXPRESSION
 		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];";
 
 		std::function<std::string()> code_func = 
-			[ndata, nparam, nconst, id, resexpr, single_precission]() -> std::string
+			[ndata, nparam, nconst, resexpr, single_precission]() -> std::string
 		{
 			std::string temp = code;
-			util::replace_all(temp, "NAME_nlsq_residuals", id + "_nlsq_residuals");
 			util::replace_all(temp, "RESIDUAL_EXPRESSION", resexpr);
 			util::replace_all(temp, "ndata", std::to_string(ndata));
 			util::replace_all(temp, "nparam", std::to_string(nparam));
@@ -76,8 +75,9 @@ RESIDUAL_EXPRESSION
 		std::hash<std::string> hasher;
 
 		return ::glsl::Function(
-			id + "_nlsq_residuals",
-			{ hasher(id), size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			"nlsq_residuals",
+			{ hasher(expr.get_expression()), size_t(ndata), 
+			size_t(nparam), size_t(nconst), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);

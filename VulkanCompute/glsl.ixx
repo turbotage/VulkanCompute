@@ -13,6 +13,7 @@ module;
 export module glsl;
 
 import util;
+import vc;
 
 
 namespace glsl {
@@ -52,14 +53,22 @@ namespace glsl {
 		{
 			if (dependencies.has_value())
 				m_Dependencies = dependencies.value();
+
+			m_HashName = std::to_string(HashFunction()(*this));
 		}
 
-		std::vector<Function> getDependencies() {
+		const std::vector<Function>& getDependencies() const {
 			return m_Dependencies;
 		}
 
-		std::string getCode() {
-			return m_CodeFunc();
+		std::string getCode() const {
+			std::string ret = m_CodeFunc();
+			util::replace_all(ret, "NAMEHASH", m_HashName);
+			return ret;
+		}
+
+		std::string getName() {
+			return m_FunctionName + "_" + m_HashName;
 		}
 
 		friend bool operator==(const Function& lhs, const Function& rhs) {
@@ -84,16 +93,20 @@ namespace glsl {
 		std::function<std::string()> m_CodeFunc;
 		std::vector<Function> m_Dependencies;
 
+		std::string m_HashName;
 	};
 	
-	void add_functions(std::vector<Function>& funcs, const Function& func) {
+	size_t add_functions(std::vector<Function>& funcs, const Function& func) {
 		for (auto& f : func.m_Dependencies) {
 			add_functions(funcs, f);
 		}
 
-		if (std::find(funcs.begin(), funcs.end(), func) == funcs.end()) {
+		auto it = std::find(funcs.begin(), funcs.end(), func);
+		size_t pos = it - funcs.begin();
+		if (it == funcs.end()) {
 			funcs.push_back(func);
 		}
+		return pos;
 	}
 
 	export class Binding {
@@ -131,6 +144,81 @@ namespace glsl {
 		std::string m_Name;
 	};
 
+	export class ShaderVariable {
+	public:
+
+		virtual std::string getDeclaration() const = 0;
+
+		virtual std::string getName() const = 0;
+
+		friend bool operator==(const ShaderVariable& left, const ShaderVariable& right) {
+			return left.getName() == right.getName();
+		}
+
+	};
+
+	export class MatrixVariable : public ShaderVariable {
+	public:
+
+		MatrixVariable(const std::string& name, 
+			uint16_t ndim1, uint16_t ndim2, 
+			bool single_precission = true)
+			: m_Name(name), m_NDim1(ndim1), m_NDim2(ndim2), m_SinglePrecission(single_precission)
+		{}
+
+		std::string getDeclaration() const override {
+			std::string ret;
+			if (m_SinglePrecission) {
+				ret += "float ";
+			}
+			else {
+				ret += "double ";
+			}
+			ret += m_Name + "[" +
+				std::to_string(m_NDim1) + "*" +
+				std::to_string(m_NDim2) + "];";
+		}
+		
+		std::string getName() const override {
+			return m_Name;
+		}
+
+	private:
+		std::string m_Name;
+		uint16_t m_NDim1;
+		uint16_t m_NDim2;
+		bool m_SinglePrecission;
+	};
+
+	export class VectorVariable : public ShaderVariable {
+	public:
+
+		VectorVariable(const std::string& name,
+			uint16_t ndim, bool single_precission = true)
+			: m_Name(name), m_NDim(ndim), m_SinglePrecission(single_precission)
+		{}
+
+		std::string getDeclaration() const override {
+			std::string ret;
+			if (m_SinglePrecission) {
+				ret += "float ";
+			}
+			else {
+				ret += "double ";
+			}
+			ret += m_Name + "[" + std::to_string(m_NDim) + "];";
+		}
+
+		std::string getName() const override {
+			return m_Name;
+		}
+
+	private:
+		std::string m_Name;
+		uint16_t m_NDim;
+		bool m_SinglePrecission;
+	};
+
 	export class Shader {
 	public:
 
@@ -152,6 +240,29 @@ namespace glsl {
 			add_functions(m_Functions, func);
 		}
 
+		void addInputMatrix(const std::shared_ptr<MatrixVariable>& mat) 
+		{
+			
+		}
+
+		void addVariable(const std::shared_ptr<ShaderVariable>& var)
+		{
+			if (std::find(m_Variables.begin(), m_Variables.end(), var) == m_Variables.end()) {
+				m_Variables.emplace_back(var);
+			}
+		}
+
+		void apply(const Function& func, const std::vector<vc::refw<const std::shared_ptr<ShaderVariable>>>& variables)
+		{
+			size_t func_pos = add_functions(m_Functions, func);
+
+			for (auto& var : variables) {
+				addVariable(var);
+			}
+
+			m_Calls.push_back(std::make_pair(func_pos, variables));
+		}
+
 		std::string compile() {
 			std::string ret = 
 R"glsl(
@@ -169,6 +280,29 @@ layout (local_size_x = 1) in;
 				ret += func.getCode() + "\n";
 			}
 
+			// open main
+			ret += "void main() {\n";
+
+			// declare variables
+			for (auto& var : m_Variables) {
+				ret += "\t" + var->getDeclaration() + "\n";
+			}
+
+			// add in function calls
+			for (auto& call : m_Calls) {
+				ret += "\t" + m_Functions[call.first].getName() + "(";
+				for (int i = 0; i < call.second.size(); ++i) {
+					ret += call.second[i]->getName();
+					if ((i+1) != call.second.size()) {
+						ret += ", ";
+					}
+				}
+				ret += ")\n";
+			}
+
+			// close main
+			ret += "\n}\n";
+
 			return ret;
 		}
 
@@ -176,6 +310,9 @@ layout (local_size_x = 1) in;
 
 		std::vector<std::unique_ptr<Binding>> m_Bindings;
 		std::vector<Function> m_Functions;
+
+		std::vector<std::shared_ptr<ShaderVariable>> m_Variables;
+		std::vector<std::pair<size_t, std::vector<std::shared_ptr<ShaderVariable>>>> m_Calls;
 	};
 
 	export enum class eSymbolicType {

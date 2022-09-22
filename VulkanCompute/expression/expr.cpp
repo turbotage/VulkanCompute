@@ -1247,3 +1247,7 @@ const LexContext& Expression::get_context() const
 	return m_Context;
 }
 
+const std::string& Expression::get_expression() const
+{
+	return m_Expression;
+}
