@@ -1,5 +1,5 @@
 
-A = [0.9,2,1; 2,4,2; 1,2,5]
+A = [3,2,1; 2,4,2; 1,2,5]
 try chol(A);
     disp('Matrix is symmetric positive definite.')
 catch ME
@@ -11,8 +11,8 @@ end
 M1 = L1 * D1 * L1.'
 
 % GLSL LDL IMPL
-L2 = [1, 0, 0; 2.22222, 1, 0; 1.11111, -0.5, 1];
-D2 = diag([0.9, 0.444445, 3.777778]);
+L2 = [1, 0, 0; 0.666667, 1, 0; 0.3333333, 0.5, 1];
+D2 = diag([3.0, 2.666667, 4.0]);
 
 M2 = L2 * D2 * L2.'
 
@@ -29,3 +29,9 @@ try chol(M3);
 catch ME
     disp('Matrix is not symmetric positive definite')
 end
+
+x = [1;1;1];
+
+sol1 = A \ x
+sol2 = M2 \ x
+

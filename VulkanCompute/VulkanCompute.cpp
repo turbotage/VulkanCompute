@@ -22,165 +22,6 @@ import symbolic;
 import expr;
 import symm;
 
-/*
-void test_glsl() {
-	glsl::Shader shader;
-	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_in"));
-	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 1, "float", "global_out"));
-
-	static std::string code =
-		R"glsl(
-
-float mat[ndim*ndim];
-float omat[ndim*ndim];
-int pivot[ndim];
-
-void main() {
-	uint index = gl_GlobalInvocationID.x;
-	uint startindex = index*ndim*ndim;
-
-	// Copy global mat into temp matrix
-	for (int i = 0; i < ndim; ++i) {
-		for (int j = 0; j < ndim; ++j) {
-			mat[i*ndim + j] = global_in[startindex + i*ndim + j];
-		}
-	}
-
-	// Perform LU decomp
-
-	lu(mat, pivot);
-
-	mul_unit_lower_upper_square(mat, mat, omat);
-
-	// Copy global mat into temp matrix
-	for (int i = 0; i < ndim; ++i) {
-		for (int j = 0; j < ndim; ++j) {
-			global_out[startindex + i*ndim + j] = omat[i*ndim + j];
-		}
-	}
-
-}
-)glsl";
-
-	int ndim = 3;
-	unsigned int nmat = 1000000;
-
-	std::function<std::string()> code_func = [ndim]() -> std::string
-	{
-		std::string temp = code;
-		util::replace_all(temp, "ndim", std::to_string(ndim));
-		return temp;
-	};
-
-	glsl::Function func("main", {}, code_func,
-		std::make_optional<std::vector<glsl::Function>>({
-			glsl::linalg::solver::lu(3),
-			glsl::linalg::mul_unit_lower_upper_square(3),
-		})
-	);
-
-	shader.addFunction(func);
-
-	std::string glsl_shader = shader.compile();
-
-	std::cout << glsl_shader << std::endl;
-
-	auto spirv = glsl::compileSource(glsl_shader);
-
-	std::string spirv_str(spirv.begin(), spirv.end());
-
-	kp::Manager mgr;
-
-
-	
-	//auto tensor1 = mgr.tensor({
-	//	1.0, 2.0, 3.0, // work1 - row 1
-	//	4.0, 5.0, 6.0, // work1 - row 2
-	//	7.0, 8.0, 9.0, // work1 - row 3
-	//
-	//	3.0, 1.0, 1.0, // work2 - row 1
-	//	1.0, 5.0, 1.0, // work2 - row 2
-	//	1.0, 1.0, 9.0, // work2 - row 3
-	//	});
-	//
-	//
-	//
-	//auto tensor2 = mgr.tensor({
-	//	0.0, 0.0, 0.0,	// work1 - row 1
-	//	0.0, 0.0, 0.0,	// work1 - row 2
-	//	0.0, 0.0, 0.0,	// work1 - row 3
-	//
-	//	0.0, 0.0, 0.0,	// work2 - row 1
-	//	0.0, 0.0, 0.0,	// work2 - row 2
-	//	0.0, 0.0, 0.0,	// work2 - row 3
-	//	});
-	
-
-
-	std::vector<float> t1(nmat * ndim);
-	std::vector<float> t2(nmat * ndim);
-
-
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<float> dist(0, 10);
-	for (int i = 0; i < nmat * ndim; ++i) {
-		t1[i] = dist(gen);
-	}
-
-
-	auto tensor1 = mgr.tensor(t1);
-	auto tensor2 = mgr.tensor(t2);
-
-	std::vector<std::shared_ptr<kp::Tensor>> params = { tensor1, tensor2 };
-
-	kp::Workgroup wg({ nmat,1,1 });
-	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
-
-	auto start = std::chrono::steady_clock::now();
-
-	mgr.sequence()
-		->record<kp::OpTensorSyncDevice>(params)
-		->record<kp::OpAlgoDispatch>(algo)
-		->record<kp::OpTensorSyncLocal>(params)
-		->eval();
-
-	auto end = std::chrono::steady_clock::now();
-
-	std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-		<< std::endl;
-
-
-	bool print = false;
-	if (print) {
-		std::cout << "tensor1: [ \n";
-		auto v1 = tensor1->vector();
-		for (int k = 0; k < 2; ++k) {
-			for (int i = 0; i < 3; ++i) {
-				for (int j = 0; j < 3; ++j) {
-					std::cout << v1[k * 3 * 3 + i * 3 + j] << "  ";
-				}
-				std::cout << "\n";
-			}
-		}
-		std::cout << "]" << std::endl;
-		std::cout << "[" << std::endl;
-
-		std::cout << "tensor2: [ \n";
-		v1 = tensor2->vector();
-		for (int k = 0; k < 2; ++k) {
-			for (int i = 0; i < 3; ++i) {
-				for (int j = 0; j < 3; ++j) {
-					std::cout << v1[k * 3 * 3 + i * 3 + j] << "  ";
-				}
-				std::cout << "\n";
-			}
-		}
-		std::cout << "]" << std::endl;
-	}
-
-}
-*/
 
 void test_expr_res_glsl(bool print = true) {
 	glsl::Shader shader;
@@ -949,6 +790,7 @@ void test_gmw81() {
 
 	glsl::Shader shader;
 	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 0, "float", "global_mat"));
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(0, 1, "float", "global_vec"));
 
 	static std::string code =
 R"glsl(
@@ -961,7 +803,7 @@ void main() {
 	// copy mat
 	for (int i = 0; i < ndim; ++i) {
 		for (int j = 0; j < ndim; ++j) {
-			mat[i*ndim + j] = global_mat[i*ndim + j];
+			mat[i*ndim + j] = global_mat[startindex + i*ndim + j];
 		}
 	}
 	
@@ -970,8 +812,21 @@ void main() {
 	// copy back mat
 	for (int i = 0; i < ndim; ++i) {
 		for (int j = 0; j < ndim; ++j) {
-			global_mat[i*ndim + j] = mat[i*ndim + j];
+			global_mat[startindex + i*ndim + j] = mat[i*ndim + j];
 		}
+	}
+
+	float rhs[ndim];
+	startindex = index*ndim;
+	for (int i = 0; i < ndim; ++i) {
+		rhs[i] = global_vec[startindex + i];
+	}
+	float sol[ndim];
+
+	ldl_solve(mat, rhs, sol);
+
+	for (int i = 0; i < ndim; ++i) {
+		global_vec[startindex + i] = sol[i];
 	}
 
 }
@@ -988,7 +843,8 @@ void main() {
 	};
 
 	glsl::Function func("main", {}, code_func, std::make_optional<std::vector<glsl::Function>>({
-		glsl::linalg::gmw81(ndim, true)
+		glsl::linalg::gmw81(ndim, true),
+		glsl::linalg::ldl_solve(ndim, true)
 		}));
 
 	shader.addFunction(func);
@@ -1002,12 +858,14 @@ void main() {
 	kp::Manager mgr;
 
 	auto mat = mgr.tensor({
-		0.9,2,1,
+		3,2,1,
 		2,4,2,
 		1,2,5
 		});
 
-	std::vector<std::shared_ptr<kp::Tensor>> params = { mat };
+	auto vec = mgr.tensor({ 1, 1, 1 });
+
+	std::vector<std::shared_ptr<kp::Tensor>> params = { mat, vec };
 
 	kp::Workgroup wg({ (size_t)n,1,1 });
 	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
@@ -1036,6 +894,15 @@ void main() {
 				}
 				printr += "\n";
 			}
+			printr += "\n\n";
+		}
+		res = vec->vector();
+		printr += "vec: \n";
+		for (int i = 0; i < n; ++i) {
+			for (int j = 0; j < ndim; ++j) {
+				printr += std::to_string(res[i * ndim + j]) + "  ";
+			}
+			printr += "\n\n";
 		}
 		std::cout << printr;
 	}
@@ -1048,15 +915,17 @@ int main() {
 	//test_expr_res_glsl();
 	//test_expr_res_jac_glsl();
 	//test_expr_res_jac_hes_glsl();
+	/*
 	test_expr_res_jac_hes_glsl_time_many(1000000, 0);
 	test_expr_res_jac_hes_glsl_time_many(1000000, 1);
 	test_expr_res_jac_hes_glsl_time_many(1000000, 2);
 	test_expr_res_jac_hes_glsl_time_many(1000000, 3);
 	test_expr_res_jac_hes_glsl_time_many(1000000, 4);
 	test_expr_res_jac_hes_glsl_time_many(1000000, 5);
+	*/
 
 	//test_ldl();
-	//test_gmw81();
+	test_gmw81();
 
 	return 0;
 }

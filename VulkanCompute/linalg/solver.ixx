@@ -13,7 +13,8 @@ import linalg;
 // INTERFACE
 namespace glsl {
 namespace linalg {
-namespace solver {
+
+	// FORWARD SUBSTITUTION (Lx=y)
 
 	export ::glsl::Function forward_subs(int ndim, bool single_precission = true);
 
@@ -23,6 +24,18 @@ namespace solver {
 
 	export ::glsl::Function forward_subs_unit_t(int ndim, bool single_precission = true);
 
+	// with diagonal (LDx=y)
+
+	export ::glsl::Function forward_subs_diag(int ndim, bool single_precission);
+
+	export ::glsl::Function forward_subs_t_diag(int ndim, bool single_precission);
+
+	export ::glsl::Function forward_subs_unit_diag(int ndim, bool single_precission);
+
+	export ::glsl::Function forward_subs_unit_t_diag(int ndim, bool single_precission);
+
+	// BACKWARD SUBSTITUTION (Ux=y)
+
 	export ::glsl::Function backward_subs(int ndim, bool single_precission = true);
 
 	export ::glsl::Function backward_subs_t(int ndim, bool single_precission = true);
@@ -31,9 +44,20 @@ namespace solver {
 
 	export ::glsl::Function backward_subs_unit_t(int ndim, bool single_precission = true);
 
+	// with diagonal (DUx=y)
+
+	export ::glsl::Function backward_subs_diag(int ndim, bool single_precission);
+
+	export ::glsl::Function backward_subs_t_diag(int ndim, bool single_precission);
+
+	export ::glsl::Function backward_subs_unit_diag(int ndim, bool single_precission);
+
+	export ::glsl::Function backward_subs_unit_t_diag(int ndim, bool single_precission);
+
+	// LU DECOMPOSITION
+
 	export ::glsl::Function lu(int ndim, bool single_precission = true);
 
-}
 }
 }
 
@@ -42,7 +66,8 @@ namespace solver {
 // IMPLEMENTATION
 namespace glsl {
 namespace linalg {
-namespace solver {
+
+	// FORWARD SUBSTITUTION (Lx=y)
 
 	::glsl::Function forward_subs(int ndim, bool single_precission)
 	{
@@ -174,6 +199,142 @@ void forward_subs_unit_t(in float mat[ndim*ndim], in float rhs[ndim], out float 
 		);
 	}
 
+	// with diagonal (LDx=y)
+
+	::glsl::Function forward_subs_diag(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void forward_subs_diag(in float mat[ndim*ndim], in float rhs[ndim] in float diag[ndim], out float solution[ndim]) {
+	for (int i = 0; i < ndim; ++i) {
+		solution[i] = rhs[i];
+		for (int j = 0; j < i; ++j) {
+			solution[i] -= (mat[i*ndim + j] * diag[j] * solution[j]);
+		}
+		solution[i] /= (mat[i*ndim + i] * diag[i]);
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"forward_subs_diag",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function forward_subs_t_diag(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void forward_subs_t(in float mat[ndim*ndim], in float rhs[ndim], in float diag[ndim], out float solution[ndim]) {
+	for (int i = 0; i < ndim; ++i) {
+		solution[i] = rhs[i];
+		for (int j = 0; j < i; ++j) {
+			solution[i] -= (mat[j*ndim + i] * diag[j] * solution[j]);
+		}
+		solution[i] /= (mat[i*ndim + i] * diag[i]);
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"forward_subs_t_diag",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function forward_subs_unit_diag(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void forward_subs_unit_diag(in float mat[ndim*ndim], in float rhs[ndim], in float diag[ndim], out float solution[ndim]) {
+	for (int i = 0; i < ndim; ++i) {
+		solution[i] = rhs[i];
+		for (int j = 0; j < i; ++j) {
+			solution[i] -= (mat[i*ndim + j] * diag[j] * solution[j]);
+		}
+		solution[i] /= diag[i];
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"forward_subs_unit_diag",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function forward_subs_unit_t_diag(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void forward_subs_unit_t_diag(in float mat[ndim*ndim], in float rhs[ndim], in float diag[ndim], out float solution[ndim]) {
+	for (int i = 0; i < ndim; ++i) {
+		solution[i] = rhs[i];
+		for (int j = 0; j < i; ++j) {
+			solution[i] -= (mat[j*ndim + i] * diag[j] * solution[j]);
+		}
+		solution[i] /= diag[i];
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"forward_subs_unit_t_diag",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	// BACKWARD SUBSTITUTION (Ux=y)
+
 	::glsl::Function backward_subs(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
@@ -304,6 +465,142 @@ void backward_subs_unit_t(in float mat[ndim*ndim], in float rhs[ndim], out float
 		);
 	}
 
+	// with diagonal (DUx=y)
+
+	::glsl::Function backward_subs_diag(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void backward_subs_diag(in float mat[ndim*ndim], in float rhs[ndim], in float diag[ndim], out float solution[ndim]) {
+	for (int i = ndim - 1; i >= 0; --i) {
+		solution[i] = rhs[i];
+		for (int j = i + 1; j < ndim; ++j) {
+			solution[i] -= (mat[i*ndim + j] * diag[i] * solution[j]);
+		}
+		solution[i] /= (mat[i*ndim + i] * diag[i]);
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"backward_subs_diag",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function backward_subs_t_diag(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void backward_subs_t_diag(in float mat[ndim*ndim], in float rhs[ndim], in float diag[ndim], out float solution[ndim]) {
+	for (int i = ndim - 1; i >= 0; --i) {
+		solution[i] = rhs[i];
+		for (int j = i + 1; j < ndim; ++j) {
+			solution[i] -= (mat[j*ndim + i] * diag[i] * solution[j]);
+		}
+		solution[i] /= (mat[i*ndim + i] * diag[i]);
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"backward_subs_t_diag",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function backward_subs_unit_diag(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void backward_subs_unit_diag(in float mat[ndim*ndim], in float rhs[ndim], in float diag[ndim], out float solution[ndim]) {
+	for (int i = ndim - 1; i >= 0; --i) {
+		solution[i] = rhs[i];
+		for (int j = i + 1; j < ndim; ++j) {
+			solution[i] -= (mat[i*ndim + j] * diag[i] * solution[j]);
+		}
+		solution[i] /= diag[i];
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"backward_subs_unit_diag",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function backward_subs_unit_t_diag(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void backward_subs_unit_t_diag(in float mat[ndim*ndim], in float rhs[ndim], in float diag[ndim], out float solution[ndim]) {
+	for (int i = ndim - 1; i >= 0; --i) {
+		solution[i] = rhs[i];
+		for (int j = i + 1; j < ndim; ++j) {
+			solution[i] -= (mat[j*ndim + i] * diag[i] * solution[j]);
+		}
+		solution[i] /= diag[i];
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"backward_subs_unit_t_diag",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	// LU DECOMPOSITION
+
 	::glsl::Function lu(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
@@ -358,7 +655,6 @@ void lu(inout float mat[ndim*ndim], out int pivot[ndim]) {
 		);
 	}
 
-}
 }
 }
 
