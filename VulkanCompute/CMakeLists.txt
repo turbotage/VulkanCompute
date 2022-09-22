@@ -13,6 +13,7 @@ add_executable(VulkanCompute
 	"VulkanCompute.cpp"
 	"util.ixx"
 	"glsl.ixx"
+	"glsl.cpp"
 	"linalg/linalg.ixx"
 	"linalg/solver.ixx"
 	"linalg/symm.ixx"
@@ -32,7 +33,8 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/pow.ixx"
 	"expression/algebra/binary/sub.ixx"
 	"expression/expr.ixx" 
-	"expression/expr.cpp") 
+	"expression/expr.cpp"  
+) 
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 

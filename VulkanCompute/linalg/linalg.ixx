@@ -16,7 +16,15 @@ namespace linalg {
 
 	export ::glsl::Function copy_mat(int nrow, int ncol, bool single_precission = true);
 
+	export ::glsl::Function copy_mat_ostart(int nrow, int ncol, bool single_precission = true);
+
+	export ::glsl::Function copy_mat_istart(int nrow, int ncol, bool single_precission = true);
+
 	export ::glsl::Function copy_vec(int ndim, bool single_precission = true);
+
+	export ::glsl::Function copy_vec_ostart(int ndim, bool single_precission = true);
+
+	export ::glsl::Function copy_vec_istart(int ndim, bool single_precission = true);
 
 	export ::glsl::Function max_mag(int nrow, int ncol, bool single_precission = true);
 	
@@ -46,6 +54,8 @@ namespace linalg {
 
 	export ::glsl::Function mat_set_zero(int nrow, int ncol, bool single_precission = true);
 
+	export ::glsl::Function mat_set_ones(int nrow, int ncol, bool single_precission = true);
+
 	// SQUARE
 
 	export ::glsl::Function transpose_square_i(int ndim, bool single_precission = true);
@@ -59,7 +69,6 @@ namespace linalg {
 	export ::glsl::Function mul_unit_lower_upper_square(int ndim, bool single_precission = true);
 
 	export ::glsl::Function mul_mat_vec_square(int ndim, bool single_precission = true);
-
 }
 }
 
@@ -100,10 +109,8 @@ void swap(inout float v1, inout float v2) {
 		static const std::string code = // compute shader
 R"glsl(
 void copy_mat(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
-	for (int i = 0; i < nrow; ++i) {
-		for (int j = 0; j < ncol; ++j) {
-			omat[i*ncol + j] = imat[i*ncol + j];
-		}
+	for (int i = 0; i < nrow*ncol; ++i) {
+		omat[i] = imat[i];
 	}
 }
 )glsl";
@@ -121,6 +128,64 @@ void copy_mat(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 
 		return ::glsl::Function(
 			"copy_mat",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	::glsl::Function copy_mat_ostart(int nrow, int ncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void copy_mat_ostart(in float imat[nrow*ncol], out float omat[nrow*ncol], uint start_index) {
+	for (int i = 0; i < nrow*ncol; ++i) {
+		omat[start_index + i] = imat[i];
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_mat_ostart",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	::glsl::Function copy_mat_istart(int nrow, int ncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void copy_mat_istart(in float imat[nrow*ncol], out float omat[nrow*ncol], uint start_index) {
+	for (int i = 0; i < nrow*ncol; ++i) {
+		omat[i] = imat[start_index + i];
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_mat_istart",
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
@@ -150,6 +215,64 @@ void copy_vec(in float ivec[ndim], out float ovec[ndim]) {
 
 		return ::glsl::Function(
 			"copy_vec",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	::glsl::Function copy_vec_ostart(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void copy_vec_ostart(in float ivec[ndim], out float ovec[ndim], uint start_index) {
+	for (int i = 0; i < ndim; ++i) {
+			ovec[start_index + i] = ivec[i];
+		}
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_vec_ostart",
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	::glsl::Function copy_vec_istart(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void copy_vec_istart(in float ivec[ndim], out float ovec[ndim], uint start_index) {
+	for (int i = 0; i < ndim; ++i) {
+			ovec[i] = ivec[start_index + i];
+		}
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_vec_istart",
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt);
@@ -626,10 +749,8 @@ void mul_mat_vec(in float lmat[nrow*ncol], in float rvec[ncol], out float ovec[n
 		static const std::string code = // compute shader
 R"glsl(
 void mat_set_zero(inout float mat[nrow*ncol]) {
-	for (int i = 0; i < nrow; ++i) {
-		for (int j = 0; j < ncol; ++j) {
-			mat[i*ncol + j] = 0;
-		}
+	for (int i = 0; i < nrow*ncol; ++i) {
+		mat[i] = 0;
 	}
 }
 )glsl";
@@ -647,6 +768,35 @@ void mat_set_zero(inout float mat[nrow*ncol]) {
 
 		return ::glsl::Function(
 			"mat_set_zero",
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+	::glsl::Function mat_set_ones(int nrow, int ncol, bool single_precission) {
+		static const std::string code = // compute shader
+R"glsl(
+void mat_set_ones(inout float mat[nrow*ncol]) {
+	for (int i = 0; i < nrow*ncol; ++i) {
+		mat[i] = 1;
+	}
+}
+)glsl";
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"mat_set_ones",
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt

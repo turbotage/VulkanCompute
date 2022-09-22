@@ -8,9 +8,12 @@ module;
 #include <fstream>
 #include <set>
 
+#include <kompute/Kompute.hpp>
+
 export module glsl;
 
 import util;
+
 
 namespace glsl {
 
@@ -173,10 +176,8 @@ layout (local_size_x = 1) in;
 
 		std::vector<std::unique_ptr<Binding>> m_Bindings;
 		std::vector<Function> m_Functions;
-		//std::unordered_set<Function, Function::HashFunction> m_Functions;
-
 	};
-	
+
 	export enum class eSymbolicType {
 		CONST_TYPE,
 		PARAM_TYPE,
