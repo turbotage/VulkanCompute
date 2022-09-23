@@ -7,6 +7,7 @@ module;
 #include <unordered_set>
 #include <fstream>
 #include <set>
+#include <type_traits>
 
 #include <kompute/Kompute.hpp>
 
@@ -15,27 +16,9 @@ export module glsl;
 import util;
 import vc;
 
-
 namespace glsl {
 
-	export std::vector<uint32_t>
-		compileSource(const std::string& source)
-	{
-		std::ofstream fileOut("tmp_kp_shader.comp");
-		fileOut << source;
-		fileOut.close();
-		if (system(
-			std::string(
-				"glslangValidator -V tmp_kp_shader.comp -o tmp_kp_shader.comp.spv")
-			.c_str()))
-			throw std::runtime_error("Error running glslangValidator command");
-		std::ifstream fileStream("tmp_kp_shader.comp.spv", std::ios::binary);
-		std::vector<char> buffer;
-		buffer.insert(
-			buffer.begin(), std::istreambuf_iterator<char>(fileStream), {});
-		return { (uint32_t*)buffer.data(),
-				 (uint32_t*)(buffer.data() + buffer.size()) };
-	}
+	export std::vector<uint32_t> compileSource(const std::string& source);
 
 	export class Function {
 	public:
@@ -44,37 +27,15 @@ namespace glsl {
 			const std::string& function_name,
 			const std::vector<size_t>& argument_hashes,
 			const std::function<std::string()>& code_func,
-			std::optional<std::vector<Function>> dependencies)
-			: 
-			m_FunctionName(function_name),
-			m_ArgumentHashes(argument_hashes),
-			m_CodeFunc(code_func)
-			
-		{
-			if (dependencies.has_value())
-				m_Dependencies = dependencies.value();
+			std::optional<std::vector<Function>> dependencies);
 
-			m_HashName = std::to_string(HashFunction()(*this));
-		}
+		const std::vector<Function>& getDependencies() const;
 
-		const std::vector<Function>& getDependencies() const {
-			return m_Dependencies;
-		}
+		std::string getCode() const;
 
-		std::string getCode() const {
-			std::string ret = m_CodeFunc();
-			util::replace_all(ret, "NAMEHASH", m_HashName);
-			return ret;
-		}
+		std::string getName() const;
 
-		std::string getName() {
-			return m_FunctionName + "_" + m_HashName;
-		}
-
-		friend bool operator==(const Function& lhs, const Function& rhs) {
-			return lhs.m_FunctionName == rhs.m_FunctionName &&
-				lhs.m_ArgumentHashes == rhs.m_ArgumentHashes;
-		}
+		friend bool operator==(const Function& lhs, const Function& rhs);
 
 		struct HashFunction {
 			std::size_t operator()(const Function& func) const {
@@ -83,10 +44,9 @@ namespace glsl {
 			}
 		};
 
+		static size_t add_functions(std::vector<Function>& funcs, const Function& func);
 
 	private:
-
-		friend void add_functions(std::vector<Function>& funcs, const Function& func);
 		
 		std::string m_FunctionName;
 		std::vector<std::size_t> m_ArgumentHashes;
@@ -95,19 +55,6 @@ namespace glsl {
 
 		std::string m_HashName;
 	};
-	
-	size_t add_functions(std::vector<Function>& funcs, const Function& func) {
-		for (auto& f : func.m_Dependencies) {
-			add_functions(funcs, f);
-		}
-
-		auto it = std::find(funcs.begin(), funcs.end(), func);
-		size_t pos = it - funcs.begin();
-		if (it == funcs.end()) {
-			funcs.push_back(func);
-		}
-		return pos;
-	}
 
 	export class Binding {
 	public:
@@ -121,25 +68,24 @@ namespace glsl {
 	export class BufferBinding : public Binding {
 	public:
 
-		BufferBinding(int set, int binding, std::string type, std::string name)
-			: m_Set(set), m_Binding(binding), m_Type(type), m_Name(name) {}
+		BufferBinding(uint16_t binding, std::string type, std::string name)
+			: m_Binding(binding), m_Type(type), m_Name(name) {}
 
 		std::string operator()() const override {
-			return "layout(set = " + std::to_string(m_Set) + ", binding = " + std::to_string(m_Binding) + ") buffer buf_" +
-				m_Name + " { " + m_Type + " " + m_Name + "[]; };";
+			return "layout(set = 0, binding = " + std::to_string(m_Binding) + ") buffer buf_global_" +
+				m_Name + " { " + m_Type + " " + "global_" + m_Name + "[]; };";
 		}
 
 		bool operator==(const Binding* other) const override {
 			if (auto* b = dynamic_cast<const BufferBinding*>(other); b != nullptr) {
-				return (b->m_Set == m_Set) && (b->m_Binding == m_Binding) && 
+				return (b->m_Binding == m_Binding) && 
 					(b->m_Type == m_Type) && (b->m_Name == m_Name);
 			}
 			return false;
 		}
 
 	private:
-		int m_Set;
-		int m_Binding;
+		uint16_t m_Binding;
 		std::string m_Type;
 		std::string m_Name;
 	};
@@ -157,31 +103,27 @@ namespace glsl {
 
 	};
 
+	export template<typename T>
+	concept ShaderVariableIterator = std::is_same_v<std::shared_ptr<ShaderVariable>, typename std::iterator_traits<T>::value_type>;
+
 	export class MatrixVariable : public ShaderVariable {
 	public:
 
-		MatrixVariable(const std::string& name, 
-			uint16_t ndim1, uint16_t ndim2, 
-			bool single_precission = true)
-			: m_Name(name), m_NDim1(ndim1), m_NDim2(ndim2), m_SinglePrecission(single_precission)
-		{}
+		MatrixVariable(const std::string& name,
+			uint16_t ndim1, uint16_t ndim2,
+			bool single_precission = true);
 
-		std::string getDeclaration() const override {
-			std::string ret;
-			if (m_SinglePrecission) {
-				ret += "float ";
-			}
-			else {
-				ret += "double ";
-			}
-			ret += m_Name + "[" +
-				std::to_string(m_NDim1) + "*" +
-				std::to_string(m_NDim2) + "];";
-		}
+		std::string getDeclaration() const override;
 		
-		std::string getName() const override {
-			return m_Name;
-		}
+		std::string getName() const override;
+
+		std::pair<uint16_t, uint16_t> getDimensions() const;
+
+		uint16_t getNDim1() const;
+
+		uint16_t getNDim2() const;
+
+		bool isSinglePrecission() const;
 
 	private:
 		std::string m_Name;
@@ -198,20 +140,13 @@ namespace glsl {
 			: m_Name(name), m_NDim(ndim), m_SinglePrecission(single_precission)
 		{}
 
-		std::string getDeclaration() const override {
-			std::string ret;
-			if (m_SinglePrecission) {
-				ret += "float ";
-			}
-			else {
-				ret += "double ";
-			}
-			ret += m_Name + "[" + std::to_string(m_NDim) + "];";
-		}
+		std::string getDeclaration() const override;
 
-		std::string getName() const override {
-			return m_Name;
-		}
+		std::string getName() const override;
+
+		uint16_t getDimension() const;
+
+		bool isSinglePrecission() const;
 
 	private:
 		std::string m_Name;
@@ -222,89 +157,32 @@ namespace glsl {
 	export class Shader {
 	public:
 
-		void addBinding(std::unique_ptr<Binding> binding)
+		void addFunction(const Function& func);
+
+		void addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding);
+
+		void addVariable(const std::shared_ptr<ShaderVariable>& var);
+
+		template<ShaderVariableIterator SVIterator> 
+		void apply(const Function& func, SVIterator begin, SVIterator end)
 		{
+			size_t func_pos = Function::add_functions(m_Functions, func);
 
-			auto it = std::find_if(m_Bindings.begin(), m_Bindings.end(), [&binding](const std::unique_ptr<Binding>& b) 
-			{
-				return binding->operator==(b.get());
-			});
+			m_Calls.emplace_back(func_pos, {});
+			auto& back = m_Calls.back();
 
-			if (it == m_Bindings.end()) {
-				m_Bindings.emplace_back(std::move(binding));
+			for (auto it = begin; it != end; ++it) {
+				back.second.emplace_back(*it);
 			}
 		}
 
-		void addFunction(const Function& func)
-		{
-			add_functions(m_Functions, func);
-		}
+		void apply(const Function& func, const std::vector<std::shared_ptr<ShaderVariable>>& vars);
 
-		void addInputMatrix(const std::shared_ptr<MatrixVariable>& mat) 
-		{
-			
-		}
+		std::string compile() const;
 
-		void addVariable(const std::shared_ptr<ShaderVariable>& var)
-		{
-			if (std::find(m_Variables.begin(), m_Variables.end(), var) == m_Variables.end()) {
-				m_Variables.emplace_back(var);
-			}
-		}
+	private:
 
-		void apply(const Function& func, const std::vector<vc::refw<const std::shared_ptr<ShaderVariable>>>& variables)
-		{
-			size_t func_pos = add_functions(m_Functions, func);
-
-			for (auto& var : variables) {
-				addVariable(var);
-			}
-
-			m_Calls.push_back(std::make_pair(func_pos, variables));
-		}
-
-		std::string compile() {
-			std::string ret = 
-R"glsl(
-#version 450
-
-layout (local_size_x = 1) in;
-
-)glsl";
-			
-			for (auto& bind : m_Bindings) {
-				ret += bind->operator()() + "\n";
-			}
-
-			for (auto& func : m_Functions) {
-				ret += func.getCode() + "\n";
-			}
-
-			// open main
-			ret += "void main() {\n";
-
-			// declare variables
-			for (auto& var : m_Variables) {
-				ret += "\t" + var->getDeclaration() + "\n";
-			}
-
-			// add in function calls
-			for (auto& call : m_Calls) {
-				ret += "\t" + m_Functions[call.first].getName() + "(";
-				for (int i = 0; i < call.second.size(); ++i) {
-					ret += call.second[i]->getName();
-					if ((i+1) != call.second.size()) {
-						ret += ", ";
-					}
-				}
-				ret += ")\n";
-			}
-
-			// close main
-			ret += "\n}\n";
-
-			return ret;
-		}
+		bool addBinding(std::unique_ptr<Binding> binding);
 
 	private:
 
@@ -323,106 +201,27 @@ layout (local_size_x = 1) in;
 	export class SymbolicContext {
 	public:
 
-		void insert_const(const std::pair<std::string, uint32_t>& cp)
-		{
-			if (symtype_map.contains(cp.first))
-				throw std::runtime_error("const name already existed in SymbolicContext");
+		void insert_const(const std::pair<std::string, uint32_t>& cp);
 
-			for (auto& p : consts_map) {
-				if (p.first == cp.first)
-					throw std::runtime_error("const name already existed in SymbolicContext");
-				if (p.second == cp.second)
-					throw std::runtime_error("const index already existed in SymbolicContext");
-			}
-			
-			symtype_map.insert({ cp.first, eSymbolicType::CONST_TYPE });
-			consts_map.insert(cp);
-		}
+		void insert_param(const std::pair<std::string, uint32_t>& pp);
 
-		void insert_param(const std::pair<std::string, uint32_t>& pp)
-		{
-			if (symtype_map.contains(pp.first))
-				throw std::runtime_error("const name already existed in SymbolicContext");
+		eSymbolicType get_symtype(const std::string& name) const;
 
-			for (auto& p : params_map) {
-				if (p.first == pp.first)
-					throw std::runtime_error("const name already existed in SymbolicContext");
-				if (p.second == pp.second)
-					throw std::runtime_error("const index already existed in SymbolicContext");
-			}
+		uint32_t get_params_index(const std::string& name) const;
 
-			symtype_map.insert({ pp.first, eSymbolicType::PARAM_TYPE });
-			params_map.insert(pp);
-		}
+		const std::string& get_params_name(size_t index) const;
 
-		eSymbolicType get_symtype(const std::string& name) const 
-		{
-			return symtype_map.at(name);
-		}
+		uint32_t get_consts_index(const std::string& name) const;
 
-		uint32_t get_params_index(const std::string& name) const 
-		{
-			for (auto& v : params_map) {
-				if (v.first == name)
-					return v.second;
-			}
-			throw std::runtime_error("Name was not in params in SymbolicContext");
-		}
+		const std::string& get_consts_name(size_t index) const;
 
-		const std::string& get_params_name(size_t index) const
-		{
-			for (auto& v : params_map) {
-				if (v.second == index)
-					return v.first;
-			}
-			throw std::runtime_error("Index was not in params in SymbolicContext");
-		}
+		const std::string& get_consts_name() const;
 
-		uint32_t get_consts_index(const std::string& name) const
-		{
-			for (auto& v : consts_map) {
-				if (v.first == name)
-					return v.second;
-			}
-			throw std::runtime_error("Name was not in consts in SymbolicContext");
-		}
+		const std::string& get_consts_iterable_by() const;
 
-		const std::string& get_consts_name(size_t index) const {
-			for (auto& v : consts_map) {
-				if (v.second == index)
-					return v.first;
-			}
-			throw std::runtime_error("Index was not in consts in SymbolicContext");
-		}
+		const std::string& get_params_iterable_by() const;
 
-		const std::string& get_consts_name() const {
-			return consts_name;
-		}
-
-		const std::string& get_consts_iterable_by() const {
-			return consts_iterable_by;
-		}
-
-		const std::string& get_params_iterable_by() const {
-			return params_iterable_by;
-		}
-
-		std::string get_glsl_var_name(const std::string& name) const
-		{
-			glsl::eSymbolicType stype = symtype_map.at(name);
-
-			if (stype == glsl::eSymbolicType::PARAM_TYPE) {
-				uint32_t index = get_params_index(name);
-				return params_name + "[" + std::to_string(index) + "]";
-			}
-
-			if (stype == glsl::eSymbolicType::CONST_TYPE) {
-				uint32_t index = get_consts_index(name);
-				return consts_name + "[" + consts_iterable_by + "*" + nconst_name + "+" + std::to_string(index) + "]";
-			}
-
-			throw std::runtime_error("Variable was neither const nor param");
-		}
+		std::string get_glsl_var_name(const std::string& name) const;
 
 		std::set<std::pair<std::string, uint32_t>> params_map;
 		std::set<std::pair<std::string, uint32_t>> consts_map;

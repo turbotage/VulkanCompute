@@ -913,6 +913,8 @@ void main() {
 void test_new_gensystem()
 {
 	glsl::Shader shader;
+
+
 }
 
 int main() {
