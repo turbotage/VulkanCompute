@@ -9,6 +9,8 @@ module glsl;
 
 using namespace glsl;
 
+import linalg;
+
 std::vector<uint32_t> glsl::compileSource(const std::string& source)
 {
 	std::ofstream fileOut("tmp_kp_shader.comp");
@@ -43,8 +45,6 @@ Function::Function(
 {
 	if (dependencies.has_value())
 		m_Dependencies = dependencies.value();
-
-	m_HashName = std::to_string(HashFunction()(*this));
 }
 
 const std::vector<Function>& Function::getDependencies() const {
@@ -52,13 +52,11 @@ const std::vector<Function>& Function::getDependencies() const {
 }
 
 std::string Function::getCode() const {
-	std::string ret = m_CodeFunc();
-	util::replace_all(ret, "NAMEHASH", m_HashName);
-	return ret;
+	return m_CodeFunc();
 }
 
 std::string Function::getName() const {
-	return m_FunctionName + "_" + m_HashName;
+	return m_FunctionName;
 }
 
 bool glsl::operator==(const Function& lhs, const Function& rhs)
@@ -68,15 +66,32 @@ bool glsl::operator==(const Function& lhs, const Function& rhs)
 }
 
 
-size_t Function::add_functions(std::vector<Function>& funcs, const Function& func) {
+size_t Function::add_function(std::vector<Function>& funcs, const Function& func) {
 	for (auto& f : func.m_Dependencies) {
-		add_functions(funcs, f);
+		add_function(funcs, f);
 	}
 
 	auto it = std::find(funcs.begin(), funcs.end(), func);
 	size_t pos = it - funcs.begin();
 	if (it == funcs.end()) {
 		funcs.push_back(func);
+	}
+	return pos;
+}
+
+// SHADER VARIABLE
+
+size_t ShaderVariable::add_variable(std::vector<std::shared_ptr<ShaderVariable>>& vars,
+	const std::shared_ptr<ShaderVariable>& var)
+{
+
+	auto it = std::find_if(vars.begin(), vars.end(), [&var](const std::shared_ptr<ShaderVariable>& v) {
+			return *v == *var;
+		});
+
+	size_t pos = it - vars.begin();
+	if (it == vars.end()) {
+		vars.push_back(var);
 	}
 	return pos;
 }
@@ -162,34 +177,25 @@ bool glsl::VectorVariable::isSinglePrecission() const
 
 void Shader::addFunction(const Function& func)
 {
-	Function::add_functions(m_Functions, func);
+	Function::add_function(m_Functions, func);
 }
 
 void Shader::addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding)
 {
 	auto ndim1 = mat->getNDim1();
 	auto ndim2 = mat->getNDim2();
-
+	bool sp = mat->isSinglePrecission();
+	
 	auto global_mat = std::make_shared<MatrixVariable>(
-		"global_" + mat->getName(), ndim1, ndim2, mat->isSinglePrecission());
+		"global_" + mat->getName(), ndim1, ndim2, sp);
 
-	addVariable(mat);
-	addVariable(global_mat);
-
+	
+	apply(linalg::copy_mat_istart(ndim1, ndim2, sp), nullptr, global_mat, mat);
 }
 
 void Shader::addVariable(const std::shared_ptr<ShaderVariable>& var)
 {
-	if (std::find(m_Variables.begin(), m_Variables.end(), var) == m_Variables.end()) {
-		m_Variables.emplace_back(var);
-	}
-}
-
-void Shader::apply(const Function& func, const std::vector<std::shared_ptr<ShaderVariable>>& vars)
-{
-	size_t func_pos = Function::add_functions(m_Functions, func);
-
-	m_Calls.emplace_back(func_pos, vars);
+	_addVariable(var);
 }
 
 std::string Shader::compile() const
@@ -220,10 +226,22 @@ layout (local_size_x = 1) in;
 
 	// add in function calls
 	for (auto& call : m_Calls) {
-		ret += "\t" + m_Functions[call.first].getName() + "(";
-		for (int i = 0; i < call.second.size(); ++i) {
-			ret += call.second[i]->getName();
-			if ((i + 1) != call.second.size()) {
+		ret += "\t";
+		int16_t ret_pos = std::get<1>(call);
+		if (ret_pos == -1) {
+			ret += m_Variables[ret_pos]->getName() + " = ";
+		}
+
+		uint16_t func_pos = std::get<0>(call);
+
+		ret += m_Functions[func_pos].getName() + "(";
+
+		auto& input_pos_vec = std::get<2>(call);
+
+		for (int i = 0; i < input_pos_vec.size(); ++i) {
+			size_t arg_pos = input_pos_vec[i];
+			ret += m_Variables[arg_pos]->getName();
+			if ((i + 1) != input_pos_vec.size()) {
 				ret += ", ";
 			}
 		}
@@ -236,7 +254,7 @@ layout (local_size_x = 1) in;
 	return ret;
 }
 
-bool Shader::addBinding(std::unique_ptr<Binding> binding)
+bool Shader::_addBinding(std::unique_ptr<Binding> binding)
 {
 	auto it = std::find_if(m_Bindings.begin(), m_Bindings.end(), [&binding](const std::unique_ptr<Binding>& b)
 		{
@@ -248,6 +266,16 @@ bool Shader::addBinding(std::unique_ptr<Binding> binding)
 		return true;
 	}
 	return false;
+}
+
+size_t Shader::_addVariable(const std::shared_ptr<ShaderVariable>& var)
+{
+	auto it = std::find(m_Variables.begin(), m_Variables.end(), var);
+	size_t pos = it - m_Variables.end();
+	if (it == m_Variables.end()) {
+		m_Variables.emplace_back(var);
+	}
+	return pos;
 }
 
 // SYMBOLIC CONTEXT

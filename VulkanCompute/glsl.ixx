@@ -44,7 +44,7 @@ namespace glsl {
 			}
 		};
 
-		static size_t add_functions(std::vector<Function>& funcs, const Function& func);
+		static size_t add_function(std::vector<Function>& funcs, const Function& func);
 
 	private:
 		
@@ -100,6 +100,9 @@ namespace glsl {
 		friend bool operator==(const ShaderVariable& left, const ShaderVariable& right) {
 			return left.getName() == right.getName();
 		}
+
+		static size_t add_variable(std::vector<std::shared_ptr<ShaderVariable>>& vars, 
+			const std::shared_ptr<ShaderVariable>& var);
 
 	};
 
@@ -164,25 +167,46 @@ namespace glsl {
 		void addVariable(const std::shared_ptr<ShaderVariable>& var);
 
 		template<ShaderVariableIterator SVIterator> 
-		void apply(const Function& func, SVIterator begin, SVIterator end)
+		void apply(const Function& func, 
+			const std::shared_ptr<ShaderVariable>& ret, 
+			std::optional<std::pair<SVIterator,SVIterator>> args_it)
 		{
-			size_t func_pos = Function::add_functions(m_Functions, func);
+			uint16_t func_pos = Function::add_functions(m_Functions, func);
 
-			m_Calls.emplace_back(func_pos, {});
-			auto& back = m_Calls.back();
-
-			for (auto it = begin; it != end; ++it) {
-				back.second.emplace_back(*it);
+			int16_t ret_pos = -1;
+			if (ret) {
+				ret_pos = _addVariable(ret);
 			}
+
+			std::vector<uint16_t> input_pos;
+			if (args_it.has_value()) {
+				auto& its = args_it.value();
+				size_t ninputs = std::distance(its.first, its.second);
+				input_pos.reserve(ninputs);
+				for (auto it = its.first; it != its.second; ++it) {
+					input_pos = _addVariable(*it);
+				}
+			}
+
+			m_Calls.emplace_back(func_pos, ret_pos, std::move(input_pos));
 		}
 
-		void apply(const Function& func, const std::vector<std::shared_ptr<ShaderVariable>>& vars);
+		template<ShaderVariableIterator SVIterator>
+		void apply(const Function& func,
+			const std::shared_ptr<ShaderVariable>& ret,
+			const std::vector<std::shared_ptr<ShaderVariable>>& args)
+		{
+			apply(func, ret, std::make_pair(args.begin(), args.end()));
+		}
+
 
 		std::string compile() const;
 
 	private:
 
-		bool addBinding(std::unique_ptr<Binding> binding);
+		bool _addBinding(std::unique_ptr<Binding> binding);
+
+		size_t _addVariable(const std::shared_ptr<ShaderVariable>& var);
 
 	private:
 
@@ -190,7 +214,13 @@ namespace glsl {
 		std::vector<Function> m_Functions;
 
 		std::vector<std::shared_ptr<ShaderVariable>> m_Variables;
-		std::vector<std::pair<size_t, std::vector<std::shared_ptr<ShaderVariable>>>> m_Calls;
+
+
+		// m_Calls[0] is index to function in m_Functions
+		// m_Calls[i] for i > 0 is variable to use in function call, index is to
+		// m_Variables
+		std::vector<std::tuple<uint16_t, int16_t, std::vector<uint16_t>>> m_Calls;
+
 	};
 
 	export enum class eSymbolicType {
