@@ -8,80 +8,17 @@ export module linalg;
 import glsl;
 import util;
 
-// INTERFACE
-namespace glsl {
-namespace linalg {
-	
-	export ::glsl::Function swap(bool single_precission = true);
-
-	export ::glsl::Function copy_mat(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function copy_mat_ostart(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function copy_mat_istart(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function copy_vec(int ndim, bool single_precission = true);
-
-	export ::glsl::Function copy_vec_ostart(int ndim, bool single_precission = true);
-
-	export ::glsl::Function copy_vec_istart(int ndim, bool single_precission = true);
-
-	export ::glsl::Function max_mag(int nrow, int ncol, bool single_precission = true);
-	
-	export ::glsl::Function max_mag_subrow(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function max_mag_subcol(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function row_interchange_i(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function subrow_interchange_i(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function col_interchange_i(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function subcol_interchange_i(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function mul_mat_mat(int lnrow, int mid_dim, int rncol, bool single_precission = true);
-
-	export ::glsl::Function mul_mat_transpose(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function mul_mat_transpose_add(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function mul_transpose_mat(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function mul_transpose_mat_add(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function mul_mat_vec(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function mat_set_zero(int nrow, int ncol, bool single_precission = true);
-
-	export ::glsl::Function mat_set_ones(int nrow, int ncol, bool single_precission = true);
-
-	// SQUARE
-
-	export ::glsl::Function transpose_square_i(int ndim, bool single_precission = true);
-
-	export ::glsl::Function mul_diag_vec_square_i(int ndim, bool single_precission = true);
-
-	export ::glsl::Function mul_inv_diag_vec_square_i(int ndim, bool single_precission = true);
-
-	export ::glsl::Function mul_mat_mat_square(int ndim, bool single_precission = true);
-
-	export ::glsl::Function mul_unit_lower_upper_square(int ndim, bool single_precission = true);
-
-	export ::glsl::Function mul_mat_vec_square(int ndim, bool single_precission = true);
-}
-}
-
-
 // IMPLEMENTATION
 namespace glsl {
 namespace linalg {
 
-	::glsl::Function swap(bool single_precission)
+	constexpr auto UNIQUE_ID = "UNIQUEID";
+
+	export ::glsl::Function swap(bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void swap(inout float v1, inout float v2) {
+void swap_UNIQUEID(inout float v1, inout float v2) {
 	float temp = v1;
 	v1 = v2;
 	v2 = temp;
@@ -91,6 +28,7 @@ void swap(inout float v1, inout float v2) {
 		std::function<std::string()> code_func = [single_precission]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, single_precission ? "S" : "D");
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
 			}
@@ -98,26 +36,29 @@ void swap(inout float v1, inout float v2) {
 		};
 
 		return ::glsl::Function(
-			"swap",
+			"swap_" + single_precission ? "S" : "D",
 			{ size_t(single_precission) },
 			code_func, 
 			std::nullopt);
 	}
 
-	::glsl::Function copy_mat(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function copy_mat(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void copy_mat(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
+void copy_mat_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 	for (int i = 0; i < nrow*ncol; ++i) {
 		omat[i] = imat[i];
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -127,26 +68,29 @@ void copy_mat(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 		};
 
 		return ::glsl::Function(
-			"copy_mat",
+			"copy_mat_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
 
-	::glsl::Function copy_mat_ostart(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function copy_mat_ostart(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void copy_mat_ostart(in float imat[nrow*ncol], out float omat[nrow*ncol], uint start_index) {
+void copy_mat_ostart_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol], uint start_index) {
 	for (int i = 0; i < nrow*ncol; ++i) {
 		omat[start_index + i] = imat[i];
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -156,26 +100,62 @@ void copy_mat_ostart(in float imat[nrow*ncol], out float omat[nrow*ncol], uint s
 		};
 
 		return ::glsl::Function(
-			"copy_mat_ostart",
+			"copy_mat_ostart_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
 
-	::glsl::Function copy_mat_istart(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function copy_mat_ostarted(int nrow, int ncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void copy_mat_ostarted_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
+	uint start_index = nrow*ncol*gl_GlobalInvocationID.x;
+	for (int i = 0; i < nrow*ncol; ++i) {
+		omat[start_index + i] = imat[i];
+	}
+}
+)glsl";
+
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_mat_ostarted_" + uniqueid,
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	export ::glsl::Function copy_mat_istart(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void copy_mat_istart(in float imat[nrow*ncol], out float omat[nrow*ncol], uint start_index) {
+void copy_mat_istart_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol], uint start_index) {
 	for (int i = 0; i < nrow*ncol; ++i) {
 		omat[i] = imat[start_index + i];
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -185,17 +165,50 @@ void copy_mat_istart(in float imat[nrow*ncol], out float omat[nrow*ncol], uint s
 		};
 
 		return ::glsl::Function(
-			"copy_mat_istart",
+			"copy_mat_istart_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
 
-	::glsl::Function copy_vec(int ndim, bool single_precission)
+	export ::glsl::Function copy_mat_istarted(int nrow, int ncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void copy_mat_istarted_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
+	uint start_index = nrow*ncol*gl_GlobalInvocationID.x;
+	for (int i = 0; i < nrow*ncol; ++i) {
+		omat[i] = imat[start_index + i];
+	}
+}
+)glsl";
+
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_mat_istarted_" + uniqueid,
+			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	export ::glsl::Function copy_vec(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void copy_vec(in float ivec[ndim], out float ovec[ndim]) {
+void copy_vec_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 	for (int i = 0; i < ndim; ++i) {
 			ovec[i] = ivec[i];
 		}
@@ -203,9 +216,12 @@ void copy_vec(in float ivec[ndim], out float ovec[ndim]) {
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -214,17 +230,17 @@ void copy_vec(in float ivec[ndim], out float ovec[ndim]) {
 		};
 
 		return ::glsl::Function(
-			"copy_vec",
+			"copy_vec_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
 
-	::glsl::Function copy_vec_ostart(int ndim, bool single_precission)
+	export ::glsl::Function copy_vec_ostart(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void copy_vec_ostart(in float ivec[ndim], out float ovec[ndim], uint start_index) {
+void copy_vec_ostart_UNIQUEID(in float ivec[ndim], out float ovec[ndim], uint start_index) {
 	for (int i = 0; i < ndim; ++i) {
 			ovec[start_index + i] = ivec[i];
 		}
@@ -232,9 +248,12 @@ void copy_vec_ostart(in float ivec[ndim], out float ovec[ndim], uint start_index
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -243,17 +262,50 @@ void copy_vec_ostart(in float ivec[ndim], out float ovec[ndim], uint start_index
 		};
 
 		return ::glsl::Function(
-			"copy_vec_ostart",
+			"copy_vec_ostart_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
 
-	::glsl::Function copy_vec_istart(int ndim, bool single_precission)
+	export ::glsl::Function copy_vec_ostarted(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
-void copy_vec_istart(in float ivec[ndim], out float ovec[ndim], uint start_index) {
+void copy_vec_ostarted_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
+	uint start_index = ndim*gl_GlobalInvocationID.x;
+	for (int i = 0; i < ndim; ++i) {
+			ovec[start_index + i] = ivec[i];
+		}
+	}
+}
+)glsl";
+
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_vec_ostarted_" + uniqueid,
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	export ::glsl::Function copy_vec_istart(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void copy_vec_istart_UNIQUEID(in float ivec[ndim], out float ovec[ndim], uint start_index) {
 	for (int i = 0; i < ndim; ++i) {
 			ovec[i] = ivec[start_index + i];
 		}
@@ -261,9 +313,12 @@ void copy_vec_istart(in float ivec[ndim], out float ovec[ndim], uint start_index
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -272,17 +327,50 @@ void copy_vec_istart(in float ivec[ndim], out float ovec[ndim], uint start_index
 		};
 
 		return ::glsl::Function(
-			"copy_vec_istart",
+			"copy_vec_istart_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
 
-	::glsl::Function max_mag(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function copy_vec_istarted(int ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void copy_vec_istarted_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
+	uint start_index = ndim*gl_GlobalInvocationID.x;
+	for (int i = 0; i < ndim; ++i) {
+			ovec[i] = ivec[start_index + i];
+		}
+	}
+}
+)glsl";
+
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"copy_vec_istarted_" + uniqueid,
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt);
+	}
+
+	export ::glsl::Function max_mag(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void max_mag(in float mat[nrow*ncol], out int max_row_idx, out int max_col_idx, out float max) {
+void max_mag_UNIQUEID(in float mat[nrow*ncol], out int max_row_idx, out int max_col_idx, out float max) {
 	max_row_idx = 0;
 	max_col_idx = 0;
 	max = 0.0;
@@ -300,9 +388,12 @@ void max_mag(in float mat[nrow*ncol], out int max_row_idx, out int max_col_idx, 
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -312,17 +403,17 @@ void max_mag(in float mat[nrow*ncol], out int max_row_idx, out int max_col_idx, 
 		};
 
 		return ::glsl::Function(
-			"max_mag",
+			"max_mag_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
 
-	::glsl::Function max_mag_subrow(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function max_mag_subrow(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void max_mag_subrow(in float mat[nrow*ncol], int row, int start_col, out int max_idx, out float max) {
+void max_mag_subrow_UNIQUEID(in float mat[nrow*ncol], int row, int start_col, out int max_idx, out float max) {
 	max_idx = 0;
 	max = 0.0;
 	float val;
@@ -336,9 +427,12 @@ void max_mag_subrow(in float mat[nrow*ncol], int row, int start_col, out int max
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -348,17 +442,17 @@ void max_mag_subrow(in float mat[nrow*ncol], int row, int start_col, out int max
 		};
 
 		return ::glsl::Function(
-			"max_mag_subrow",
+			"max_mag_subrow_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
 
-	::glsl::Function max_mag_subcol(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function max_mag_subcol(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void max_mag_subcol(in float mat[nrow*ncol], int col, int start_row, out int max_idx, out float max) {
+void max_mag_subcol_UNIQUEID(in float mat[nrow*ncol], int col, int start_row, out int max_idx, out float max) {
 	max_idx = 0;
 	max = 0.0;
 	float val;
@@ -372,9 +466,12 @@ void max_mag_subcol(in float mat[nrow*ncol], int col, int start_row, out int max
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -384,26 +481,29 @@ void max_mag_subcol(in float mat[nrow*ncol], int col, int start_row, out int max
 		};
 
 		return ::glsl::Function(
-			"max_mag_subcol",
+			"max_mag_subcol_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
 
-	::glsl::Function row_interchange_i(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function row_interchange_i(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void row_interchange_i(inout float mat[nrow*ncol], int ii, int jj) {
+void row_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int ii, int jj) {
 	for (int k = 0; k < ncol; ++k) {
 		swap(mat[ii*ncol + k], mat[jj*ncol + k]);
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			if (!single_precission) {
@@ -413,27 +513,30 @@ void row_interchange_i(inout float mat[nrow*ncol], int ii, int jj) {
 		};
 
 		return ::glsl::Function(
-			"row_interchange_i",
+			"row_interchange_i_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::make_optional<std::vector<Function>>({ swap(single_precission) })
 		);
 	}
 
-	::glsl::Function subrow_interchange_i(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function subrow_interchange_i(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void subrow_interchange_i(inout float mat[nrow*ncol], int start_col, int ii, int jj) {
+void subrow_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int start_col, int ii, int jj) {
 	for (int k = start_col; k < ncol; ++k) {
 		swap(mat[ii*ncol + k], mat[jj*ncol + k]);
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			if (!single_precission) {
@@ -443,27 +546,30 @@ void subrow_interchange_i(inout float mat[nrow*ncol], int start_col, int ii, int
 		};
 
 		return ::glsl::Function(
-			"subrow_interchange_i",
+			"subrow_interchange_i_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::make_optional<std::vector<Function>>({ swap(single_precission) })
 		);
 	}
 
-	::glsl::Function col_interchange_i(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function col_interchange_i(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void col_interchange_i(inout float mat[nrow*ncol], int ii, int jj) {
+void col_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int ii, int jj) {
 	for (int k = 0; k < nrow; ++k) {
 		swap(mat[k*ncol + ii], mat[k*ncol + jj]);
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			if (!single_precission) {
@@ -473,27 +579,30 @@ void col_interchange_i(inout float mat[nrow*ncol], int ii, int jj) {
 		};
 
 		return ::glsl::Function(
-			"col_interchange_i",
+			"col_interchange_i_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::make_optional<std::vector<Function>>({ swap(single_precission) })
 		);
 	}
 
-	::glsl::Function subcol_interchange_i(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function subcol_interchange_i(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
-void col_interchange_i(inout float mat[nrow*ncol], int start_row, int ii, int jj) {
+void col_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int start_row, int ii, int jj) {
 	for (int k = start_row; k < nrow; ++k) {
 		swap(mat[k*ncol + ii], mat[k*ncol + jj]);
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			if (!single_precission) {
@@ -503,18 +612,18 @@ void col_interchange_i(inout float mat[nrow*ncol], int start_row, int ii, int jj
 		};
 
 		return ::glsl::Function(
-			"col_interchange_i",
+			"col_interchange_i_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::make_optional<std::vector<Function>>({ swap(single_precission) })
 		);
 	}
 
-	::glsl::Function mul_mat_mat(int lnrow, int mid_dim, int rncol, bool single_precission)
+	export ::glsl::Function mul_mat_mat(int lnrow, int mid_dim, int rncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void mul_mat_mat(in float lmat[lnrow*mid_dim], in float rmat[mid_dim*rncol], out float omat[lnrow*rncol]) {
+void mul_mat_mat_UNIQUEID(in float lmat[lnrow*mid_dim], in float rmat[mid_dim*rncol], out float omat[lnrow*rncol]) {
 	float entry;
 	for (int i = 0; i < lnrow; ++i) {
 		for (int j = 0; j < rncol; ++j) {
@@ -528,9 +637,12 @@ void mul_mat_mat(in float lmat[lnrow*mid_dim], in float rmat[mid_dim*rncol], out
 }
 )glsl";
 
-		std::function<std::string()> code_func = [lnrow, mid_dim, rncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(lnrow) + "_" + std::to_string(mid_dim) + "_" + std::to_string(rncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [lnrow, mid_dim, rncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "lnrow", std::to_string(lnrow));
 			util::replace_all(temp, "mid_dim", std::to_string(mid_dim));
 			util::replace_all(temp, "rncol", std::to_string(rncol));
@@ -541,18 +653,18 @@ void mul_mat_mat(in float lmat[lnrow*mid_dim], in float rmat[mid_dim*rncol], out
 		};
 
 		return ::glsl::Function(
-			"mul_mat_mat",
+			"mul_mat_mat_" + uniqueid,
 			{ size_t(lnrow), size_t(mid_dim), size_t(rncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function mul_mat_transpose(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function mul_mat_transpose(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void mul_mat_transpose(in float mat[nrow*ncol], out float omat[nrow*nrow]) {
+void mul_mat_transpose_UNIQUEID(in float mat[nrow*ncol], out float omat[nrow*nrow]) {
 	float entry;
 	for (int i = 0; i < nrow; ++i) {
 		for (int j = 0; j <= i; ++j) {
@@ -570,9 +682,12 @@ void mul_mat_transpose(in float mat[nrow*ncol], out float omat[nrow*nrow]) {
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -582,18 +697,18 @@ void mul_mat_transpose(in float mat[nrow*ncol], out float omat[nrow*nrow]) {
 		};
 
 		return ::glsl::Function(
-			"mul_mat_transpose",
+			"mul_mat_transpose_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function mul_mat_transpose_add(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function mul_mat_transpose_add(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
-void mul_mat_transpose_add(in float mat[nrow*ncol], inout float omat[nrow*nrow]) {
+void mul_mat_transpose_add_UNIQUEID(in float mat[nrow*ncol], inout float omat[nrow*nrow]) {
 	float entry;
 	for (int i = 0; i < nrow; ++i) {
 		for (int j = 0; j <= i; ++j) {
@@ -610,9 +725,12 @@ void mul_mat_transpose_add(in float mat[nrow*ncol], inout float omat[nrow*nrow])
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -622,18 +740,18 @@ void mul_mat_transpose_add(in float mat[nrow*ncol], inout float omat[nrow*nrow])
 		};
 
 		return ::glsl::Function(
-			"mul_mat_transpose",
+			"mul_mat_transpose_add_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function mul_transpose_mat(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function mul_transpose_mat(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
-void mul_transpose_mat(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
+void mul_transpose_mat_UNIQUEID(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
 	float entry;
 	for (int i = 0; i < ncol; ++i) {
 		for (int j = 0; j <= i; ++j) {
@@ -650,9 +768,12 @@ void mul_transpose_mat(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -662,18 +783,18 @@ void mul_transpose_mat(in float mat[nrow*ncol], out float omat[ncol*ncol]) {
 		};
 
 		return ::glsl::Function(
-			"mul_transpose_mat",
+			"mul_transpose_mat_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function mul_transpose_mat_add(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function mul_transpose_mat_add(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
-void mul_transpose_mat_add(in float mat[nrow*ncol], inout float omat[ncol*ncol]) {
+void mul_transpose_mat_add_UNIQUEID(in float mat[nrow*ncol], inout float omat[ncol*ncol]) {
 	float entry;
 	for (int i = 0; i < ncol; ++i) {
 		for (int j = 0; j <= i; ++j) {
@@ -690,9 +811,12 @@ void mul_transpose_mat_add(in float mat[nrow*ncol], inout float omat[ncol*ncol])
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -702,18 +826,18 @@ void mul_transpose_mat_add(in float mat[nrow*ncol], inout float omat[ncol*ncol])
 		};
 
 		return ::glsl::Function(
-			"mul_transpose_mat_add",
+			"mul_transpose_mat_add_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function mul_mat_vec(int nrow, int ncol, bool single_precission) 
+	export ::glsl::Function mul_mat_vec(int nrow, int ncol, bool single_precission) 
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void mul_mat_vec(in float lmat[nrow*ncol], in float rvec[ncol], out float ovec[nrow]) {
+void mul_mat_vec_UNIQUEID(in float lmat[nrow*ncol], in float rvec[ncol], out float ovec[nrow]) {
 	float entry;
 	for (int i = 0; i < nrow; ++i) {
 		entry = 0.0;
@@ -725,9 +849,12 @@ void mul_mat_vec(in float lmat[nrow*ncol], in float rvec[ncol], out float ovec[n
 }
 )glsl";
 		
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -737,27 +864,30 @@ void mul_mat_vec(in float lmat[nrow*ncol], in float rvec[ncol], out float ovec[n
 		};
 
 		return ::glsl::Function(
-			"mul_mat_vec",
+			"mul_mat_vec_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 	
-	::glsl::Function mat_set_zero(int nrow, int ncol, bool single_precission)
+	export ::glsl::Function mat_set_zero(int nrow, int ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void mat_set_zero(inout float mat[nrow*ncol]) {
+void mat_set_zero_UNIQUEID(inout float mat[nrow*ncol]) {
 	for (int i = 0; i < nrow*ncol; ++i) {
 		mat[i] = 0;
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -767,26 +897,29 @@ void mat_set_zero(inout float mat[nrow*ncol]) {
 		};
 
 		return ::glsl::Function(
-			"mat_set_zero",
+			"mat_set_zero_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function mat_set_ones(int nrow, int ncol, bool single_precission) {
+	export ::glsl::Function mat_set_ones(int nrow, int ncol, bool single_precission) {
 		static const std::string code = // compute shader
 R"glsl(
-void mat_set_ones(inout float mat[nrow*ncol]) {
+void mat_set_ones_UNIQUEID(inout float mat[nrow*ncol]) {
 	for (int i = 0; i < nrow*ncol; ++i) {
 		mat[i] = 1;
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [nrow, ncol, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "nrow", std::to_string(nrow));
 			util::replace_all(temp, "ncol", std::to_string(ncol));
 			if (!single_precission) {
@@ -796,7 +929,7 @@ void mat_set_ones(inout float mat[nrow*ncol]) {
 		};
 
 		return ::glsl::Function(
-			"mat_set_ones",
+			"mat_set_ones_" + uniqueid,
 			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt
@@ -805,11 +938,11 @@ void mat_set_ones(inout float mat[nrow*ncol]) {
 
 	// SQUARE
 
-	::glsl::Function transpose_square_i(int ndim, bool single_precission)
+	export ::glsl::Function transpose_square_i(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void transpose_square_i(inout float mat[ndim*ndim]) {
+void transpose_square_i_UNIQUEID(inout float mat[ndim*ndim]) {
 	for (int i = 1; i < ndim; ++i) {
 		for (int j = 0; j < i; ++j) {
 			swap(mat[i*ndim + j], mat[j*n + i]);
@@ -818,7 +951,9 @@ void transpose_square_i(inout float mat[ndim*ndim]) {
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			if (!single_precission) {
@@ -829,7 +964,7 @@ void transpose_square_i(inout float mat[ndim*ndim]) {
 		};
 
 		return ::glsl::Function(
-			"transpose_square_i",
+			"transpose_square_i_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::make_optional<std::vector<Function>>({ swap(single_precission) })
@@ -837,21 +972,24 @@ void transpose_square_i(inout float mat[ndim*ndim]) {
 
 	}
 
-	::glsl::Function mul_diag_vec_square_i(int ndim, bool single_precission)
+	export ::glsl::Function mul_diag_vec_square_i(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void mul_diag_vec_square_i(in float mat[ndim*ndim], inout float vec[ndim]) {
+void mul_diag_vec_square_i_UNIQUEID(in float mat[ndim*ndim], inout float vec[ndim]) {
 	for (int k = 0; k < ndim; ++k) {
 		vec[k] *= mat[i*ndim + i];
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			if (!single_precission) {
+				util::replace_all(temp, UNIQUE_ID, uniqueid);
 				util::replace_all(temp, "float", "double");
 				util::replace_all(temp, "ndim", std::to_string(ndim));
 			}
@@ -859,27 +997,30 @@ void mul_diag_vec_square_i(in float mat[ndim*ndim], inout float vec[ndim]) {
 		};
 
 		return ::glsl::Function(
-			"mul_diag_vec_square_i",
+			"mul_diag_vec_square_i_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function mul_inv_diag_vec_square_i(int ndim, bool single_precission)
+	export ::glsl::Function mul_inv_diag_vec_square_i(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void mul_inv_diag_vec_square_i(in float mat[ndim*ndim], inout float vec[ndim]) {
+void mul_inv_diag_vec_square_i_UNIQUEID(in float mat[ndim*ndim], inout float vec[ndim]) {
 	for (int k = 0; k < ndim; ++k) {
 		vec[k] /= mat[i*ndim + i];
 	}
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -888,18 +1029,18 @@ void mul_inv_diag_vec_square_i(in float mat[ndim*ndim], inout float vec[ndim]) {
 		};
 		
 		return ::glsl::Function(
-			"mul_inv_diag_vec_square_i",
+			"mul_inv_diag_vec_square_i_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function mul_mat_mat_square(int ndim, bool single_precission)
+	export ::glsl::Function mul_mat_mat_square(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void mul_mat_mat_square(in float lmat[ndim*ndim], in float rmat[ndim*ndim], inout float omat[ndim*ndim]) {
+void mul_mat_mat_square_UNIQUEID(in float lmat[ndim*ndim], in float rmat[ndim*ndim], inout float omat[ndim*ndim]) {
 	float entry;
 	for (int i = 0; i < ndim; ++i) {
 		for (int j = 0; j < ndim; ++j) {
@@ -913,9 +1054,12 @@ void mul_mat_mat_square(in float lmat[ndim*ndim], in float rmat[ndim*ndim], inou
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -924,18 +1068,18 @@ void mul_mat_mat_square(in float lmat[ndim*ndim], in float rmat[ndim*ndim], inou
 		};
 
 		return ::glsl::Function(
-			"mul_mat_mat_square",
+			"mul_mat_mat_square_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 	
-	::glsl::Function mul_unit_lower_upper_square(int ndim, bool single_precission)
+	export ::glsl::Function mul_unit_lower_upper_square(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
-void mul_unit_lower_upper_square(in float lmat[ndim*ndim], in float rmat[ndim*ndim], inout float omat[ndim*ndim]) {
+R"glsl(
+void mul_unit_lower_upper_square_UNIQUEID(in float lmat[ndim*ndim], in float rmat[ndim*ndim], inout float omat[ndim*ndim]) {
 	float entry;
 	int kmax;
 	for (int i = 0; i < ndim; ++i) {
@@ -951,9 +1095,12 @@ void mul_unit_lower_upper_square(in float lmat[ndim*ndim], in float rmat[ndim*nd
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -962,18 +1109,18 @@ void mul_unit_lower_upper_square(in float lmat[ndim*ndim], in float rmat[ndim*nd
 		};
 
 		return ::glsl::Function(
-			"mul_unit_lower_upper_square",
+			"mul_unit_lower_upper_square_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function mul_mat_vec_square(int ndim, bool single_precission)
+	export ::glsl::Function mul_mat_vec_square(int ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void mul_mat_vec_square(in float lmat[ndim*ndim], in float rvec[ndim], inout float ovec[ndim]) {
+void mul_mat_vec_square_UNIQUEID(in float lmat[ndim*ndim], in float rvec[ndim], inout float ovec[ndim]) {
 	float entry;
 	for (int i = 0; i < ndim; ++i) {
 		entry = 0.0;
@@ -985,9 +1132,12 @@ void mul_mat_vec_square(in float lmat[ndim*ndim], in float rvec[ndim], inout flo
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -996,7 +1146,7 @@ void mul_mat_vec_square(in float lmat[ndim*ndim], in float rvec[ndim], inout flo
 		};
 
 		return ::glsl::Function(
-			"mul_mat_vec_square",
+			"mul_mat_vec_square_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt

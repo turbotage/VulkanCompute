@@ -68,7 +68,7 @@ namespace glsl {
 	export class BufferBinding : public Binding {
 	public:
 
-		BufferBinding(uint16_t binding, std::string type, std::string name)
+		BufferBinding(uint16_t binding, const std::string& type, const std::string& name)
 			: m_Binding(binding), m_Type(type), m_Name(name) {}
 
 		std::string operator()() const override {
@@ -147,7 +147,7 @@ namespace glsl {
 
 		std::string getName() const override;
 
-		uint16_t getDimension() const;
+		uint16_t getNDim() const;
 
 		bool isSinglePrecission() const;
 
@@ -164,6 +164,16 @@ namespace glsl {
 
 		void addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding);
 
+		void addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding);
+
+		void addInputOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding);
+
+		void addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding);
+
+		void addOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding);
+
+		void addInputOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding);
+
 		void addVariable(const std::shared_ptr<ShaderVariable>& var);
 
 		template<ShaderVariableIterator SVIterator> 
@@ -171,7 +181,7 @@ namespace glsl {
 			const std::shared_ptr<ShaderVariable>& ret, 
 			std::optional<std::pair<SVIterator,SVIterator>> args_it)
 		{
-			uint16_t func_pos = Function::add_functions(m_Functions, func);
+			uint16_t func_pos = Function::add_function(m_Functions, func);
 
 			int16_t ret_pos = -1;
 			if (ret) {
@@ -184,29 +194,37 @@ namespace glsl {
 				size_t ninputs = std::distance(its.first, its.second);
 				input_pos.reserve(ninputs);
 				for (auto it = its.first; it != its.second; ++it) {
-					input_pos = _addVariable(*it);
+					input_pos.emplace_back(_addVariable(*it));
 				}
 			}
 
 			m_Calls.emplace_back(func_pos, ret_pos, std::move(input_pos));
 		}
 
-		template<ShaderVariableIterator SVIterator>
 		void apply(const Function& func,
 			const std::shared_ptr<ShaderVariable>& ret,
 			const std::vector<std::shared_ptr<ShaderVariable>>& args)
 		{
-			apply(func, ret, std::make_pair(args.begin(), args.end()));
+			apply(func, ret, std::make_optional(std::make_pair(args.begin(), args.end())));
 		}
-
 
 		std::string compile() const;
 
 	private:
 
+		uint16_t _addFunction(const Function& func);
+
 		bool _addBinding(std::unique_ptr<Binding> binding);
 
-		size_t _addVariable(const std::shared_ptr<ShaderVariable>& var);
+		uint16_t _addVariable(const std::shared_ptr<ShaderVariable>& var);
+
+		void _addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding);
+
+		void _addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding);
+		
+		void _addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding);
+
+		void _addOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding);
 
 	private:
 
@@ -215,7 +233,8 @@ namespace glsl {
 
 		std::vector<std::shared_ptr<ShaderVariable>> m_Variables;
 
-
+		std::vector<std::tuple<uint16_t, uint16_t, uint16_t>> m_Inputs;
+		std::vector<std::tuple<uint16_t, uint16_t, uint16_t>> m_Outputs;
 		// m_Calls[0] is index to function in m_Functions
 		// m_Calls[i] for i > 0 is variable to use in function call, index is to
 		// m_Variables

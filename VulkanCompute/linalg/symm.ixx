@@ -13,19 +13,14 @@ export import glsl;
 
 namespace glsl {
 namespace linalg {
-	
-	export ::glsl::Function ldl(int ndim, bool single_precission = true);
 
-	export ::glsl::Function gmw81(int ndim, bool single_precission = true);
+	constexpr auto UNIQUE_ID = "UNIQUEID";
 
-	export ::glsl::Function ldl_solve(int ndim, bool single_precission = true);
-
-
-	::glsl::Function ldl(int ndim, bool single_precission)
+	::glsl::Function ldl(int ndim, bool single_precission = true)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void ldl(inout float mat[ndim*ndim]) {
+void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 	float arr[ndim];
 
 	for (int i = 0; i < ndim; ++i) {
@@ -47,9 +42,12 @@ void ldl(inout float mat[ndim*ndim]) {
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -58,7 +56,7 @@ void ldl(inout float mat[ndim*ndim]) {
 		};
 
 		return ::glsl::Function(
-			"ldl",
+			"ldl_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
@@ -67,11 +65,11 @@ void ldl(inout float mat[ndim*ndim]) {
 
 	}
 
-	::glsl::Function gmw81(int ndim, bool single_precission)
+	::glsl::Function gmw81(int ndim, bool single_precission = true)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void gmw81(inout float mat[ndim*ndim]) {
+void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 	float m1 = 0.0;
 	float m2 = 0.0;
 	float beta2 = 0.0;
@@ -137,9 +135,12 @@ void gmw81(inout float mat[ndim*ndim]) {
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -148,18 +149,18 @@ void gmw81(inout float mat[ndim*ndim]) {
 		};
 
 		return ::glsl::Function(
-			"gmw81",
+			"gmw81_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
 	}
 
-	::glsl::Function ldl_solve(int ndim, bool single_precission)
+	::glsl::Function ldl_solve(int ndim, bool single_precission = true)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void ldl_solve(in float mat[ndim*ndim], in float rhs[ndim], inout float sol[ndim]) {
+void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float sol[ndim]) {
 	float diag[ndim];
 	for (int i = 0; i < ndim; ++i) {
 		diag[i] = mat[i*ndim + i];
@@ -172,9 +173,12 @@ void ldl_solve(in float mat[ndim*ndim], in float rhs[ndim], inout float sol[ndim
 }
 )glsl";
 
-		std::function<std::string()> code_func = [ndim, single_precission]() -> std::string
+		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -183,12 +187,12 @@ void ldl_solve(in float mat[ndim*ndim], in float rhs[ndim], inout float sol[ndim
 		};
 
 		return ::glsl::Function(
-			"ldl_solve",
+			"ldl_solve_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::make_optional<std::vector<Function>>({
-				glsl::linalg::forward_subs_unit_diag(ndim, single_precission),
-				glsl::linalg::backward_subs_unit_t(ndim, single_precission)
+				linalg::forward_subs_unit_diag(ndim, single_precission),
+				linalg::backward_subs_unit_t(ndim, single_precission)
 			})
 		);
 	}
