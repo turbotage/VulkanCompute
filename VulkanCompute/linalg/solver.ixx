@@ -492,7 +492,7 @@ void backward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], 
 	for (int i = ndim - 1; i >= 0; --i) {
 		solution[i] = rhs[i];
 		for (int j = i + 1; j < ndim; ++j) {
-			solution[i] -= mat[j*ndim + i] * solution[j];
+			solution[i] -= mat[i*ndim + j] * solution[j];
 		}
 	}
 }

@@ -14,6 +14,7 @@
 #include <symengine/parser/parser.h>
 #include <string>
 
+import vc;
 import util;
 import glsl;
 import linalg;
@@ -913,9 +914,12 @@ void main() {
 void test_new_gensystem()
 {
 	using namespace glsl;
+	using namespace vc;
 
 	Shader shader;
-	uint16_t ndim = 4;
+	
+	ui32 n = 1;
+	ui16 ndim = 3;
 
 	auto mat = std::make_shared<glsl::MatrixVariable>("mat", ndim, ndim, true);
 	auto rhs = std::make_shared<glsl::VectorVariable>("rhs", ndim, true);
@@ -934,7 +938,64 @@ void test_new_gensystem()
 
 	auto spirv = glsl::compileSource(glsl_shader);
 
+	kp::Manager mgr;
 
+	auto mat_tensor = mgr.tensor({
+		3,2,1,
+		2,4,2,
+		1,2,5
+		});
+
+	auto rhs_tensor = mgr.tensor({
+		1,1,1
+		});
+
+	auto sol_tensor = mgr.tensor({
+		0,0,0
+		});
+
+	std::vector<std::shared_ptr<kp::Tensor>> params = { mat_tensor, rhs_tensor, sol_tensor };
+
+	kp::Workgroup wg({ (size_t)n,1,1 });
+
+	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
+
+	auto start = std::chrono::steady_clock::now();
+
+	mgr.sequence()
+		->record<kp::OpTensorSyncDevice>(params)
+		->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpTensorSyncLocal>(params)
+		->eval();
+
+	auto end = std::chrono::steady_clock::now();
+
+	std::cout << "time: " << 
+		std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+
+	bool print = true;
+	if (print) {
+		auto res = mat_tensor->vector();
+		std::string printr = "decomp: \n";
+		for (int i = 0; i < n; ++i) {
+			for (int j = 0; j < ndim; ++j) {
+				for (int k = 0; k < ndim; ++k) {
+					printr += std::to_string(res[i * ndim * ndim + j * ndim + k]) + "  ";
+				}
+				printr += "\n";
+			}
+			printr += "\n\n";
+		}
+		res = sol_tensor->vector();
+		printr += "sol: \n";
+		for (int i = 0; i < n; ++i) {
+			for (int j = 0; j < ndim; ++j) {
+				printr += std::to_string(res[i * ndim + j]) + "  ";
+			}
+			printr += "\n\n";
+		}
+		std::cout << printr;
+	}
 
 }
 

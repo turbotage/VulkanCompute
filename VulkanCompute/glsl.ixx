@@ -16,9 +16,11 @@ export module glsl;
 import util;
 import vc;
 
+using namespace vc;
+
 namespace glsl {
 
-	export std::vector<uint32_t> compileSource(const std::string& source);
+	export std::vector<ui32> compileSource(const std::string& source);
 
 	export class Function {
 	public:
@@ -68,7 +70,7 @@ namespace glsl {
 	export class BufferBinding : public Binding {
 	public:
 
-		BufferBinding(uint16_t binding, const std::string& type, const std::string& name)
+		BufferBinding(ui16 binding, const std::string& type, const std::string& name)
 			: m_Binding(binding), m_Type(type), m_Name(name) {}
 
 		std::string operator()() const override {
@@ -85,7 +87,7 @@ namespace glsl {
 		}
 
 	private:
-		uint16_t m_Binding;
+		ui16 m_Binding;
 		std::string m_Type;
 		std::string m_Name;
 	};
@@ -113,25 +115,25 @@ namespace glsl {
 	public:
 
 		MatrixVariable(const std::string& name,
-			uint16_t ndim1, uint16_t ndim2,
+			ui16 ndim1, ui16 ndim2,
 			bool single_precission = true);
 
 		std::string getDeclaration() const override;
 		
 		std::string getName() const override;
 
-		std::pair<uint16_t, uint16_t> getDimensions() const;
+		std::pair<ui16, ui16> getDimensions() const;
 
-		uint16_t getNDim1() const;
+		ui16 getNDim1() const;
 
-		uint16_t getNDim2() const;
+		ui16 getNDim2() const;
 
 		bool isSinglePrecission() const;
 
 	private:
 		std::string m_Name;
-		uint16_t m_NDim1;
-		uint16_t m_NDim2;
+		ui16 m_NDim1;
+		ui16 m_NDim2;
 		bool m_SinglePrecission;
 	};
 
@@ -185,7 +187,7 @@ namespace glsl {
 
 			int16_t ret_pos = -1;
 			if (ret) {
-				ret_pos = _addVariable(ret);
+				ret_pos = _addVariable(ret, false);
 			}
 
 			std::vector<uint16_t> input_pos;
@@ -194,7 +196,7 @@ namespace glsl {
 				size_t ninputs = std::distance(its.first, its.second);
 				input_pos.reserve(ninputs);
 				for (auto it = its.first; it != its.second; ++it) {
-					input_pos.emplace_back(_addVariable(*it));
+					input_pos.emplace_back(_addVariable(*it, false));
 				}
 			}
 
@@ -216,29 +218,29 @@ namespace glsl {
 
 		bool _addBinding(std::unique_ptr<Binding> binding);
 
-		uint16_t _addVariable(const std::shared_ptr<ShaderVariable>& var);
+		uint16_t _addVariable(const std::shared_ptr<ShaderVariable>& var, bool is_global);
 
-		void _addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding);
+		void _addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding, bool add_binding);
 
-		void _addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding);
+		void _addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding, bool add_binding);
 		
-		void _addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding);
+		void _addInputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding, bool add_binding);
 
-		void _addOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding);
+		void _addOutputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding, bool add_binding);
 
 	private:
 
 		std::vector<std::unique_ptr<Binding>> m_Bindings;
 		std::vector<Function> m_Functions;
 
-		std::vector<std::shared_ptr<ShaderVariable>> m_Variables;
+		std::vector<std::pair<std::shared_ptr<ShaderVariable>,bool>> m_Variables;
 
-		std::vector<std::tuple<uint16_t, uint16_t, uint16_t>> m_Inputs;
-		std::vector<std::tuple<uint16_t, uint16_t, uint16_t>> m_Outputs;
+		std::vector<std::pair<ui16, ui16>> m_Inputs;
+		std::vector<std::pair<ui16, ui16>> m_Outputs;
 		// m_Calls[0] is index to function in m_Functions
 		// m_Calls[i] for i > 0 is variable to use in function call, index is to
 		// m_Variables
-		std::vector<std::tuple<uint16_t, int16_t, std::vector<uint16_t>>> m_Calls;
+		std::vector<std::tuple<ui16, ui16, std::vector<ui16>>> m_Calls;
 
 	};
 

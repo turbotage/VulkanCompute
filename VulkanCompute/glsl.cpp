@@ -126,7 +126,7 @@ std::string MatrixVariable::getName() const
 	return m_Name;
 }
 
-std::pair<uint16_t, uint16_t> MatrixVariable::getDimensions() const
+std::pair<ui16, ui16> MatrixVariable::getDimensions() const
 {
 	return std::make_pair(m_NDim1, m_NDim2);
 }
@@ -140,11 +140,10 @@ uint16_t MatrixVariable::getNDim1() const { return m_NDim1; }
 
 uint16_t MatrixVariable::getNDim2() const { return m_NDim2; }
 
-
 // VECTOR VARIABLE
 
 VectorVariable::VectorVariable(const std::string& name,
-	uint16_t ndim, bool single_precission)
+	ui16 ndim, bool single_precission)
 	: m_Name(name), m_NDim(ndim), m_SinglePrecission(single_precission)
 {}
 
@@ -183,47 +182,134 @@ void Shader::addFunction(const Function& func)
 	_addFunction(func);
 }
 
-void Shader::addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding)
+void Shader::addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding)
 {
 	_addInputMatrix(mat, binding, true);
 }
 
-void Shader::addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding)
+void Shader::addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding)
 {
 	_addOutputMatrix(mat, binding, true);
 }
 
-void Shader::addInputOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding)
+void Shader::addInputOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding)
 {
 	_addInputMatrix(mat, binding, true);
 	_addOutputMatrix(mat, binding, false);
 }
 
-void Shader::addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding)
+void Shader::addInputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding)
 {
 	_addInputVector(vec, binding, true);
 }
 
-void Shader::addOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding)
+void Shader::addOutputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding)
 {
 	_addOutputVector(vec, binding, true);
 }
 
-void Shader::addInputOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding)
+void Shader::addInputOutputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding)
 {
 	_addInputVector(vec, binding, true);
-	_addInputVector(vec, binding, false);
+	_addOutputVector(vec, binding, false);
 }
 
 void Shader::addVariable(const std::shared_ptr<ShaderVariable>& var)
 {
-	_addVariable(var);
+	_addVariable(var, false);
+}
+
+std::string copying_from(const std::shared_ptr<glsl::ShaderVariable>& v1, const std::shared_ptr<glsl::ShaderVariable>& v2) 
+{
+	std::string copy_str;
+	{
+		auto i1m = dynamic_cast<const MatrixVariable*>(v1.get());
+		auto i2m = dynamic_cast<const MatrixVariable*>(v2.get());
+		if (i1m != nullptr && i2m != nullptr) {
+			copy_str +=
+R"glsl(
+	start_index = nrow*ncol*gl_GlobalInvocationID.x;
+	for (int i = 0; i < nrow*ncol; ++i) {
+		OUTPUT_NAME[i] = INPUT_NAME[start_index + i];
+	}
+
+)glsl";
+			util::replace_all(copy_str, "nrow", std::to_string(i1m->getNDim1()));
+			util::replace_all(copy_str, "ncol", std::to_string(i1m->getNDim2()));
+			util::replace_all(copy_str, "INPUT_NAME", i1m->getName());
+			util::replace_all(copy_str, "OUTPUT_NAME", i2m->getName());
+			return copy_str;
+		}
+	}
+
+	{
+		auto i1v = dynamic_cast<const VectorVariable*>(v1.get());
+		auto i2v = dynamic_cast<const VectorVariable*>(v2.get());
+		if (i1v != nullptr && i2v != nullptr) {
+			copy_str +=
+R"glsl(
+	start_index = ndim*gl_GlobalInvocationID.x;
+	for (int i = 0; i < ndim; ++i) {
+		OUTPUT_NAME[i] = INPUT_NAME[start_index + i];
+	}
+)glsl";
+			util::replace_all(copy_str, "ndim", std::to_string(i1v->getNDim()));
+			util::replace_all(copy_str, "INPUT_NAME", i1v->getName());
+			util::replace_all(copy_str, "OUTPUT_NAME", i2v->getName());
+			return copy_str;
+		}
+	}
+
+	throw std::runtime_error("Both variables must be either Vectors and Matrices");
+}
+
+std::string copying_to(const std::shared_ptr<glsl::ShaderVariable>& v1, const std::shared_ptr<glsl::ShaderVariable>& v2)
+{
+	std::string copy_str;
+	{
+		auto i1m = dynamic_cast<const MatrixVariable*>(v1.get());
+		auto i2m = dynamic_cast<const MatrixVariable*>(v2.get());
+		if (i1m != nullptr && i2m != nullptr) {
+			copy_str +=
+R"glsl(
+	start_index = nrow*ncol*gl_GlobalInvocationID.x;
+	for (int i = 0; i < nrow*ncol; ++i) {
+		OUTPUT_NAME[start_index + i] = INPUT_NAME[i];
+	}
+)glsl";
+			util::replace_all(copy_str, "nrow", std::to_string(i1m->getNDim1()));
+			util::replace_all(copy_str, "ncol", std::to_string(i1m->getNDim2()));
+			util::replace_all(copy_str, "INPUT_NAME", i1m->getName());
+			util::replace_all(copy_str, "OUTPUT_NAME", i2m->getName());
+			return copy_str;
+		}
+	}
+
+	{
+		auto i1v = dynamic_cast<const VectorVariable*>(v1.get());
+		auto i2v = dynamic_cast<const VectorVariable*>(v2.get());
+		if (i1v != nullptr && i2v != nullptr) {
+			copy_str +=
+R"glsl(
+	start_index = ndim*gl_GlobalInvocationID.x;
+	for (int i = 0; i < ndim; ++i) {
+		OUTPUT_NAME[start_index + i] = INPUT_NAME[i];
+	}
+)glsl";
+			util::replace_all(copy_str, "ndim", std::to_string(i1v->getNDim()));
+			util::replace_all(copy_str, "INPUT_NAME", i1v->getName());
+			util::replace_all(copy_str, "OUTPUT_NAME", i2v->getName());
+			return copy_str;
+		}
+	}
+
+	throw std::runtime_error("Both variables must be either Vectors and Matrices");
 }
 
 std::string Shader::compile() const
 {
 	std::string ret =
-		R"glsl(
+R"glsl(
 #version 450
 
 layout (local_size_x = 1) in;
@@ -243,19 +329,15 @@ layout (local_size_x = 1) in;
 
 	// declare variables
 	for (auto& var : m_Variables) {
-		ret += "\t" + var->getDeclaration() + "\n";
+		if (!var.second)
+			ret += "\t" + var.first->getDeclaration() + "\n";
 	}
 	ret += "\n";
 
 	// copy globals to locals
-	for (auto& input : m_Inputs) {
-		ret += "\t";
-		uint16_t func_pos = std::get<0>(input);
-		uint16_t input1_pos = std::get<1>(input);
-		uint16_t input2_pos = std::get<2>(input);
-
-		ret += m_Functions[func_pos].getName() + "(" + m_Variables[input1_pos]->getName() + ", " +
-			m_Variables[input2_pos]->getName() + ");\n";
+	ret += "\tuint start_index;\n";
+	for (auto& input : m_Inputs) {	
+		ret += copying_from(m_Variables[input.first].first, m_Variables[input.second].first);
 	}
 	ret += "\n";
 
@@ -264,7 +346,7 @@ layout (local_size_x = 1) in;
 		ret += "\t";
 		int16_t ret_pos = std::get<1>(call);
 		if (ret_pos != -1) {
-			ret += m_Variables[ret_pos]->getName() + " = ";
+			ret += m_Variables[ret_pos].first->getName() + " = ";
 		}
 
 		uint16_t func_pos = std::get<0>(call);
@@ -275,7 +357,7 @@ layout (local_size_x = 1) in;
 
 		for (int i = 0; i < input_pos_vec.size(); ++i) {
 			size_t arg_pos = input_pos_vec[i];
-			ret += m_Variables[arg_pos]->getName();
+			ret += m_Variables[arg_pos].first->getName();
 			if ((i + 1) != input_pos_vec.size()) {
 				ret += ", ";
 			}
@@ -285,19 +367,12 @@ layout (local_size_x = 1) in;
 	ret += "\n";
 
 	// copy locals back to globals
-	for (auto& input : m_Inputs) {
-		ret += "\t";
-		uint16_t func_pos = std::get<0>(input);
-		uint16_t input1_pos = std::get<1>(input);
-		uint16_t input2_pos = std::get<2>(input);
-
-		ret += m_Functions[func_pos].getName() + "(" + m_Variables[input1_pos]->getName() + ", " +
-			m_Variables[input2_pos]->getName() + ");\n";
+	for (auto& output : m_Outputs) {
+		ret += copying_to(m_Variables[output.first].first, m_Variables[output.second].first);
 	}
-	ret += "\n";
 
 	// close main
-	ret += "\n}\n";
+	ret += "}\n";
 
 	return ret;
 }
@@ -320,14 +395,14 @@ bool Shader::_addBinding(std::unique_ptr<Binding> binding)
 	return false;
 }
 
-uint16_t Shader::_addVariable(const std::shared_ptr<ShaderVariable>& var)
+uint16_t Shader::_addVariable(const std::shared_ptr<ShaderVariable>& var, bool is_global)
 {
-	auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::shared_ptr<ShaderVariable>& v) {
-		return *var == *v;
+	auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::pair<std::shared_ptr<ShaderVariable>,bool>& v) {
+		return *var == *(v.first);
 	});
 	ui16 pos = it - m_Variables.begin();
 	if (it == m_Variables.end()) {
-		m_Variables.emplace_back(var);
+		m_Variables.emplace_back(var, is_global);
 	}
 	return pos;
 }
@@ -341,16 +416,15 @@ void Shader::_addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_
 	auto global_mat = std::make_shared<MatrixVariable>(
 		"global_" + mat->getName(), ndim1, ndim2, sp);
 
-	uint16_t mat_index = _addVariable(mat);
-	uint16_t global_mat_index = _addVariable(global_mat);
+	uint16_t mat_index = _addVariable(mat, false);
+	uint16_t global_mat_index = _addVariable(global_mat, true);
 
-	uint16_t copy_func_index = _addFunction(linalg::copy_mat_istarted(ndim1, ndim2, sp));
 
 	if (add_binding) {
 		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), mat->getName()));
 	}
 
-	m_Inputs.emplace_back(copy_func_index, global_mat_index, mat_index);
+	m_Inputs.emplace_back(global_mat_index, mat_index);
 }
 
 void Shader::_addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding)
@@ -362,16 +436,14 @@ void Shader::_addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16
 	auto global_mat = std::make_shared<MatrixVariable>(
 		"global_" + mat->getName(), ndim1, ndim2, sp);
 
-	uint16_t mat_index = _addVariable(mat);
-	uint16_t global_mat_index = _addVariable(global_mat);
-
-	uint16_t copy_func_index = _addFunction(linalg::copy_mat_ostarted(ndim1, ndim2, sp));
+	uint16_t mat_index = _addVariable(mat, false);
+	uint16_t global_mat_index = _addVariable(global_mat, true);
 
 	if (add_binding) {
 		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), mat->getName()));
 	}
 
-	m_Outputs.emplace_back(copy_func_index, mat_index, global_mat_index);
+	m_Outputs.emplace_back(mat_index, global_mat_index);
 }
 
 void Shader::_addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding)
@@ -382,16 +454,14 @@ void Shader::_addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_
 	auto global_vec = std::make_shared<VectorVariable>(
 		"global_" + vec->getName(), ndim, sp);
 
-	uint16_t vec_index = _addVariable(vec);
-	uint16_t global_vec_index = _addVariable(global_vec);
-
-	uint16_t copy_func_index = _addFunction(linalg::copy_vec_istarted(ndim, sp));
+	uint16_t vec_index = _addVariable(vec, false);
+	uint16_t global_vec_index = _addVariable(global_vec, true);
 
 	if (add_binding) {
 		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), vec->getName()));
 	}
 
-	m_Inputs.emplace_back(copy_func_index, global_vec_index, vec_index);
+	m_Inputs.emplace_back(global_vec_index, vec_index);
 }
 
 void Shader::_addOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding)
@@ -402,16 +472,14 @@ void Shader::_addOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16
 	auto global_vec = std::make_shared<VectorVariable>(
 		"global_" + vec->getName(), ndim, sp);
 
-	uint16_t vec_index = _addVariable(vec);
-	uint16_t global_vec_index = _addVariable(global_vec);
-
-	uint16_t copy_func_index = _addFunction(linalg::copy_vec_ostarted(ndim, sp));
+	uint16_t vec_index = _addVariable(vec, false);
+	uint16_t global_vec_index = _addVariable(global_vec, true);
 
 	if (add_binding) {
 		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), vec->getName()));
 	}
 
-	m_Inputs.emplace_back(copy_func_index, vec_index, global_vec_index);
+	m_Outputs.emplace_back(vec_index, global_vec_index);
 }
 
 // SYMBOLIC CONTEXT
