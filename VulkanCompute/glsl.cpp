@@ -9,7 +9,11 @@ module glsl;
 
 using namespace glsl;
 
+
 import linalg;
+
+import vc;
+using namespace vc;
 
 std::vector<uint32_t> glsl::compileSource(const std::string& source)
 {
@@ -241,6 +245,7 @@ layout (local_size_x = 1) in;
 	for (auto& var : m_Variables) {
 		ret += "\t" + var->getDeclaration() + "\n";
 	}
+	ret += "\n";
 
 	// copy globals to locals
 	for (auto& input : m_Inputs) {
@@ -249,15 +254,16 @@ layout (local_size_x = 1) in;
 		uint16_t input1_pos = std::get<1>(input);
 		uint16_t input2_pos = std::get<2>(input);
 
-		ret += m_Functions[func_pos].getName() + "(" + m_Variables[input1_pos]->getName() +
+		ret += m_Functions[func_pos].getName() + "(" + m_Variables[input1_pos]->getName() + ", " +
 			m_Variables[input2_pos]->getName() + ");\n";
 	}
+	ret += "\n";
 
 	// add in function calls
 	for (auto& call : m_Calls) {
 		ret += "\t";
 		int16_t ret_pos = std::get<1>(call);
-		if (ret_pos == -1) {
+		if (ret_pos != -1) {
 			ret += m_Variables[ret_pos]->getName() + " = ";
 		}
 
@@ -274,9 +280,9 @@ layout (local_size_x = 1) in;
 				ret += ", ";
 			}
 		}
-		ret += ")\n";
+		ret += ");\n";
 	}
-
+	ret += "\n";
 
 	// copy locals back to globals
 	for (auto& input : m_Inputs) {
@@ -285,9 +291,10 @@ layout (local_size_x = 1) in;
 		uint16_t input1_pos = std::get<1>(input);
 		uint16_t input2_pos = std::get<2>(input);
 
-		ret += m_Functions[func_pos].getName() + "(" + m_Variables[input1_pos]->getName() +
+		ret += m_Functions[func_pos].getName() + "(" + m_Variables[input1_pos]->getName() + ", " +
 			m_Variables[input2_pos]->getName() + ");\n";
 	}
+	ret += "\n";
 
 	// close main
 	ret += "\n}\n";
@@ -315,8 +322,10 @@ bool Shader::_addBinding(std::unique_ptr<Binding> binding)
 
 uint16_t Shader::_addVariable(const std::shared_ptr<ShaderVariable>& var)
 {
-	auto it = std::find(m_Variables.begin(), m_Variables.end(), var);
-	size_t pos = it - m_Variables.end();
+	auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::shared_ptr<ShaderVariable>& v) {
+		return *var == *v;
+	});
+	ui16 pos = it - m_Variables.begin();
 	if (it == m_Variables.end()) {
 		m_Variables.emplace_back(var);
 	}
@@ -341,7 +350,7 @@ void Shader::_addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_
 		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), mat->getName()));
 	}
 
-	m_Inputs.emplace_back(copy_func_index, mat_index, global_mat_index);
+	m_Inputs.emplace_back(copy_func_index, global_mat_index, mat_index);
 }
 
 void Shader::_addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding)
@@ -362,7 +371,7 @@ void Shader::_addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16
 		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), mat->getName()));
 	}
 
-	m_Outputs.emplace_back(copy_func_index, global_mat_index, mat_index);
+	m_Outputs.emplace_back(copy_func_index, mat_index, global_mat_index);
 }
 
 void Shader::_addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding)

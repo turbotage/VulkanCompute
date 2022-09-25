@@ -6,17 +6,24 @@ module;
 
 export module solver;
 
+import vc;
 import util;
 import glsl;
 import linalg;
+
+using namespace vc;
+
 namespace glsl {
 namespace linalg {
 
-	constexpr auto UNIQUE_ID = "UNIQUEID";
-
 	// FORWARD SUBSTITUTION (Lx=y)
 
-	export ::glsl::Function forward_subs(int ndim, bool single_precission)
+	export std::string forward_subs_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function forward_subs(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -31,7 +38,7 @@ void forward_subs_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out floa
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = forward_subs_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -52,7 +59,13 @@ void forward_subs_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out floa
 		);
 	}
 
-	export ::glsl::Function forward_subs_t(int ndim, bool single_precission)
+
+	export std::string forward_subs_t_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function forward_subs_t(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
@@ -67,7 +80,7 @@ void forward_subs_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out fl
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = forward_subs_t_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -88,7 +101,13 @@ void forward_subs_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out fl
 		);
 	}
 
-	export ::glsl::Function forward_subs_unit(int ndim, bool single_precission)
+
+	export std::string forward_subs_unit_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function forward_subs_unit(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -102,7 +121,7 @@ void forward_subs_unit_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = forward_subs_unit_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -123,7 +142,13 @@ void forward_subs_unit_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out
 		);
 	}
 
-	export ::glsl::Function forward_subs_unit_t(int ndim, bool single_precission)
+
+	export std::string forward_subs_unit_t_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function forward_subs_unit_t(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
@@ -137,7 +162,7 @@ void forward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], o
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = forward_subs_unit_t_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -160,7 +185,12 @@ void forward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], o
 
 	// with diagonal (LDx=y)
 
-	export ::glsl::Function forward_subs_diag(int ndim, bool single_precission)
+	export std::string forward_subs_diag_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function forward_subs_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
@@ -175,7 +205,7 @@ void forward_subs_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim] in f
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = forward_subs_diag_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -196,7 +226,13 @@ void forward_subs_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim] in f
 		);
 	}
 
-	export ::glsl::Function forward_subs_t_diag(int ndim, bool single_precission)
+
+	export std::string forward_subs_t_diag_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function forward_subs_t_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
@@ -211,7 +247,7 @@ void forward_subs_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], i
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = forward_subs_t_diag_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -232,7 +268,13 @@ void forward_subs_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], i
 		);
 	}
 
-	export ::glsl::Function forward_subs_unit_diag(int ndim, bool single_precission)
+
+	export std::string forward_subs_unit_diag_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function forward_subs_unit_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -247,7 +289,7 @@ void forward_subs_unit_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim]
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = forward_subs_unit_diag_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -268,7 +310,13 @@ void forward_subs_unit_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim]
 		);
 	}
 
-	export ::glsl::Function forward_subs_unit_t_diag(int ndim, bool single_precission)
+
+	export std::string forward_subs_unit_t_diag_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function forward_subs_unit_t_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -283,7 +331,7 @@ void forward_subs_unit_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndi
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = forward_subs_unit_t_diag_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -306,7 +354,12 @@ void forward_subs_unit_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndi
 
 	// BACKWARD SUBSTITUTION (Ux=y)
 
-	export ::glsl::Function backward_subs(int ndim, bool single_precission)
+	export std::string backward_subs_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function backward_subs(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -321,7 +374,7 @@ void backward_subs_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out flo
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = backward_subs_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -342,7 +395,13 @@ void backward_subs_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out flo
 		);
 	}
 
-	export ::glsl::Function backward_subs_t(int ndim, bool single_precission)
+
+	export std::string backward_subs_t_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function backward_subs_t(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -357,7 +416,7 @@ void backward_subs_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out f
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = backward_subs_t_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -378,7 +437,13 @@ void backward_subs_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out f
 		);
 	}
 
-	export ::glsl::Function backward_subs_unit(int ndim, bool single_precission)
+
+	export std::string backward_subs_unit_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function backward_subs_unit(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
@@ -392,7 +457,7 @@ void backward_subs_unit_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], ou
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = backward_subs_unit_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -413,7 +478,13 @@ void backward_subs_unit_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], ou
 		);
 	}
 
-	export ::glsl::Function backward_subs_unit_t(int ndim, bool single_precission)
+
+	export std::string backward_subs_unit_t_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function backward_subs_unit_t(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
@@ -427,7 +498,7 @@ void backward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], 
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = backward_subs_unit_t_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -450,7 +521,12 @@ void backward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], 
 
 	// with diagonal (DUx=y)
 
-	export ::glsl::Function backward_subs_diag(int ndim, bool single_precission)
+	export std::string backward_subs_diag_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function backward_subs_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -465,7 +541,7 @@ void backward_subs_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], in
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = backward_subs_diag_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -486,7 +562,13 @@ void backward_subs_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], in
 		);
 	}
 
-	export ::glsl::Function backward_subs_t_diag(int ndim, bool single_precission)
+
+	export std::string backward_subs_t_diag_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function backward_subs_t_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -501,7 +583,7 @@ void backward_subs_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], 
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = backward_subs_t_diag_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -522,7 +604,13 @@ void backward_subs_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], 
 		);
 	}
 
-	export ::glsl::Function backward_subs_unit_diag(int ndim, bool single_precission)
+
+	export std::string backward_subs_unit_diag_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function backward_subs_unit_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -537,7 +625,7 @@ void backward_subs_unit_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = backward_subs_unit_diag_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -558,7 +646,13 @@ void backward_subs_unit_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim
 		);
 	}
 
-	export ::glsl::Function backward_subs_unit_t_diag(int ndim, bool single_precission)
+
+	export std::string backward_subs_unit_t_diag_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function backward_subs_unit_t_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -573,7 +667,7 @@ void backward_subs_unit_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[nd
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = backward_subs_unit_t_diag_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -596,7 +690,12 @@ void backward_subs_unit_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[nd
 
 	// LU DECOMPOSITION
 
-	export ::glsl::Function lu(int ndim, bool single_precission)
+	export std::string lu_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function lu(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -605,8 +704,8 @@ void lu_UNIQUEID(inout float mat[ndim*ndim], out int pivot[ndim]) {
 	for (int k = 0; k < ndim - 1; ++k) {
 		int max_row_idx;
 		float max_row_value;
-		max_mag_subrow(mat, k, k, max_row_idx, max_row_value);		
-		row_interchange_i(mat, k, max_row_idx);
+		max_mag_subrow_MMSID(mat, k, k, max_row_idx, max_row_value);		
+		row_interchange_i_RIIID(mat, k, max_row_idx);
 		pivot[k] = max_row_idx;
 		
 		val = mat[k*ndim + k];
@@ -625,13 +724,15 @@ void lu_UNIQUEID(inout float mat[ndim*ndim], out int pivot[ndim]) {
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = lu_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
+			util::replace_all(temp, "MMSID", max_mag_subrow_uniqueid(ndim, ndim, single_precission));
+			util::replace_all(temp, "RIIID", row_interchange_i_uniqueid(ndim, ndim, single_precission));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
 				util::replace_all(temp, "machine_eps", "1e-15");

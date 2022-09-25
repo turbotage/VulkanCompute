@@ -10,15 +10,25 @@ export module vc;
 
 export namespace vc {
 
-	typedef ::std::uint_fast64_t ui64;
-	typedef ::std::uint_fast32_t ui32;
-	typedef ::std::uint_fast16_t ui16;
-	typedef ::std::uint_fast8_t ui8;
+	typedef ::std::uint64_t ui64;
+	typedef ::std::uint32_t ui32;
+	typedef ::std::uint16_t ui16;
+	typedef ::std::uint8_t ui8;
 
-	typedef ::std::int_fast64_t i64;
-	typedef ::std::int_fast32_t i32;
-	typedef ::std::int_fast16_t i16;
-	typedef ::std::int_fast8_t i8;
+	typedef ::std::int64_t i64;
+	typedef ::std::int32_t i32;
+	typedef ::std::int16_t i16;
+	typedef ::std::int8_t i8;
+
+	typedef ::std::uint_fast64_t ui64f;
+	typedef ::std::uint_fast32_t ui32f;
+	typedef ::std::uint_fast16_t ui16f;
+	typedef ::std::uint_fast8_t ui8f;
+
+	typedef ::std::int_fast64_t i64f;
+	typedef ::std::int_fast32_t i32f;
+	typedef ::std::int_fast16_t i16f;
+	typedef ::std::int_fast8_t i8f;
 
 	// Used to signal output, functions with these parameters will fill the variable which the
 	// reference points to
@@ -112,4 +122,5 @@ export namespace vc {
 
 		return ret;
 	}
+
 }

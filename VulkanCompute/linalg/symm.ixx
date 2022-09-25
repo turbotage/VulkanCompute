@@ -6,17 +6,23 @@ module;
 
 export module symm;
 
+import vc;
 import util;
 import solver;
-export import linalg;
-export import glsl;
+import linalg;
+import glsl;
+
+using namespace vc;
 
 namespace glsl {
 namespace linalg {
 
-	constexpr auto UNIQUE_ID = "UNIQUEID";
+	export std::string ldl_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
 
-	::glsl::Function ldl(int ndim, bool single_precission = true)
+	export ::glsl::Function ldl(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -42,7 +48,7 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = ldl_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -65,7 +71,13 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 
 	}
 
-	::glsl::Function gmw81(int ndim, bool single_precission = true)
+
+	export std::string gmw81_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function gmw81(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -135,7 +147,7 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = gmw81_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -156,7 +168,13 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 		);
 	}
 
-	::glsl::Function ldl_solve(int ndim, bool single_precission = true)
+
+	export std::string ldl_solve_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function ldl_solve(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -167,19 +185,21 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 	}
 
 	float arr[ndim];
-	forward_subs_unit_diag(mat, rhs, diag, arr);
+	forward_subs_unit_diag_FSUDID(mat, rhs, diag, arr);
 
-	backward_subs_unit_t(mat, arr, sol);
+	backward_subs_unit_t_BSUTID(mat, arr, sol);
 }
 )glsl";
 
-		std::string uniqueid = std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		std::string uniqueid = ldl_solve_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
+			util::replace_all(temp, "FSUDID", linalg::forward_subs_unit_diag_uniqueid(ndim, single_precission));
+			util::replace_all(temp, "BSUTID", linalg::backward_subs_unit_t_uniqueid(ndim, single_precission));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
 			}

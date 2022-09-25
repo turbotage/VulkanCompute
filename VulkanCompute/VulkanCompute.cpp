@@ -912,29 +912,35 @@ void main() {
 
 void test_new_gensystem()
 {
-	glsl::Shader shader;
+	using namespace glsl;
+
+	Shader shader;
+	uint16_t ndim = 4;
+
+	auto mat = std::make_shared<glsl::MatrixVariable>("mat", ndim, ndim, true);
+	auto rhs = std::make_shared<glsl::VectorVariable>("rhs", ndim, true);
+	auto sol = std::make_shared<glsl::VectorVariable>("sol", ndim, true);
+
+	shader.addInputOutputMatrix(mat, 0);
+	shader.addInputVector(rhs, 1);
+	shader.addOutputVector(sol, 2);
+
+	shader.apply(linalg::gmw81(ndim, true), nullptr, { mat });
+	shader.apply(linalg::ldl_solve(ndim, true), nullptr, { mat, rhs, sol });
+
+	std::string glsl_shader = shader.compile();
+	
+	std::cout << util::add_line_numbers(glsl_shader) << std::endl;
+
+	auto spirv = glsl::compileSource(glsl_shader);
+
 
 
 }
 
 int main() {
 	
-	//test_expr_res_glsl();
-	//test_expr_res_jac_glsl();
-	//test_expr_res_jac_hes_glsl();
-	/*
-	test_expr_res_jac_hes_glsl_time_many(1000000, 0);
-	test_expr_res_jac_hes_glsl_time_many(1000000, 1);
-	test_expr_res_jac_hes_glsl_time_many(1000000, 2);
-	test_expr_res_jac_hes_glsl_time_many(1000000, 3);
-	test_expr_res_jac_hes_glsl_time_many(1000000, 4);
-	test_expr_res_jac_hes_glsl_time_many(1000000, 5);
-	*/
-
-	/*
-	test_ldl();
-	test_gmw81();
-	*/
+	test_new_gensystem();
 
 	return 0;
 }
