@@ -33,7 +33,6 @@ void test_nlsq()
 
 	Shader shader;
 
-	ui32 n = 1;
 	ui16 ndata = 21;
 	ui16 nparam = 4;
 	ui16 nconst = 1;
@@ -87,8 +86,48 @@ void test_nlsq()
 	auto end = std::chrono::steady_clock::now();
 
 	std::cout << gs_with_lines << std::endl;
-	std::cout << "time:" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;
-	
+	std::cout << "time:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+
+	ui32 n = 1000000;
+
+	kp::Manager mgr;
+
+	auto res_tensor = mgr.tensor(std::vector<float>(ndata * n));
+	auto jac_tensor = mgr.tensor(std::vector<float>(ndata * nparam * n));
+	auto hes_tensor = mgr.tensor(std::vector<float>(nparam * nparam * n));
+
+	auto data_tensor = mgr.tensor(std::vector<float>(ndata * n));
+	auto param_tensor = mgr.tensor(std::vector<float>(nparam * n));
+	auto consts_tensor = mgr.tensor(std::vector<float>(ndata * nconst * n));
+	auto step_tensor = mgr.tensor(std::vector<float>(nparam * n));
+
+	std::vector<std::shared_ptr<kp::Tensor>> kp_params = { res_tensor, jac_tensor, hes_tensor,
+		data_tensor, param_tensor, consts_tensor, step_tensor };
+
+	kp::Workgroup wg({ (size_t)n, 1, 1 });
+
+	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(kp_params, spirv, wg);
+
+
+	auto seq = mgr.sequence()->record<kp::OpTensorSyncDevice>(kp_params)->eval();
+
+	start = std::chrono::steady_clock::now();
+
+	seq = seq->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpAlgoDispatch>(algo)
+		->eval();
+		
+	end = std::chrono::steady_clock::now();
+		
+	seq	= seq->record<kp::OpTensorSyncLocal>(kp_params)->eval();
+
+
+	std::cout << "time: " <<
+		std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+
 }
 
 void test_gmw81()
@@ -140,15 +179,20 @@ void test_gmw81()
 
 	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, spirv, wg);
 
+
+	auto seq = mgr.sequence()
+		->record<kp::OpTensorSyncDevice>(params)->eval();
+
 	auto start = std::chrono::steady_clock::now();
 
-	mgr.sequence()
-		->record<kp::OpTensorSyncDevice>(params)
+	seq = seq->record<kp::OpAlgoDispatch>(algo)
 		->record<kp::OpAlgoDispatch>(algo)
-		->record<kp::OpTensorSyncLocal>(params)
 		->eval();
-
+		
 	auto end = std::chrono::steady_clock::now();
+	
+	seq = seq->record<kp::OpTensorSyncLocal>(params)
+		->eval();
 
 	std::cout << "time: " << 
 		std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
