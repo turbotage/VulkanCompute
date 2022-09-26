@@ -15,6 +15,11 @@ import linalg;
 import vc;
 using namespace vc;
 
+namespace {
+	// most shaders are smaller than 30 kB
+	constexpr auto DEFAULT_SHADER_SIZE = 30000;
+}
+
 std::vector<uint32_t> glsl::compileSource(const std::string& source)
 {
 	std::ofstream fileOut("tmp_kp_shader.comp");
@@ -67,7 +72,6 @@ bool glsl::operator==(const Function& lhs, const Function& rhs)
 	return lhs.m_FunctionName == rhs.m_FunctionName &&
 		lhs.m_ArgumentHashes == rhs.m_ArgumentHashes;
 }
-
 
 size_t Function::add_function(std::vector<Function>& funcs, const Function& func) {
 	for (auto& f : func.m_Dependencies) {
@@ -175,6 +179,24 @@ bool glsl::VectorVariable::isSinglePrecission() const
 	return m_SinglePrecission;
 }
 
+// SIMPLE VARIABLE
+
+SimpleVariable::SimpleVariable(const std::string& name,
+	const std::string& type,
+	const std::string& value)
+	: m_Name(name), m_Type(type), m_Value(value)
+{}
+
+std::string SimpleVariable::getDeclaration() const 
+{
+	return m_Type + " " + m_Name + " = " + m_Value + ";\n";
+}
+
+std::string SimpleVariable::getName() const
+{
+	return m_Name;
+}
+
 // SHADER 
 
 void Shader::addFunction(const Function& func)
@@ -217,6 +239,26 @@ void Shader::addInputOutputVector(const std::shared_ptr<VectorVariable>& vec, ui
 void Shader::addVariable(const std::shared_ptr<ShaderVariable>& var)
 {
 	_addVariable(var, false);
+}
+
+void Shader::setBeforeCopyingFrom(const std::string& mi)
+{
+	m_BeforeCopyingFrom = mi;
+}
+
+void Shader::setAfterCopyingFrom(const std::string& mi)
+{
+	m_AfterCopyingFrom = mi;
+}
+
+void Shader::setBeforeCopyingBack(const std::string& mi)
+{
+	m_BeforeCopyingBack = mi;
+}
+
+void Shader::setAfterCopyingBack(const std::string& mi)
+{
+	m_AfterCopyingBack = mi;
 }
 
 std::string copying_from(const std::shared_ptr<glsl::ShaderVariable>& v1, const std::shared_ptr<glsl::ShaderVariable>& v2) 
@@ -308,7 +350,10 @@ R"glsl(
 
 std::string Shader::compile() const
 {
-	std::string ret =
+	std::string ret;
+	ret.reserve(DEFAULT_SHADER_SIZE);
+
+	ret +=
 R"glsl(
 #version 450
 
@@ -319,10 +364,12 @@ layout (local_size_x = 1) in;
 	for (auto& bind : m_Bindings) {
 		ret += bind->operator()() + "\n";
 	}
+	ret += "\n";
 
 	for (auto& func : m_Functions) {
 		ret += func.getCode() + "\n";
 	}
+	ret += "\n";
 
 	// open main
 	ret += "void main() {\n";
@@ -334,12 +381,18 @@ layout (local_size_x = 1) in;
 	}
 	ret += "\n";
 
+	// manual insertions before copy from
+	ret += m_BeforeCopyingFrom;
+
 	// copy globals to locals
 	ret += "\tuint start_index;\n";
 	for (auto& input : m_Inputs) {	
 		ret += copying_from(m_Variables[input.first].first, m_Variables[input.second].first);
 	}
 	ret += "\n";
+
+	// manual insertions after copy from
+	ret += m_AfterCopyingFrom;
 
 	// add in function calls
 	for (auto& call : m_Calls) {
@@ -366,10 +419,16 @@ layout (local_size_x = 1) in;
 	}
 	ret += "\n";
 
+	// manual insertions before copying back
+	ret += m_BeforeCopyingBack;
+
 	// copy locals back to globals
 	for (auto& output : m_Outputs) {
 		ret += copying_to(m_Variables[output.first].first, m_Variables[output.second].first);
 	}
+
+	// manual insertions after copying back
+	ret += m_AfterCopyingBack;
 
 	// close main
 	ret += "}\n";

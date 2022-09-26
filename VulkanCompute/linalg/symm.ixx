@@ -179,13 +179,8 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 		static const std::string code = // compute shader
 R"glsl(
 void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float sol[ndim]) {
-	float diag[ndim];
-	for (int i = 0; i < ndim; ++i) {
-		diag[i] = mat[i*ndim + i];
-	}
-
 	float arr[ndim];
-	forward_subs_unit_diag_FSUDID(mat, rhs, diag, arr);
+	forward_subs_unit_diaged_FSUDID(mat, rhs, arr);
 
 	backward_subs_unit_t_BSUTID(mat, arr, sol);
 }
@@ -198,7 +193,7 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
-			util::replace_all(temp, "FSUDID", linalg::forward_subs_unit_diag_uniqueid(ndim, single_precission));
+			util::replace_all(temp, "FSUDID", linalg::forward_subs_unit_diaged_uniqueid(ndim, single_precission));
 			util::replace_all(temp, "BSUTID", linalg::backward_subs_unit_t_uniqueid(ndim, single_precission));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
@@ -211,7 +206,7 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::make_optional<std::vector<Function>>({
-				linalg::forward_subs_unit_diag(ndim, single_precission),
+				linalg::forward_subs_unit_diaged(ndim, single_precission),
 				linalg::backward_subs_unit_t(ndim, single_precission)
 			})
 		);

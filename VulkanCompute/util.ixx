@@ -102,4 +102,34 @@ namespace util {
         return std::find(c.begin(), c.end(), v) != c.end();
     }
 
+    export std::string stupid_compress(uint64_t num) 
+    {
+        std::string basec = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        std::string ret;
+
+        auto powlam = [](uint64_t base, uint32_t exponent) {
+            uint64_t retnum = 1;
+            for (int i = 0; i < exponent; ++i) {
+                retnum *= base;
+            }
+            return retnum;
+        };
+
+        uint64_t base = std::numeric_limits<uint64_t>::max();
+        uint64_t c = (uint64_t)num / base;
+        uint64_t rem = num % base;
+
+        for (int i = 10; i >= 0; --i) {
+            base = powlam(basec.size(), i);
+            c = (uint64_t)num / base;
+            rem = num % base;
+
+            if (c > 0)
+                ret += basec[c];
+            num = rem;
+        }
+
+        return ret;
+    }
+
 }

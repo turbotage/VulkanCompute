@@ -159,6 +159,24 @@ namespace glsl {
 		bool m_SinglePrecission;
 	};
 
+	export class SimpleVariable : public ShaderVariable {
+	public:
+
+		SimpleVariable(
+			const std::string& name,
+			const std::string& type,
+			const std::string& value);
+
+		std::string getDeclaration() const override;
+
+		std::string getName() const override;
+
+	private:
+		std::string m_Name;
+		std::string m_Type;
+		std::string m_Value;
+	};
+
 	export class Shader {
 	public:
 
@@ -177,6 +195,14 @@ namespace glsl {
 		void addInputOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding);
 
 		void addVariable(const std::shared_ptr<ShaderVariable>& var);
+
+		void setBeforeCopyingFrom(const std::string& mi);
+
+		void setAfterCopyingFrom(const std::string& mi);
+
+		void setBeforeCopyingBack(const std::string& mi);
+
+		void setAfterCopyingBack(const std::string& mi);
 
 		template<ShaderVariableIterator SVIterator> 
 		void apply(const Function& func, 
@@ -234,6 +260,11 @@ namespace glsl {
 		std::vector<Function> m_Functions;
 
 		std::vector<std::pair<std::shared_ptr<ShaderVariable>,bool>> m_Variables;
+
+		std::string m_BeforeCopyingFrom;
+		std::string m_AfterCopyingFrom;
+		std::string m_BeforeCopyingBack;
+		std::string m_AfterCopyingBack;
 
 		std::vector<std::pair<ui16, ui16>> m_Inputs;
 		std::vector<std::pair<ui16, ui16>> m_Outputs;
