@@ -23,6 +23,23 @@ import symbolic;
 import expr;
 import symm;
 
+void test_copying()
+{
+	using namespace glsl;
+	using namespace vc;
+
+	AutogenShader shader;
+	
+	kp::Manager mgr;
+	
+	kp::Constants c;
+
+
+	std::vector<bool> converges = { true, false, true, false, true, false, false };
+	
+	
+
+}
 
 void test_nlsq()
 {
@@ -31,7 +48,7 @@ void test_nlsq()
 
 	auto start = std::chrono::steady_clock::now();
 
-	Shader shader;
+	AutogenShader shader;
 
 	ui16 ndata = 21;
 	ui16 nparam = 4;
@@ -134,7 +151,7 @@ void test_gmw81()
 	using namespace glsl;
 	using namespace vc;
 
-	Shader shader;
+	AutogenShader shader;
 	
 	ui32 n = 1;
 	ui16 ndim = 3;
@@ -226,7 +243,7 @@ void test_backward() {
 	using namespace glsl;
 	using namespace vc;
 
-	Shader shader;
+	AutogenShader shader;
 
 	ui32 n = 1;
 	ui16 ndim = 3;

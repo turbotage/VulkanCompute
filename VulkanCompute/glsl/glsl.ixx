@@ -75,18 +75,9 @@ namespace glsl {
 		BufferBinding(ui16 binding, const std::string& type, const std::string& name)
 			: m_Binding(binding), m_Type(type), m_Name(name) {}
 
-		std::string operator()() const override {
-			return "layout(set = 0, binding = " + std::to_string(m_Binding) + ") buffer buf_global_" +
-				m_Name + " { " + m_Type + " " + "global_" + m_Name + "[]; };";
-		}
+		std::string operator()() const override;
 
-		bool operator==(const Binding* other) const override {
-			if (auto* b = dynamic_cast<const BufferBinding*>(other); b != nullptr) {
-				return (b->m_Binding == m_Binding) && 
-					(b->m_Type == m_Type) && (b->m_Name == m_Name);
-			}
-			return false;
-		}
+		bool operator==(const Binding* other) const override;
 
 	private:
 		ui16 m_Binding;
@@ -179,8 +170,31 @@ namespace glsl {
 		std::string m_Value;
 	};
 
-	export class Shader {
+	export class ShaderBase {
 	public:
+
+		virtual std::string compile() const = 0;
+
+	private:
+
+	};
+
+	export class StupidShader : public ShaderBase {
+	public:
+
+		StupidShader(const std::string& str)
+			: m_Str(str) {}
+
+		std::string compile() const override;
+
+	private:
+		std::string m_Str;
+	};
+
+	export class AutogenShader : public ShaderBase {
+	public:
+
+		void addBinding(std::unique_ptr<Binding> binding);
 
 		void addFunction(const Function& func);
 
@@ -238,7 +252,7 @@ namespace glsl {
 			apply(func, ret, std::make_optional(std::make_pair(args.begin(), args.end())));
 		}
 
-		std::string compile() const;
+		std::string compile() const override;
 
 	private:
 

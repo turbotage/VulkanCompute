@@ -160,6 +160,22 @@ uint16_t MatrixVariable::getNDim1() const { return m_NDim1; }
 
 uint16_t MatrixVariable::getNDim2() const { return m_NDim2; }
 
+// BUFFER BINDING
+std::string BufferBinding::operator()() const
+{
+	return "layout(set = 0, binding = " + std::to_string(m_Binding) + ") buffer buf_global_" +
+		m_Name + " { " + m_Type + " " + "global_" + m_Name + "[]; };";
+}
+
+bool BufferBinding::operator==(const Binding* other) const
+{
+	if (auto* b = dynamic_cast<const BufferBinding*>(other); b != nullptr) {
+		return (b->m_Binding == m_Binding) &&
+			(b->m_Type == m_Type) && (b->m_Name == m_Name);
+	}
+	return false;
+}
+
 // VECTOR VARIABLE
 
 VectorVariable::VectorVariable(const std::string& name,
@@ -213,66 +229,78 @@ std::string SimpleVariable::getName() const
 	return m_Name;
 }
 
-// SHADER 
+// STUPIDSHADER
 
-void Shader::addFunction(const Function& func)
+std::string StupidShader::compile() const
+{
+	return m_Str;
+}
+
+// AUTOGENSHADER
+
+void AutogenShader::addBinding(std::unique_ptr<Binding> binding)
+{
+	_addBinding(std::move(binding));
+}
+
+void AutogenShader::addFunction(const Function& func)
 {
 	_addFunction(func);
 }
 
-void Shader::addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding)
+void AutogenShader::addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding)
 {
 	_addInputMatrix(mat, binding, true);
 }
 
-void Shader::addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding)
+void AutogenShader::addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding)
 {
 	_addOutputMatrix(mat, binding, true);
 }
 
-void Shader::addInputOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding)
+void AutogenShader::addInputOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding)
 {
 	_addInputMatrix(mat, binding, true);
 	_addOutputMatrix(mat, binding, false);
 }
 
-void Shader::addInputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding)
+void AutogenShader::addInputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding)
 {
 	_addInputVector(vec, binding, true);
 }
 
-void Shader::addOutputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding)
+void AutogenShader::addOutputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding)
 {
 	_addOutputVector(vec, binding, true);
 }
 
-void Shader::addInputOutputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding)
+void AutogenShader::addInputOutputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding)
 {
 	_addInputVector(vec, binding, true);
 	_addOutputVector(vec, binding, false);
 }
 
-void Shader::addVariable(const std::shared_ptr<ShaderVariable>& var)
+void AutogenShader::addVariable(const std::shared_ptr<ShaderVariable>& var)
 {
 	_addVariable(var, false);
 }
 
-void Shader::setBeforeCopyingFrom(const std::string& mi)
+void AutogenShader::setBeforeCopyingFrom(const std::string& mi)
 {
 	m_BeforeCopyingFrom = mi;
 }
 
-void Shader::setAfterCopyingFrom(const std::string& mi)
+void AutogenShader::setAfterCopyingFrom(const std::string& mi)
 {
 	m_AfterCopyingFrom = mi;
 }
 
-void Shader::setBeforeCopyingBack(const std::string& mi)
+void AutogenShader::setBeforeCopyingBack(const std::string& mi)
 {
 	m_BeforeCopyingBack = mi;
 }
 
-void Shader::setAfterCopyingBack(const std::string& mi)
+void AutogenShader::setAfterCopyingBack(const std::string& mi)
 {
 	m_AfterCopyingBack = mi;
 }
@@ -364,7 +392,7 @@ R"glsl(
 	throw std::runtime_error("Both variables must be either Vectors and Matrices");
 }
 
-std::string Shader::compile() const
+std::string AutogenShader::compile() const
 {
 	std::string ret;
 	ret.reserve(DEFAULT_SHADER_SIZE);
@@ -452,11 +480,11 @@ layout (local_size_x = 1) in;
 	return ret;
 }
 
-uint16_t Shader::_addFunction(const Function& func) {
+uint16_t AutogenShader::_addFunction(const Function& func) {
 	return Function::add_function(m_Functions, func);
 }
 
-bool Shader::_addBinding(std::unique_ptr<Binding> binding)
+bool AutogenShader::_addBinding(std::unique_ptr<Binding> binding)
 {
 	auto it = std::find_if(m_Bindings.begin(), m_Bindings.end(), [&binding](const std::unique_ptr<Binding>& b)
 		{
@@ -470,7 +498,7 @@ bool Shader::_addBinding(std::unique_ptr<Binding> binding)
 	return false;
 }
 
-uint16_t Shader::_addVariable(const std::shared_ptr<ShaderVariable>& var, bool is_global)
+uint16_t AutogenShader::_addVariable(const std::shared_ptr<ShaderVariable>& var, bool is_global)
 {
 	auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::pair<std::shared_ptr<ShaderVariable>,bool>& v) {
 		return *var == *(v.first);
@@ -482,7 +510,7 @@ uint16_t Shader::_addVariable(const std::shared_ptr<ShaderVariable>& var, bool i
 	return pos;
 }
 
-void Shader::_addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding)
+void AutogenShader::_addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding)
 {
 	auto ndim1 = mat->getNDim1();
 	auto ndim2 = mat->getNDim2();
@@ -502,7 +530,7 @@ void Shader::_addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_
 	m_Inputs.emplace_back(global_mat_index, mat_index);
 }
 
-void Shader::_addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding)
+void AutogenShader::_addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding)
 {
 	auto ndim1 = mat->getNDim1();
 	auto ndim2 = mat->getNDim2();
@@ -521,7 +549,7 @@ void Shader::_addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16
 	m_Outputs.emplace_back(mat_index, global_mat_index);
 }
 
-void Shader::_addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding)
+void AutogenShader::_addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding)
 {
 	auto ndim = vec->getNDim();
 	bool sp = vec->isSinglePrecission();
@@ -539,7 +567,7 @@ void Shader::_addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_
 	m_Inputs.emplace_back(global_vec_index, vec_index);
 }
 
-void Shader::_addOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding)
+void AutogenShader::_addOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding)
 {
 	auto ndim = vec->getNDim();
 	bool sp = vec->isSinglePrecission();
