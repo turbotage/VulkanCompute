@@ -3,6 +3,8 @@
 #
 cmake_minimum_required (VERSION 3.14)
 
+set(ENV{CMAKE_BUILD_PARALLEL_LEVEL} 6)
+
 set(DKOMPUTE_VK_API_MAJOR_VERSION 1)
 set(DKOMPUTE_VK_API_MINOR_VERSION 3)
 
@@ -17,6 +19,8 @@ add_executable(VulkanCompute
 	"linalg/linalg.ixx"
 	"linalg/solver.ixx"
 	"linalg/symm.ixx"
+	"linalg/copy.ixx"
+	"linalg/permute.ixx"
 	"symbolic.ixx"
 	"vc.ixx"
 	"expression/parser/token.ixx" 
@@ -33,8 +37,7 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/pow.ixx"
 	"expression/algebra/binary/sub.ixx"
 	"expression/expr.ixx" 
-	"expression/expr.cpp"  
-) 
+	"expression/expr.cpp") 
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 

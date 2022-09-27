@@ -20,6 +20,8 @@ using namespace vc;
 
 namespace glsl {
 
+	export constexpr auto UNIQUE_ID = "UNIQUEID";
+
 	export std::vector<ui32> compileSource(const std::string& source, bool optimize = true);
 
 	export class Function {

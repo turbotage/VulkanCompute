@@ -98,13 +98,10 @@ void nlsq_residuals_jacobian_UNIQUEID(
 	out float residuals[ndata],
 	out float jacobian[ndata*nparam]) {
 	
+	for (int i = 0; i < ndata; ++i) {
 	// eval
-	for (int i = 0; i < ndata; ++i) {
 RESIDUAL_EXPRESSIONS
-	}
-
 	// jacobian
-	for (int i = 0; i < ndata; ++i) {
 JACOBIAN_EXPRESSIONS
 	}	
 
@@ -174,18 +171,12 @@ void nlsq_residuals_jacobian_hessian_UNIQUEID(
 	out float jacobian[ndata*nparam], 
 	out float hessian[nparam*nparam]) {
 	
+	for (int i = 0; i < ndata; ++i) {
 	// eval
-	for (int i = 0; i < ndata; ++i) {
 RESIDUAL_EXPRESSIONS
-	}
-
 	// jacobian
-	for (int i = 0; i < ndata; ++i) {
 JACOBIAN_EXPRESSIONS
-	}
-
 	// second order part of hessian
-	for (int i = 0; i < ndata; ++i) {
 HESSIAN_EXPRESSIONS
 	}
 
@@ -290,18 +281,12 @@ void nlsq_residuals_jacobian_hessian_l_UNIQUEID(
 	out float jacobian[ndata*nparam], 
 	out float hessian[nparam*nparam]) {
 	
+	for (int i = 0; i < ndata; ++i) {
 	// eval
-	for (int i = 0; i < ndata; ++i) {
 RESIDUAL_EXPRESSIONS
-	}
-
 	// jacobian
-	for (int i = 0; i < ndata; ++i) {
 JACOBIAN_EXPRESSIONS
-	}
-
 	// second order part of hessian
-	for (int i = 0; i < ndata; ++i) {
 HESSIAN_EXPRESSIONS
 	}
 
@@ -409,18 +394,12 @@ void nlsq_residuals_jacobian_hessian_sl_UNIQUEID(
 	out float jacobian[ndata*nparam], 
 	out float hessian[nparam*nparam]) {
 	
+	for (int i = 0; i < ndata; ++i) {
 	// eval
-	for (int i = 0; i < ndata; ++i) {
 RESIDUAL_EXPRESSIONS
-	}
-
 	// jacobian
-	for (int i = 0; i < ndata; ++i) {
 JACOBIAN_EXPRESSIONS
-	}
-
 	// second order part of hessian
-	for (int i = 0; i < ndata; ++i) {
 HESSIAN_EXPRESSIONS
 	}
 
