@@ -429,7 +429,8 @@ layout (local_size_x = 1) in;
 	ret += m_BeforeCopyingFrom;
 
 	// copy globals to locals
-	ret += "\tuint start_index;\n";
+	if (m_Inputs.size() != 0 || m_Outputs.size() != 0)
+		ret += "\tuint start_index;\n";
 	for (auto& input : m_Inputs) {	
 		ret += copying_from(m_Variables[input.first].first, m_Variables[input.second].first);
 	}

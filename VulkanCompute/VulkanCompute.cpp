@@ -28,16 +28,81 @@ void test_copying()
 	using namespace glsl;
 	using namespace vc;
 
+	constexpr ui32 n = 7;
+
 	AutogenShader shader;
 	
 	kp::Manager mgr;
-	
-	kp::Constants c;
 
 
-	std::vector<bool> converges = { true, false, true, false, true, false, false };
+	std::vector<int32_t> converges = { 1, 0, 1, 0, 1, 0, 0 };
+	std::vector<int32_t> convergent_index(n, 0);
+	std::vector<int32_t> num_convergent = { 0 };
+
+	auto converges_tensor = mgr.tensor(converges.data(), converges.size(), sizeof(int32_t), kp::Tensor::TensorDataTypes::eInt);
+	auto convergent_index_tensor = mgr.tensor(convergent_index.data(), convergent_index.size(), sizeof(int32_t), kp::Tensor::TensorDataTypes::eInt);
+	auto num_convergent_tensor = mgr.tensor(num_convergent.data(), num_convergent.size(), sizeof(int32_t), kp::Tensor::TensorDataTypes::eInt);
+
+	auto converges_bind = std::make_unique<BufferBinding>(0, "int", "converges");
+	shader.addBinding(std::move(converges_bind));
 	
+	auto convergent_index_bind = std::make_unique<BufferBinding>(1, "int", "convergent_index");
+	shader.addBinding(std::move(convergent_index_bind));
+
+	auto num_convergent_bind = std::make_unique<BufferBinding>(2, "int", "num_convergent");
+	shader.addBinding(std::move(num_convergent_bind));
+
 	
+	shader.setBeforeCopyingFrom(
+R"glsl(
+	uint index = gl_GlobalInvocationID.x;
+	int conv = global_converges[index];
+	if (conv == 1) {
+		int converges_index = atomicAdd(global_num_convergent[0], 1);
+		global_convergent_index[index] = converges_index;
+	}
+	else if (conv == 0) {
+		global_convergent_index[index] = -1;
+	}
+	else {
+		global_convergent_index[index] = -2;
+	}
+)glsl");
+	
+	std::string glsl_shader = shader.compile();
+	std::string gs_with_lines = util::add_line_numbers(glsl_shader);
+
+	std::cout << gs_with_lines << std::endl;
+
+	auto spirv = glsl::compileSource(glsl_shader, true);
+
+
+	kp::Workgroup wg({ (size_t)n, 1, 1 });
+	std::vector<std::shared_ptr<kp::Tensor>> kp_params = 
+		{ converges_tensor, convergent_index_tensor, num_convergent_tensor };
+
+	auto algo = mgr.algorithm(kp_params, spirv, wg);
+
+	mgr.sequence()->record<kp::OpTensorSyncDevice>(kp_params)
+		->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpTensorSyncLocal>(kp_params)->eval();
+
+	std::string ret = "\nconverges: ";
+	for (auto c : converges_tensor->vector<int32_t>()) {
+		ret += std::to_string(c) + " ";
+	}
+
+	ret += "\n\nconvergent_index: ";
+	for (auto c : convergent_index_tensor->vector<int32_t>()) {
+		ret += std::to_string(c) + " ";
+	}
+
+	ret += "\n\nnum_convergent: ";
+	for (auto c : num_convergent_tensor->vector<int32_t>()) {
+		ret += std::to_string(c) + " ";
+	}
+
+	std::cout << ret << std::endl;
 
 }
 
@@ -333,7 +398,7 @@ void test_backward() {
 
 int main() {
 	
-	test_nlsq();
+	test_copying();
 
 	return 0;
 }
