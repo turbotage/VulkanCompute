@@ -81,14 +81,14 @@ void test_nlsq()
 
 	std::string gs_with_lines = util::add_line_numbers(glsl_shader);
 
-	auto spirv = glsl::compileSource(glsl_shader);
+	auto spirv = glsl::compileSource(glsl_shader, true);
 
 	auto end = std::chrono::steady_clock::now();
 
 	std::cout << gs_with_lines << std::endl;
 	std::cout << "time:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
-	ui32 n = 1000000;
+	ui32 n = 5000000;
 
 	kp::Manager mgr;
 
@@ -114,7 +114,6 @@ void test_nlsq()
 	start = std::chrono::steady_clock::now();
 
 	seq = seq->record<kp::OpAlgoDispatch>(algo)
-		->record<kp::OpAlgoDispatch>(algo)
 		->record<kp::OpAlgoDispatch>(algo)
 		->record<kp::OpAlgoDispatch>(algo)
 		->record<kp::OpAlgoDispatch>(algo)

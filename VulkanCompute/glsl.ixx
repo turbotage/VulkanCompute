@@ -20,7 +20,7 @@ using namespace vc;
 
 namespace glsl {
 
-	export std::vector<ui32> compileSource(const std::string& source);
+	export std::vector<ui32> compileSource(const std::string& source, bool optimize = true);
 
 	export class Function {
 	public:

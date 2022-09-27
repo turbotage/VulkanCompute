@@ -20,17 +20,33 @@ namespace {
 	constexpr auto DEFAULT_SHADER_SIZE = 30000;
 }
 
-std::vector<uint32_t> glsl::compileSource(const std::string& source)
+std::vector<uint32_t> glsl::compileSource(const std::string& source, bool optimize)
 {
-	std::ofstream fileOut("tmp_kp_shader.comp");
+	std::ofstream fileOut("tmpshader.comp");
 	fileOut << source;
 	fileOut.close();
 	if (system(
 		std::string(
-			"glslangValidator -V tmp_kp_shader.comp -o tmp_kp_shader.comp.spv")
+			"glslangValidator -V tmpshader.comp -o tmpshader.comp.spv")
 		.c_str()))
 		throw std::runtime_error("Error running glslangValidator command");
-	std::ifstream fileStream("tmp_kp_shader.comp.spv", std::ios::binary);
+	if (optimize) {
+		if (system(
+			std::string(
+				"spirv-opt -O tmpshader.comp.spv -o tmpshader.comp.spv")
+			.c_str()))
+			throw std::runtime_error("Error running spirv-opt command");
+
+		system(std::string("mkdir tmp").c_str());
+
+		if (system(
+			std::string(
+				"spirv-remap --do-everything --input tmpshader.comp.spv --output tmp")
+			.c_str()))
+			throw std::runtime_error("Error running spirv-opt command");
+
+	}
+	std::ifstream fileStream("tmp/tmpshader.comp.spv", std::ios::binary);
 	std::vector<char> buffer;
 	buffer.insert(
 		buffer.begin(), std::istreambuf_iterator<char>(fileStream), {});
