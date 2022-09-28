@@ -25,6 +25,7 @@ std::vector<uint32_t> glsl::compileSource(const std::string& source, bool optimi
 	std::ofstream fileOut("tmpshader.comp");
 	fileOut << source;
 	fileOut.close();
+	std::ifstream fileStream;
 	if (system(
 		std::string(
 			"glslangValidator -V tmpshader.comp -o tmpshader.comp.spv")
@@ -37,16 +38,22 @@ std::vector<uint32_t> glsl::compileSource(const std::string& source, bool optimi
 			.c_str()))
 			throw std::runtime_error("Error running spirv-opt command");
 
-		system(std::string("mkdir tmp").c_str());
+		//system(std::string("mkdir tmp").c_str());
 
+		/*
 		if (system(
 			std::string(
 				"spirv-remap --do-everything --input tmpshader.comp.spv --output tmp")
 			.c_str()))
 			throw std::runtime_error("Error running spirv-opt command");
+		*/
 
+		fileStream = std::ifstream("tmpshader.comp.spv", std::ios::binary);
 	}
-	std::ifstream fileStream("tmp/tmpshader.comp.spv", std::ios::binary);
+	else {
+		fileStream = std::ifstream("tmpshader.comp.spv", std::ios::binary);
+	}
+
 	std::vector<char> buffer;
 	buffer.insert(
 		buffer.begin(), std::istreambuf_iterator<char>(fileStream), {});

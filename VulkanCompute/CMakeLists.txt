@@ -9,7 +9,6 @@ set(DKOMPUTE_VK_API_MAJOR_VERSION 1)
 set(DKOMPUTE_VK_API_MINOR_VERSION 3)
 
 add_subdirectory("external/kompute" ${CMAKE_CURRENT_BINARY_DIR}/kompute_build)
-
 # Add source to this project's executable.
 add_executable(VulkanCompute 
 	"VulkanCompute.cpp"

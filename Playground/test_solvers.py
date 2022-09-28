@@ -16,13 +16,16 @@ from scipy.linalg import ldl
 #	0,0,0
 #	});
 
-A = np.array([[3,2,1],[2,4,2],[1,2,5]])
+A = np.array([[3,2,1],[2,4,1000],[1,1000,50000]])
 rhs = np.array([1,1,1])
 
-lu, d, parm = ldl(A)
+l, d, p = ldl(A)
 
-print(lu)
+print(l)
 print(d)
+print(p)
+
+print(A - l @ d @ l.transpose())
 
 sol = np.linalg.solve(A,rhs)
 print(sol)

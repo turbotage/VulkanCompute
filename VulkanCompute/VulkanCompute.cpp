@@ -127,6 +127,8 @@ void test_nlsq()
 	auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, nconst, true);
 	auto lambda = std::make_shared<glsl::SimpleVariable>("lambda", "float", "2.0");
 	auto step = std::make_shared<glsl::VectorVariable>("step", nparam, true);
+	auto add_test = std::make_shared<glsl::VectorVariable>("add_test", 1, true);
+
 
 	shader.addOutputVector(residuals, 0);
 	shader.addOutputMatrix(jacobian, 1);
@@ -135,6 +137,8 @@ void test_nlsq()
 	shader.addInputVector(params, 4);
 	shader.addInputMatrix(consts, 5);
 	shader.addOutputVector(step, 6);
+
+	shader.addBinding(std::make_unique<glsl::BufferBinding>(7, "float", "add_test"));
 	
 	std::vector<std::string> vars = { "s0","f","d1","d2","b" };
 	std::string expresh = "s0*(f*exp(-b*d1)+(1-f)*exp(-b*d2))";
@@ -159,18 +163,32 @@ void test_nlsq()
 
 	shader.apply(linalg::ldl_solve(nparam, true), nullptr, { hessian, rhs, step });
 
+	shader.setBeforeCopyingBack(
+R"glsl(
+	global_add_test[gl_GlobalInvocationID.x] += float(1.0);
+)glsl"
+);
+
 	std::string glsl_shader = shader.compile();
 
 	std::string gs_with_lines = util::add_line_numbers(glsl_shader);
 
-	auto spirv = glsl::compileSource(glsl_shader, true);
+	std::vector<uint32_t> spirv;
+	try {
+		spirv = glsl::compileSource(glsl_shader, true);
+	}
+	catch (std::exception& e) {
+		std::cout << gs_with_lines << std::endl;
+		std::cout << e.what() << std::endl;
+		throw e;
+	}
 
 	auto end = std::chrono::steady_clock::now();
 
 	std::cout << gs_with_lines << std::endl;
 	std::cout << "time:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
-	ui32 n = 5000000;
+	ui32 n = 1000000;
 
 	kp::Manager mgr;
 
@@ -183,32 +201,39 @@ void test_nlsq()
 	auto consts_tensor = mgr.tensor(std::vector<float>(ndata * nconst * n));
 	auto step_tensor = mgr.tensor(std::vector<float>(nparam * n));
 
+	auto add_test_tensor = mgr.tensor(std::vector<float>(n, 0));
+
+
 	std::vector<std::shared_ptr<kp::Tensor>> kp_params = { res_tensor, jac_tensor, hes_tensor,
-		data_tensor, param_tensor, consts_tensor, step_tensor };
+		data_tensor, param_tensor, consts_tensor, step_tensor, add_test_tensor };
 
 	kp::Workgroup wg({ (size_t)n, 1, 1 });
 
 	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(kp_params, spirv, wg);
 
-
+	int runs = 1;
 	auto seq = mgr.sequence()->record<kp::OpTensorSyncDevice>(kp_params)->eval();
 
 	start = std::chrono::steady_clock::now();
 
-	seq = seq->record<kp::OpAlgoDispatch>(algo)
-		->record<kp::OpAlgoDispatch>(algo)
-		->record<kp::OpAlgoDispatch>(algo)
-		->record<kp::OpAlgoDispatch>(algo)
-		->eval();
-		
+	for (int i = 0; i < runs; ++i) {
+		seq->record<kp::OpAlgoDispatch>(algo);
+		std::cout << "run: " << i << std::endl;
+	}
+	seq->eval();
+
 	end = std::chrono::steady_clock::now();
 		
-	seq	= seq->record<kp::OpTensorSyncLocal>(kp_params)->eval();
-
+	seq->record<kp::OpTensorSyncLocal>(kp_params)->eval();
 
 	std::cout << "time: " <<
 		std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
+	auto atv = add_test_tensor->vector();
+	std::cout << "atv size: " << atv.size() << std::endl;
+	std::cout << "first:" << atv.front() << std::endl;
+	std::cout << "middle" << atv.at(std::max((uint32_t)atv.size() / 2, (uint32_t)(atv.size() - 1))) << std::endl;
+	std::cout << "back: " << atv.back() << std::endl;
 }
 
 void test_gmw81()
@@ -398,7 +423,7 @@ void test_backward() {
 
 int main() {
 	
-	test_copying();
+	test_nlsq();
 
 	return 0;
 }
