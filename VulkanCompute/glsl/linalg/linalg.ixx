@@ -95,16 +95,16 @@ void vec_neg_UNIQUEID(inout float vec[ndim]) {
 	}
 
 
-	export std::string dotprod_uniqueid(ui16 ndim, bool single_precission)
+	export std::string inner_prod_uniqueid(ui16 ndim, bool single_precission)
 	{
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function dotprod(ui16 ndim, bool single_precission)
+	export ::glsl::Function inner_prod(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
-float dotprod_UNIQUEID(in float vec1[ndim], in float vec2[ndim]) {
+R"glsl(
+float inner_prod_UNIQUEID(in float vec1[ndim], in float vec2[ndim]) {
 	float ret = 0;
 	for (int i = 0; i < ndim; ++i) {
 		ret += vec1[i] * vec2[i];
@@ -113,7 +113,7 @@ float dotprod_UNIQUEID(in float vec1[ndim], in float vec2[ndim]) {
 }
 )glsl";
 
-		std::string uniqueid = dotprod_uniqueid(ndim, single_precission);
+		std::string uniqueid = inner_prod_uniqueid(ndim, single_precission);
 
 		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
 		{
@@ -127,7 +127,139 @@ float dotprod_UNIQUEID(in float vec1[ndim], in float vec2[ndim]) {
 		};
 
 		return ::glsl::Function(
-			"dotprod_" + uniqueid,
+			"inner_prod_" + uniqueid,
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+
+	export std::string weighted_inner_prod_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function weighted_inner_prod(ui16 ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+float weighted_inner_prod_UNIQUEID(in float mat[ndim], in float vec1[ndim], in float vec2[ndim]) {
+	float ret = 0;
+	for (int i = 0; i < ndim; ++i) {
+		float temp = 0;
+		for (int j = 0; j < ndim; ++j) {
+			temp += mat[i*ndim + j] * vec2[j];
+		}
+		ret += vec1[i] * temp;
+	}
+	return ret;
+}
+)glsl";
+
+		std::string uniqueid = weighted_inner_prod_uniqueid(ndim, single_precission);
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"weighted_inner_prod_" + uniqueid,
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+
+	export std::string weighted_vec_norm_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function weighted_vec_norm(ui16 ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+float weighted_inner_prod_UNIQUEID(in float mat[ndim], in float vec[ndim]) {
+	float ret = 0;
+	for (int i = 0; i < ndim; ++i) {
+		float temp = 0;
+		for (int j = 0; j < ndim; ++j) {
+			temp += mat[i*ndim + j] * vec[j];
+		}
+		ret += vec[i] * temp;
+	}
+	return sqrt(ret);
+}
+)glsl";
+
+		std::string uniqueid = weighted_vec_norm_uniqueid(ndim, single_precission);
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"weighted_vec_norm_" + uniqueid,
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+
+	export std::string weighted_vec_norm2_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function weighted_vec_norm2(ui16 ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+float weighted_inner_prod_UNIQUEID(in float mat[ndim], in float vec[ndim]) {
+	float ret = 0;
+	for (int i = 0; i < ndim; ++i) {
+		float temp = 0;
+		for (int j = 0; j < ndim; ++j) {
+			temp += mat[i*ndim + j] * vec[j];
+		}
+		ret += vec[i] * temp;
+	}
+	return ret;
+}
+)glsl";
+
+		std::string uniqueid = weighted_vec_norm2_uniqueid(ndim, single_precission);
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"weighted_vec_norm2_" + uniqueid,
 			{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
@@ -385,6 +517,44 @@ void add_mat_mat_UNIQUEID(in float lmat[nrow*ncol], in float rmat[nrow*ncol], ou
 	}
 
 
+	export std::string add_vec_vec_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function add_vec_vec(ui16 ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void add_vec_vec_UNIQUEID(in float lvec[ndim], in float rvec[ndim], out float ovec[ndim]) {
+	for (int i = 0; i < ndim; ++i) {
+		ovec[i] = lvec[i] + rvec[i];
+	}
+}
+)glsl";
+
+		std::string uniqueid = add_vec_vec_uniqueid(ndim, single_precission);
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"add_mat_mat_" + uniqueid,
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
+
 	export std::string add_mat_lmat_uniqueid(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
@@ -538,6 +708,48 @@ void mat_add_ldiag_UNIQUEID(inout float mat[ndim*ndim], float lambda) {
 			std::nullopt
 		);
 	}
+
+
+	export std::string mat_add_ldiag_out_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export ::glsl::Function mat_add_ldiag_out(ui16 ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+void mat_add_ldiag_out_UNIQUEID(in float mat[ndim*ndim], float lambda, out float omat[ndim*ndim]) {
+	for (int i = 0; i < ndim*ndim; ++i) {
+		omat[i] = mat[i];
+	}
+	for (int i = 0; i < ndim; ++i) {
+		omat[i*ndim + i] += lambda * omat[i*ndim + i];
+	}
+}
+)glsl";
+
+		std::string uniqueid = mat_add_ldiag_out_uniqueid(ndim, single_precission);
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return ::glsl::Function(
+			"mat_add_ldiag_out_" + uniqueid,
+			{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+		);
+	}
+
 
 
 	export std::string mul_mat_transpose_uniqueid(ui16 nrow, ui16 ncol, bool single_precission)
@@ -744,7 +956,6 @@ void mul_mat_transpose_add_ldiag_UNIQUEID(in float mat[nrow*ncol], float lambda,
 	}
 
 	
-
 	export std::string mul_transpose_mat_uniqueid(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
@@ -816,7 +1027,7 @@ void mul_transpose_mat_ldiag_UNIQUEID(in float mat[nrow*ncol], float lambda, out
 				omat[j*ncol + i] = entry;
 			}
 			else {
-				omat[j*ncol + i] = lambda * entry;
+				omat[j*ncol + i] += lambda * entry;
 			}
 		}
 	}

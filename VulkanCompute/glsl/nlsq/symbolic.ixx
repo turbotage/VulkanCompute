@@ -20,7 +20,7 @@ export import expr;
 export import glsl;
 
 namespace glsl {
-namespace symbolic {
+namespace nlsq {
 
 	using namespace vc;
 
@@ -99,9 +99,9 @@ void nlsq_residuals_jacobian_UNIQUEID(
 	out float jacobian[ndata*nparam]) {
 	
 	for (int i = 0; i < ndata; ++i) {
-	// eval
+		// eval
 RESIDUAL_EXPRESSIONS
-	// jacobian
+		// jacobian
 JACOBIAN_EXPRESSIONS
 	}	
 
@@ -172,11 +172,11 @@ void nlsq_residuals_jacobian_hessian_UNIQUEID(
 	out float hessian[nparam*nparam]) {
 	
 	for (int i = 0; i < ndata; ++i) {
-	// eval
+		// eval
 RESIDUAL_EXPRESSIONS
-	// jacobian
+		// jacobian
 JACOBIAN_EXPRESSIONS
-	// second order part of hessian
+		// second order part of hessian
 HESSIAN_EXPRESSIONS
 	}
 
@@ -282,11 +282,11 @@ void nlsq_residuals_jacobian_hessian_l_UNIQUEID(
 	out float hessian[nparam*nparam]) {
 	
 	for (int i = 0; i < ndata; ++i) {
-	// eval
+		// eval
 RESIDUAL_EXPRESSIONS
-	// jacobian
+		// jacobian
 JACOBIAN_EXPRESSIONS
-	// second order part of hessian
+		// second order part of hessian
 HESSIAN_EXPRESSIONS
 	}
 
@@ -395,11 +395,11 @@ void nlsq_residuals_jacobian_hessian_sl_UNIQUEID(
 	out float hessian[nparam*nparam]) {
 	
 	for (int i = 0; i < ndata; ++i) {
-	// eval
+		// eval
 RESIDUAL_EXPRESSIONS
-	// jacobian
+		// jacobian
 JACOBIAN_EXPRESSIONS
-	// second order part of hessian
+		// second order part of hessian
 HESSIAN_EXPRESSIONS
 	}
 

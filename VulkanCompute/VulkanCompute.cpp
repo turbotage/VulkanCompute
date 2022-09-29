@@ -150,7 +150,7 @@ void test_nlsq()
 	context.insert_param(std::make_pair("d1", 2));
 	context.insert_param(std::make_pair("d2", 3));
 
-	shader.apply(symbolic::nlsq_residuals_jacobian_hessian_l(expr, context, ndata, nparam, nconst, true),
+	shader.apply(nlsq::nlsq_residuals_jacobian_hessian_l(expr, context, ndata, nparam, nconst, true),
 		nullptr,
 		{ params, consts, data, lambda, residuals, jacobian, hessian });
 
@@ -188,7 +188,7 @@ R"glsl(
 	std::cout << gs_with_lines << std::endl;
 	std::cout << "time:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
-	ui32 n = 1000000;
+	ui32 n = 5000000;
 
 	kp::Manager mgr;
 
@@ -203,7 +203,6 @@ R"glsl(
 
 	auto add_test_tensor = mgr.tensor(std::vector<float>(n, 0));
 
-
 	std::vector<std::shared_ptr<kp::Tensor>> kp_params = { res_tensor, jac_tensor, hes_tensor,
 		data_tensor, param_tensor, consts_tensor, step_tensor, add_test_tensor };
 
@@ -211,7 +210,7 @@ R"glsl(
 
 	std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(kp_params, spirv, wg);
 
-	int runs = 1;
+	int runs = 2;
 	auto seq = mgr.sequence()->record<kp::OpTensorSyncDevice>(kp_params)->eval();
 
 	start = std::chrono::steady_clock::now();
@@ -234,6 +233,11 @@ R"glsl(
 	std::cout << "first:" << atv.front() << std::endl;
 	std::cout << "middle" << atv.at(std::max((uint32_t)atv.size() / 2, (uint32_t)(atv.size() - 1))) << std::endl;
 	std::cout << "back: " << atv.back() << std::endl;
+}
+
+void test_nlsq_step()
+{
+	
 }
 
 void test_gmw81()
