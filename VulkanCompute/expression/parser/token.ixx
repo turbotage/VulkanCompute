@@ -1,9 +1,9 @@
 module;
 
-#include <complex>
-#include <vector>
-
 export module token;
+
+import <complex>;
+import <vector>;
 
 import vc;
 import defaultexp;

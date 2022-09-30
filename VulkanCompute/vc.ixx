@@ -1,12 +1,13 @@
 module;
 
-#include <cmath>
-#include <optional>
-#include <vector>
-#include <stdexcept>
-#include <memory>
 
 export module vc;
+
+import <cmath>;
+import <optional>;
+import <vector>;
+import <stdexcept>;
+import <memory>;
 
 export namespace vc {
 

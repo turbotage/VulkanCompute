@@ -1,10 +1,10 @@
 module;
 
-#include <memory>
-#include <stdexcept>
-#include <complex>
-
 export module mul;
+
+import <memory>;
+import <stdexcept>;
+import <complex>;
 
 import token;
 import vc;

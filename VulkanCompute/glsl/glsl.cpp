@@ -1,11 +1,11 @@
 module;
 
-#include <memory>
-#include <string>
-
 #include <kompute/Kompute.hpp>
 
 module glsl;
+
+import <memory>;
+import <string>;
 
 using namespace glsl;
 
@@ -26,29 +26,28 @@ std::vector<uint32_t> glsl::compileSource(const std::string& source, bool optimi
 	fileOut << source;
 	fileOut.close();
 	std::ifstream fileStream;
-	if (system(
-		std::string(
-			"glslangValidator -V tmpshader.comp -o tmpshader.comp.spv")
-		.c_str()))
+	if (system(std::string("glslangValidator -V tmpshader.comp -o tmpshader.comp.spv").c_str()))
+	{
 		throw std::runtime_error("Error running glslangValidator command");
+	}
+
 	if (optimize) {
-		if (system(
-			std::string(
-				"spirv-opt -O tmpshader.comp.spv -o tmpshader.comp.spv")
-			.c_str()))
+		if (system(std::string("spirv-opt -O tmpshader.comp.spv -o tmpshader.comp.spv").c_str()))
+		{
 			throw std::runtime_error("Error running spirv-opt command");
+		}
 
-		//system(std::string("mkdir tmp").c_str());
+		try {
+			system(std::string("mkdir tmp").c_str());
+		}
+		catch (...) {}
 
-		/*
-		if (system(
-			std::string(
-				"spirv-remap --do-everything --input tmpshader.comp.spv --output tmp")
-			.c_str()))
+		if (system(std::string("spirv-remap --do-everything --input tmpshader.comp.spv --output tmp").c_str())) 
+		{
 			throw std::runtime_error("Error running spirv-opt command");
-		*/
+		}
 
-		fileStream = std::ifstream("tmpshader.comp.spv", std::ios::binary);
+		fileStream = std::ifstream("tmp/tmpshader.comp.spv", std::ios::binary);
 	}
 	else {
 		fileStream = std::ifstream("tmpshader.comp.spv", std::ios::binary);
@@ -59,6 +58,22 @@ std::vector<uint32_t> glsl::compileSource(const std::string& source, bool optimi
 		buffer.begin(), std::istreambuf_iterator<char>(fileStream), {});
 	return { (uint32_t*)buffer.data(),
 			 (uint32_t*)(buffer.data() + buffer.size()) };
+}
+
+
+// UTIL
+std::string glsl::shader_variable_type_to_str(const ShaderVariableType& type)
+{
+	switch (type) {
+	case ShaderVariableType::FLOAT:
+		return "float";
+	case ShaderVariableType::DOUBLE:
+		return "double";
+	case ShaderVariableType::INT:
+		return "int";
+	default:
+		throw std::runtime_error("Unsupported type");
+	}
 }
 
 // FUNCTION
@@ -109,6 +124,22 @@ size_t Function::add_function(std::vector<Function>& funcs, const Function& func
 	return pos;
 }
 
+// BUFFER BINDING
+std::string BufferBinding::operator()() const
+{
+	return "layout(set = 0, binding = " + std::to_string(m_Binding) + ") buffer buf_global_" +
+		m_Name + " { " + m_Type + " " + "global_" + m_Name + "[]; };";
+}
+
+bool BufferBinding::operator==(const Binding* other) const
+{
+	if (auto* b = dynamic_cast<const BufferBinding*>(other); b != nullptr) {
+		return (b->m_Binding == m_Binding) &&
+			(b->m_Type == m_Type) && (b->m_Name == m_Name);
+	}
+	return false;
+}
+
 // SHADER VARIABLE
 
 size_t ShaderVariable::add_variable(std::vector<std::shared_ptr<ShaderVariable>>& vars,
@@ -126,21 +157,29 @@ size_t ShaderVariable::add_variable(std::vector<std::shared_ptr<ShaderVariable>>
 	return pos;
 }
 
+
 // MATRIX VARIABLE
 
 MatrixVariable::MatrixVariable(const std::string& name,
-	uint16_t ndim1, uint16_t ndim2, bool single_precission)
-	: m_Name(name), m_NDim1(ndim1), m_NDim2(ndim2), m_SinglePrecission(single_precission)
+	ui16 ndim1, ui16 ndim2, const ShaderVariableType& type)
+	: m_Name(name), m_NDim1(ndim1), m_NDim2(ndim2), m_Type(type)
 {}
 
 std::string MatrixVariable::getDeclaration() const
 {
 	std::string ret;
-	if (m_SinglePrecission) {
+	switch (m_Type) {
+	case ShaderVariableType::FLOAT:
 		ret += "float ";
-	}
-	else {
+		break;
+	case ShaderVariableType::DOUBLE:
 		ret += "double ";
+		break;
+	case ShaderVariableType::INT:
+		ret += "int ";
+		break;
+	default:
+		throw std::runtime_error("Unsupported type");
 	}
 	ret += m_Name + "[" +
 		std::to_string(m_NDim1) + "*" +
@@ -153,51 +192,70 @@ std::string MatrixVariable::getName() const
 	return m_Name;
 }
 
+std::string MatrixVariable::getUniqueID() const
+{
+	auto ret = std::to_string(m_NDim1) + "_" + std::to_string(m_NDim2) + "_";
+	switch (m_Type) {
+	case ShaderVariableType::FLOAT:
+		ret += "S";
+		break;
+	case ShaderVariableType::DOUBLE:
+		ret += "D";
+		break;
+	case ShaderVariableType::INT:
+		ret += "I";
+		break;
+	default:
+		throw std::runtime_error("Unsupported type");
+	}
+	return ret;
+}
+
+size_t MatrixVariable::getHash() const
+{
+	std::vector<size_t> hashes(3);
+	hashes[0] = (size_t)m_NDim1;
+	hashes[1] = (size_t)m_NDim2;
+	hashes[2] = (size_t)m_Type;
+	return util::hash_combine(hashes);
+}
+
 std::pair<ui16, ui16> MatrixVariable::getDimensions() const
 {
 	return std::make_pair(m_NDim1, m_NDim2);
 }
 
-bool MatrixVariable::isSinglePrecission() const
+ShaderVariableType MatrixVariable::getType() const
 {
-	return m_SinglePrecission;
+	return m_Type;
 }
 
 uint16_t MatrixVariable::getNDim1() const { return m_NDim1; }
 
 uint16_t MatrixVariable::getNDim2() const { return m_NDim2; }
 
-// BUFFER BINDING
-std::string BufferBinding::operator()() const
-{
-	return "layout(set = 0, binding = " + std::to_string(m_Binding) + ") buffer buf_global_" +
-		m_Name + " { " + m_Type + " " + "global_" + m_Name + "[]; };";
-}
-
-bool BufferBinding::operator==(const Binding* other) const
-{
-	if (auto* b = dynamic_cast<const BufferBinding*>(other); b != nullptr) {
-		return (b->m_Binding == m_Binding) &&
-			(b->m_Type == m_Type) && (b->m_Name == m_Name);
-	}
-	return false;
-}
-
 // VECTOR VARIABLE
 
 VectorVariable::VectorVariable(const std::string& name,
-	ui16 ndim, bool single_precission)
-	: m_Name(name), m_NDim(ndim), m_SinglePrecission(single_precission)
+	ui16 ndim, const ShaderVariableType& type)
+	: m_Name(name), m_NDim(ndim), m_Type(type)
 {}
 
 std::string VectorVariable::getDeclaration() const
 {
 	std::string ret;
-	if (m_SinglePrecission) {
+	switch (m_Type) {
+	case ShaderVariableType::FLOAT:
 		ret += "float ";
-	}
-	else {
+		break;
+	case ShaderVariableType::DOUBLE:
 		ret += "double ";
+		break;
+	case ShaderVariableType::INT:
+		ret += "int ";
+		break;
+	default:
+		throw std::runtime_error("Unsupported type");
 	}
 	ret += m_Name + "[" + std::to_string(m_NDim) + "];";
 	return ret;
@@ -208,32 +266,234 @@ std::string VectorVariable::getName() const
 	return m_Name;
 }
 
+std::string VectorVariable::getUniqueID() const
+{
+	auto ret = std::to_string(m_NDim) + "_";
+	switch (m_Type) {
+	case ShaderVariableType::FLOAT:
+		ret += "S";
+		break;
+	case ShaderVariableType::DOUBLE:
+		ret += "D";
+		break;
+	case ShaderVariableType::INT:
+		ret += "I";
+		break;
+	default:
+		throw std::runtime_error("Unsupported type");
+	}
+	return ret;
+}
+
+size_t VectorVariable::getHash() const
+{
+	std::vector<size_t> hashes(2);
+	hashes[0] = (size_t)m_NDim;
+	hashes[1] = (size_t)m_Type;
+	return util::hash_combine(hashes);
+}
+
 uint16_t glsl::VectorVariable::getNDim() const
 {
 	return m_NDim;
 }
 
-bool glsl::VectorVariable::isSinglePrecission() const
+ShaderVariableType glsl::VectorVariable::getType() const
 {
-	return m_SinglePrecission;
+	return m_Type;
 }
 
-// SIMPLE VARIABLE
 
-SimpleVariable::SimpleVariable(const std::string& name,
+
+// SINGLE VARIABLE
+
+SingleVariable::SingleVariable(const std::string& name, const ShaderVariableType& type,
+	const std::optional<std::string>& value)
+	: m_Name(name), m_Type(type), m_Value(value)
+{}
+
+std::string SingleVariable::getDeclaration() const
+{
+	std::string ret;
+	switch (m_Type) {
+	case ShaderVariableType::FLOAT:
+		ret += "float ";
+		break;
+	case ShaderVariableType::DOUBLE:
+		ret += "double ";
+		break;
+	case ShaderVariableType::INT:
+		ret += "int ";
+		break;
+	default:
+		throw std::runtime_error("Unsupported type");
+	}
+	ret += m_Name;
+
+	if (m_Value.has_value()) {
+		ret += " = " + m_Value.value() + ";";
+	}
+	else {
+		ret += ";";
+	}
+	return ret;
+}
+
+std::string SingleVariable::getName() const
+{
+	return m_Name;
+}
+
+std::string SingleVariable::getUniqueID() const
+{
+	return glsl::shader_variable_type_to_str(m_Type);
+}
+
+size_t SingleVariable::getHash() const
+{
+	std::vector<size_t> hashes(2);
+	hashes[0] = (size_t)m_NDim;
+	hashes[1] = (size_t)m_Type;
+	return util::hash_combine(hashes);
+}
+
+// TEXTED VARIABLE
+
+TextedVariable::TextedVariable(const std::string& name,
 	const std::string& type,
 	const std::string& value)
 	: m_Name(name), m_Type(type), m_Value(value)
 {}
 
-std::string SimpleVariable::getDeclaration() const 
+std::string TextedVariable::getDeclaration() const
 {
 	return m_Type + " " + m_Name + " = " + m_Value + ";\n";
 }
 
-std::string SimpleVariable::getName() const
+std::string TextedVariable::getName() const
 {
 	return m_Name;
+}
+
+std::string TextedVariable::getUniqueID() const
+{
+	return m_Type;
+}
+
+size_t TextedVariable::getHash() const
+{
+	return std::hash<std::string>()(m_Type);
+}
+
+// FUNCTION FACTORY
+
+FunctionFactory::FunctionFactory(const std::string& name, const ShaderVariableType& return_type)
+	: m_Name(name), m_ReturnType(return_type)
+{}
+
+void FunctionFactory::addMatrix(const std::shared_ptr<MatrixVariable>& mat, const std::optional<FunctionFactory::InputType>& input)
+{
+	if (input.has_value()) {
+		std::string ret;
+		switch (input.value())
+		{
+		case FunctionFactory::InputType::IN:
+			ret += "in ";
+			break;
+		case FunctionFactory::InputType::OUT:
+			ret += "out ";
+			break;
+		case FunctionFactory::InputType::INOUT:
+			ret += "inout ";
+			break;
+		default:
+			throw std::runtime_error("Not implemented type");
+		}
+
+		ret += shader_variable_type_to_str(mat->getType()) + " " + mat->getName() +
+			"[" + std::to_string(mat->getNDim1()) + "*" + std::to_string(mat->getNDim2()) + "]";
+
+		m_Inputs.emplace_back(std::move(ret));
+	}
+
+	_addVariable(mat);
+}
+
+void FunctionFactory::addVector(const std::shared_ptr<VectorVariable>& mat, const std::optional<FunctionFactory::InputType>& input)
+{
+	if (input.has_value()) {
+		std::string ret;
+		switch (input.value())
+		{
+		case FunctionFactory::InputType::IN:
+			ret += "in ";
+			break;
+		case FunctionFactory::InputType::OUT:
+			ret += "out ";
+			break;
+		case FunctionFactory::InputType::INOUT:
+			ret += "inout ";
+			break;
+		default:
+			throw std::runtime_error("Not implemented type");
+		}
+
+		ret += shader_variable_type_to_str(mat->getType()) + " " + mat->getName() +
+			"[" + std::to_string(mat->getNDim()) + "]";
+
+		m_Inputs.emplace_back(std::move(ret));
+	}
+
+	_addVariable(mat);
+}
+
+void FunctionFactory::addSingle(const std::shared_ptr<SingleVariable>& mat, const std::optional<FunctionFactory::InputType>& input)
+{
+	if (input.has_value()) {
+		std::string ret;
+		switch (input.value())
+		{
+		case FunctionFactory::InputType::IN:
+			ret += "in ";
+			break;
+		case FunctionFactory::InputType::OUT:
+			ret += "out ";
+			break;
+		case FunctionFactory::InputType::INOUT:
+			ret += "inout ";
+			break;
+		default:
+			throw std::runtime_error("Not implemented type");
+		}
+
+		ret += shader_variable_type_to_str(mat->getType()) + " " + mat->getName();
+
+		m_Inputs.emplace_back(std::move(ret));
+	}
+
+	_addVariable(mat);
+}
+
+::glsl::Function FunctionFactory::build()
+{
+	std::string ret;
+
+	ret += glsl::shader_variable_type_to_str(m_ReturnType) + " " + m_Name + "_";
+
+	// add uniqueid
+
+
+
+}
+
+ui16 FunctionFactory::_addFunction(const Function& func)
+{
+
+}
+
+ui16 FunctionFactory::_addVariable(const std::shared_ptr<ShaderVariable>& var)
+{
+
 }
 
 // STUPIDSHADER
@@ -449,12 +709,12 @@ layout (local_size_x = 1) in;
 	// add in function calls
 	for (auto& call : m_Calls) {
 		ret += "\t";
-		int16_t ret_pos = std::get<1>(call);
+		ui16 ret_pos = std::get<1>(call);
 		if (ret_pos != -1) {
 			ret += m_Variables[ret_pos].first->getName() + " = ";
 		}
 
-		uint16_t func_pos = std::get<0>(call);
+		ui16 func_pos = std::get<0>(call);
 
 		ret += m_Functions[func_pos].getName() + "(";
 
@@ -488,7 +748,7 @@ layout (local_size_x = 1) in;
 	return ret;
 }
 
-uint16_t AutogenShader::_addFunction(const Function& func) {
+ui16 AutogenShader::_addFunction(const Function& func) {
 	return Function::add_function(m_Functions, func);
 }
 
@@ -506,7 +766,7 @@ bool AutogenShader::_addBinding(std::unique_ptr<Binding> binding)
 	return false;
 }
 
-uint16_t AutogenShader::_addVariable(const std::shared_ptr<ShaderVariable>& var, bool is_global)
+ui16 AutogenShader::_addVariable(const std::shared_ptr<ShaderVariable>& var, bool is_global)
 {
 	auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::pair<std::shared_ptr<ShaderVariable>,bool>& v) {
 		return *var == *(v.first);
@@ -522,72 +782,68 @@ void AutogenShader::_addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, 
 {
 	auto ndim1 = mat->getNDim1();
 	auto ndim2 = mat->getNDim2();
-	bool sp = mat->isSinglePrecission();
 
 	auto global_mat = std::make_shared<MatrixVariable>(
-		"global_" + mat->getName(), ndim1, ndim2, sp);
+		"global_" + mat->getName(), ndim1, ndim2, mat->getType());
 
-	uint16_t mat_index = _addVariable(mat, false);
-	uint16_t global_mat_index = _addVariable(global_mat, true);
+	ui16 mat_index = _addVariable(mat, false);
+	ui16 global_mat_index = _addVariable(global_mat, true);
 
 
 	if (add_binding) {
-		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), mat->getName()));
+		_addBinding(std::make_unique<BufferBinding>(binding, mat->getType(), mat->getName()));
 	}
 
 	m_Inputs.emplace_back(global_mat_index, mat_index);
 }
 
-void AutogenShader::_addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, uint16_t binding, bool add_binding)
+void AutogenShader::_addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding, bool add_binding)
 {
 	auto ndim1 = mat->getNDim1();
 	auto ndim2 = mat->getNDim2();
-	bool sp = mat->isSinglePrecission();
 
 	auto global_mat = std::make_shared<MatrixVariable>(
-		"global_" + mat->getName(), ndim1, ndim2, sp);
+		"global_" + mat->getName(), ndim1, ndim2, mat->getType());
 
 	uint16_t mat_index = _addVariable(mat, false);
 	uint16_t global_mat_index = _addVariable(global_mat, true);
 
 	if (add_binding) {
-		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), mat->getName()));
+		_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(mat->getType()), mat->getName()));
 	}
 
 	m_Outputs.emplace_back(mat_index, global_mat_index);
 }
 
-void AutogenShader::_addInputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding)
+void AutogenShader::_addInputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding, bool add_binding)
 {
 	auto ndim = vec->getNDim();
-	bool sp = vec->isSinglePrecission();
 
 	auto global_vec = std::make_shared<VectorVariable>(
-		"global_" + vec->getName(), ndim, sp);
+		"global_" + vec->getName(), ndim, vec->getType());
 
 	uint16_t vec_index = _addVariable(vec, false);
 	uint16_t global_vec_index = _addVariable(global_vec, true);
 
 	if (add_binding) {
-		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), vec->getName()));
+		_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(vec->getType()), vec->getName()));
 	}
 
 	m_Inputs.emplace_back(global_vec_index, vec_index);
 }
 
-void AutogenShader::_addOutputVector(const std::shared_ptr<VectorVariable>& vec, uint16_t binding, bool add_binding)
+void AutogenShader::_addOutputVector(const std::shared_ptr<VectorVariable>& vec, ui16 binding, bool add_binding)
 {
 	auto ndim = vec->getNDim();
-	bool sp = vec->isSinglePrecission();
 
 	auto global_vec = std::make_shared<VectorVariable>(
-		"global_" + vec->getName(), ndim, sp);
+		"global_" + vec->getName(), ndim, vec->getType());
 
 	uint16_t vec_index = _addVariable(vec, false);
 	uint16_t global_vec_index = _addVariable(global_vec, true);
 
 	if (add_binding) {
-		_addBinding(std::make_unique<BufferBinding>(binding, (sp ? "float" : "double"), vec->getName()));
+		_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(vec->getType()), vec->getName()));
 	}
 
 	m_Outputs.emplace_back(vec_index, global_vec_index);
@@ -595,7 +851,7 @@ void AutogenShader::_addOutputVector(const std::shared_ptr<VectorVariable>& vec,
 
 // SYMBOLIC CONTEXT
 
-void SymbolicContext::insert_const(const std::pair<std::string, uint32_t>& cp)
+void SymbolicContext::insert_const(const std::pair<std::string, ui16>& cp)
 {
 	if (symtype_map.contains(cp.first))
 		throw std::runtime_error("const name already existed in SymbolicContext");
@@ -611,7 +867,7 @@ void SymbolicContext::insert_const(const std::pair<std::string, uint32_t>& cp)
 	consts_map.insert(cp);
 }
 
-void SymbolicContext::insert_param(const std::pair<std::string, uint32_t>& pp)
+void SymbolicContext::insert_param(const std::pair<std::string, ui16>& pp)
 {
 	if (symtype_map.contains(pp.first))
 		throw std::runtime_error("const name already existed in SymbolicContext");
@@ -632,7 +888,7 @@ eSymbolicType SymbolicContext::get_symtype(const std::string& name) const
 	return symtype_map.at(name);
 }
 
-uint32_t SymbolicContext::get_params_index(const std::string& name) const
+ui16 SymbolicContext::get_params_index(const std::string& name) const
 {
 	for (auto& v : params_map) {
 		if (v.first == name)
@@ -684,12 +940,12 @@ std::string SymbolicContext::get_glsl_var_name(const std::string& name) const
 	glsl::eSymbolicType stype = symtype_map.at(name);
 
 	if (stype == glsl::eSymbolicType::PARAM_TYPE) {
-		uint32_t index = get_params_index(name);
+		ui16 index = get_params_index(name);
 		return params_name + "[" + std::to_string(index) + "]";
 	}
 
 	if (stype == glsl::eSymbolicType::CONST_TYPE) {
-		uint32_t index = get_consts_index(name);
+		ui16 index = get_consts_index(name);
 		return consts_name + "[" + consts_iterable_by + "*" + nconst_name + "+" + std::to_string(index) + "]";
 	}
 

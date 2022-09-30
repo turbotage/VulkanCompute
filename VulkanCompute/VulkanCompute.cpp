@@ -1,18 +1,19 @@
 ﻿// VulkanCompute.cpp : Defines the entry point for the application.
 //
 
-#include <vector>
 #include <kompute/Kompute.hpp>
-#include <memory>
-#include <optional>
-#include <random>
-#include <chrono>
 #include <symengine/expression.h>
 #include <symengine/refine.h>
 #include <symengine/simplify.h>
 #include <symengine/parser.h>
 #include <symengine/parser/parser.h>
-#include <string>
+
+import <vector>;
+import <memory>;
+import <optional>;
+import <random>;
+import <chrono>;
+import <string>;
 
 import vc;
 import util;
@@ -119,15 +120,15 @@ void test_nlsq()
 	ui16 nparam = 4;
 	ui16 nconst = 1;
 
-	auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, true);
-	auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, nparam, true);
-	auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", nparam, nparam, true);
-	auto data = std::make_shared<glsl::VectorVariable>("data", ndata, true);
-	auto params = std::make_shared<glsl::VectorVariable>("params", nparam, true);
-	auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, nconst, true);
-	auto lambda = std::make_shared<glsl::SimpleVariable>("lambda", "float", "2.0");
-	auto step = std::make_shared<glsl::VectorVariable>("step", nparam, true);
-	auto add_test = std::make_shared<glsl::VectorVariable>("add_test", 1, true);
+	auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::FLOAT);
+	auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, nparam, ShaderVariableType::FLOAT);
+	auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", nparam, nparam, ShaderVariableType::FLOAT);
+	auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::FLOAT);
+	auto params = std::make_shared<glsl::VectorVariable>("params", nparam, ShaderVariableType::FLOAT);
+	auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, nconst, ShaderVariableType::FLOAT);
+	auto lambda = std::make_shared<glsl::TextedVariable>("lambda", "float", "2.0");
+	auto step = std::make_shared<glsl::VectorVariable>("step", nparam, ShaderVariableType::FLOAT);
+	auto add_test = std::make_shared<glsl::VectorVariable>("add_test", 1, ShaderVariableType::FLOAT);
 
 
 	shader.addOutputVector(residuals, 0);
@@ -156,7 +157,7 @@ void test_nlsq()
 
 	shader.apply(linalg::gmw81(nparam, true), nullptr, { hessian });
 
-	auto rhs = std::make_shared<glsl::VectorVariable>("rhs", nparam, true);
+	auto rhs = std::make_shared<glsl::VectorVariable>("rhs", nparam, ShaderVariableType::FLOAT);
 
 	shader.apply(linalg::mul_transpose_vec(ndata, nparam, true), nullptr, { jacobian, residuals, rhs });
 	shader.apply(linalg::vec_neg(nparam, true), nullptr, { rhs });
@@ -237,7 +238,29 @@ R"glsl(
 
 void test_nlsq_step()
 {
-	
+	using namespace glsl;
+	using namespace vc;
+
+	auto start = std::chrono::steady_clock::now();
+
+	AutogenShader shader;
+
+	ui16 ndata = 21;
+	ui16 nparam = 4;
+	ui16 nconst = 1;
+
+	auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::FLOAT);
+	auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, nparam, ShaderVariableType::FLOAT);
+	auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", nparam, nparam, ShaderVariableType::FLOAT);
+	auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::FLOAT);
+	auto params = std::make_shared<glsl::VectorVariable>("params", nparam, ShaderVariableType::FLOAT);
+	auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, nconst, ShaderVariableType::FLOAT);
+	auto lambda = std::make_shared<glsl::TextedVariable>("lambda", "float", "2.0");
+	auto step = std::make_shared<glsl::VectorVariable>("step", nparam, ShaderVariableType::FLOAT);
+	auto add_test = std::make_shared<glsl::VectorVariable>("converges", 1, ShaderVariableType::FLOAT);
+
+
+
 }
 
 void test_gmw81()
@@ -250,9 +273,9 @@ void test_gmw81()
 	ui32 n = 1;
 	ui16 ndim = 3;
 
-	auto mat = std::make_shared<glsl::MatrixVariable>("mat", ndim, ndim, true);
-	auto rhs = std::make_shared<glsl::VectorVariable>("rhs", ndim, true);
-	auto sol = std::make_shared<glsl::VectorVariable>("sol", ndim, true);
+	auto mat = std::make_shared<glsl::MatrixVariable>("mat", ndim, ndim, ShaderVariableType::FLOAT);
+	auto rhs = std::make_shared<glsl::VectorVariable>("rhs", ndim, ShaderVariableType::FLOAT);
+	auto sol = std::make_shared<glsl::VectorVariable>("sol", ndim, ShaderVariableType::FLOAT);
 
 	shader.addInputOutputMatrix(mat, 0);
 	shader.addInputVector(rhs, 1);
@@ -342,9 +365,9 @@ void test_backward() {
 	ui32 n = 1;
 	ui16 ndim = 3;
 
-	auto mat = std::make_shared<glsl::MatrixVariable>("mat", ndim, ndim, true);
-	auto rhs = std::make_shared<glsl::VectorVariable>("rhs", ndim, true);
-	auto sol = std::make_shared<glsl::VectorVariable>("sol", ndim, true);
+	auto mat = std::make_shared<glsl::MatrixVariable>("mat", ndim, ndim, ShaderVariableType::FLOAT);
+	auto rhs = std::make_shared<glsl::VectorVariable>("rhs", ndim, ShaderVariableType::FLOAT);
+	auto sol = std::make_shared<glsl::VectorVariable>("sol", ndim, ShaderVariableType::FLOAT);
 
 	shader.addInputOutputMatrix(mat, 0);
 	shader.addInputVector(rhs, 1);

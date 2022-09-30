@@ -1,9 +1,9 @@
 module;
 
-#include <string>
-#include <optional>
-
 export module nlsq;
+
+import <string>;
+import <optional>;
 
 import vc;
 import glsl;
@@ -167,6 +167,7 @@ void nlsq_slm_step_UNIQUEID(
 		step -= 1;
 	}
 	
+	// convergence
 	mul_mat_vec_MMVID(jacobian, step, new_params);
 	float jp_norm = vec_norm_VNORMID(new_params);
 
@@ -223,5 +224,8 @@ void nlsq_slm_step_UNIQUEID(
 				})
 		);
 	}
+
+
+
 
 }

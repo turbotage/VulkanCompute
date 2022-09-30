@@ -1,23 +1,23 @@
 module;
 
-#include <memory>
-#include <deque>
-#include <unordered_map>
-#include <initializer_list>
-#include <functional>
-#include <stdexcept>
-#include <vector>
-#include <tuple>
-#include <algorithm>
-#include <set>
-#include <iterator>
-#include <optional>
-
 #include <symengine/expression.h>
 #include <symengine/simplify.h>
 #include <symengine/parser.h>
 
 module expr;
+
+import <memory>;
+import <deque>;
+import <unordered_map>;
+import <initializer_list>;
+import <functional>;
+import <stdexcept>;
+import <vector>;
+import <tuple>;
+import <algorithm>;
+import <set>;
+import <iterator>;
+import <optional>;
 
 using namespace expression;
 

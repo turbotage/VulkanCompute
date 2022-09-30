@@ -1,10 +1,10 @@
 module;
 
-#include <memory>
-#include <stdexcept>
-#include <complex>
-
 export module div;
+
+import <memory>;
+import <stdexcept>;
+import <complex>;
 
 import vc;
 import neg;

@@ -1,12 +1,14 @@
 module;
 
-#include <deque>
-#include <memory>
-#include <string>
-#include <functional>
-#include <unordered_map>
-
 export module expr;
+
+import <deque>;
+import <memory>;
+import <string>;
+import <functional>;
+import <unordered_map>;
+import <initializer_list>;
+import <iterator>;
 
 import util;
 import shunter;

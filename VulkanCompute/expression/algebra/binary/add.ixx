@@ -1,11 +1,11 @@
 module;
 
-#include <memory>
-#include <stdexcept>
-#include <cmath>
-#include <complex>
-
 export module add;
+
+import <memory>;
+import <stdexcept>;
+import <cmath>;
+import <complex>;
 
 import neg;
 import token;

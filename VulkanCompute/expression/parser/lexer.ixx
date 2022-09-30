@@ -1,18 +1,18 @@
 module;
 
-#include <vector>
-#include <unordered_map>
-#include <memory>
-#include <optional>
-#include <stdexcept>
-#include <string>
-#include <regex>
-
 #include <symengine/expression.h>
 #include <symengine/simplify.h>
 #include <symengine/parser.h>
 
 export module lexer;
+
+import <vector>;
+import <unordered_map>;
+import <memory>;
+import <optional>;
+import <stdexcept>;
+import <string>;
+import <regex>;
 
 import vc;
 import token;

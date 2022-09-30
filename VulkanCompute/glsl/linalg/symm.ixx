@@ -1,10 +1,10 @@
 module;
 
-#include <vector>
-#include <string>
-#include <optional>
-
 export module symm;
+
+import <vector>;
+import <string>;
+import <optional>;
 
 import vc;
 import util;

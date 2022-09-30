@@ -1,9 +1,9 @@
 module;
 
-#include <string>
-#include <optional>
-
 export module linalg;
+
+import <string>;
+import <optional>;
 
 import vc;
 import glsl;

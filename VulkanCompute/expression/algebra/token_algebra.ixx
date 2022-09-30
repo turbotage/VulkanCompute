@@ -1,9 +1,9 @@
 module;
 
-#include <memory>
-#include <stdexcept>
-
 export module token_algebra;
+
+import <memory>;
+import <stdexcept>;
 
 import token;
 

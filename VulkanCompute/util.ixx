@@ -1,12 +1,15 @@
 module;
 
-#include <string>
-#include <vector>
-#include <algorithm>
-#include <locale>
-#include <functional>
-
 export module util;
+
+import <string>;
+import <vector>;
+import <algorithm>;
+import <locale>;
+import <functional>;
+import <random>;
+import <chrono>;
+import <memory>;
 
 namespace util {
 

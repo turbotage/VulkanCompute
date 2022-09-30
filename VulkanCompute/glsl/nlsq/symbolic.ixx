@@ -1,17 +1,16 @@
 module;
 
-#include <tuple>
-#include <optional>
-#include <string>
-#include <functional>
-#include <vector>
-
-
 #include <symengine/expression.h>
 #include <symengine/simplify.h>
 #include <symengine/parser.h>
 
 export module symbolic;
+
+import <tuple>;
+import <optional>;
+import <string>;
+import <functional>;
+import <vector>;
 
 import vc;
 import util;

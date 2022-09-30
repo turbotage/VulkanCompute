@@ -1,10 +1,10 @@
 module;
 
-#include <string>
-#include <vector>
-#include <optional>
-
 export module solver;
+
+import <string>;
+import <vector>;
+import <optional>;
 
 import vc;
 import util;

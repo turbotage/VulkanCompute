@@ -1,12 +1,12 @@
 module;
 
-#include <deque>
-#include <memory>
-#include <vector>
-#include <stdexcept>
-#include <string>
-
 export module shunter;
+
+import <deque>;
+import <memory>;
+import <vector>;
+import <stdexcept>;
+import <string>;
 
 import token;
 
