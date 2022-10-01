@@ -34,7 +34,7 @@ export namespace vc {
 	// Used to signal output, functions with these parameters will fill the variable which the
 	// reference points to
 	template<typename T>
-	using OutRef = T&;
+	using out_ref = T&;
 
 	template<typename T>
 	using refw = std::reference_wrapper<T>;
@@ -42,36 +42,22 @@ export namespace vc {
 	// Used to signal output, functions with these parameters will fill the variable which the
 	// reference points to if tc::OptOutRef isn't std::nullopt
 	template<typename T>
-	using OptOutRef = std::optional<refw<T>>;
+	using opt_out_ref = std::optional<refw<T>>;
 
 	template<typename T, typename U>
-	using OptOutPairRef = std::optional<std::pair<refw<T>, refw<U>>>;
+	using opt_out_pair_ref = std::optional<std::pair<refw<T>, refw<U>>>;
 
 	template<typename T>
-	using OptRef = std::optional<refw<T>>;
+	using opt_ref = std::optional<refw<T>>;
 
 	template<typename T, typename U>
-	using OptPairRef = std::optional<std::pair<refw<T>, refw<U>>>;
+	using opt_pair_ref = std::optional<std::pair<refw<T>, refw<U>>>;
 
 	template<typename T>
-	using OptUPtr = std::optional<std::unique_ptr<T>>;
+	using opt_u_ptr = std::optional<std::unique_ptr<T>>;
 
 	template<typename T>
-	using OptSPtr = std::optional<std::shared_ptr<T>>;
-
-	enum eBuildMode {
-		Release,
-		Debug
-	};
-
-	constexpr ui8 BUILD_MODE = eBuildMode::Debug;
-	/*
-	Statements such as
-	if constexpr (BUILD_MODE == eBuildMode::Debug) {
-		doSomething();
-	}
-	should be remove by Dead-Code-Compilation
-	*/
+	using opt_s_ptr = std::optional<std::shared_ptr<T>>;
 
 	template <typename T>
 	struct reversion_wrapper { T& iterable; };

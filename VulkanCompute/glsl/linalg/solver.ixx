@@ -5,6 +5,7 @@ export module solver;
 import <string>;
 import <vector>;
 import <optional>;
+import <memory>;
 
 import vc;
 import util;
@@ -16,6 +17,9 @@ using namespace vc;
 namespace glsl {
 namespace linalg {
 
+	using vecptrfunc = std::vector<std::shared_ptr<Function>>;
+	using refvecptrfunc = refw<std::vector<std::shared_ptr<Function>>>;
+
 	// FORWARD SUBSTITUTION (Lx=y)
 
 	export std::string forward_subs_uniqueid(ui16 ndim, bool single_precission)
@@ -23,7 +27,7 @@ namespace linalg {
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -51,9 +55,9 @@ void forward_subs_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out floa
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -65,10 +69,10 @@ void forward_subs_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out floa
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs_t(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs_t(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void forward_subs_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out float solution[ndim]) {
 	for (int i = 0; i < ndim; ++i) {
 		solution[i] = rhs[i];
@@ -93,9 +97,9 @@ void forward_subs_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out fl
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_t_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -107,7 +111,7 @@ void forward_subs_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out fl
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs_unit(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs_unit(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -134,9 +138,9 @@ void forward_subs_unit_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_unit_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -148,10 +152,10 @@ void forward_subs_unit_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs_unit_t(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs_unit_t(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void forward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out float solution[ndim]) {
 	for (int i = 0; i < ndim; ++i) {
 		solution[i] = rhs[i];
@@ -175,9 +179,9 @@ void forward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], o
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_unit_t_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -190,10 +194,10 @@ void forward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], o
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs_diag(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void forward_subs_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim] in float diag[ndim], out float solution[ndim]) {
 	for (int i = 0; i < ndim; ++i) {
 		solution[i] = rhs[i];
@@ -218,9 +222,9 @@ void forward_subs_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim] in f
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_diag_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -232,10 +236,10 @@ void forward_subs_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim] in f
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs_t_diag(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs_t_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void forward_subs_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], in float diag[ndim], out float solution[ndim]) {
 	for (int i = 0; i < ndim; ++i) {
 		solution[i] = rhs[i];
@@ -260,9 +264,9 @@ void forward_subs_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], i
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_t_diag_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -274,7 +278,7 @@ void forward_subs_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], i
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs_unit_diag(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs_unit_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -302,9 +306,9 @@ void forward_subs_unit_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim]
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_unit_diag_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -316,7 +320,7 @@ void forward_subs_unit_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim]
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs_unit_t_diag(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs_unit_t_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -344,9 +348,9 @@ void forward_subs_unit_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndi
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_unit_t_diag_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -359,7 +363,7 @@ void forward_subs_unit_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndi
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs_unit_diaged(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs_unit_diaged(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -387,9 +391,9 @@ void forward_subs_unit_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndi
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_unit_diaged_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -401,10 +405,10 @@ void forward_subs_unit_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndi
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function forward_subs_unit_t_diaged(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> forward_subs_unit_t_diaged(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void forward_subs_unit_t_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out float solution[ndim]) {
 	for (int i = 0; i < ndim; ++i) {
 		solution[i] = rhs[i];
@@ -429,9 +433,9 @@ void forward_subs_unit_t_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[n
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"forward_subs_unit_t_diaged_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -445,7 +449,7 @@ void forward_subs_unit_t_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[n
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -473,9 +477,9 @@ void backward_subs_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out flo
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -487,7 +491,7 @@ void backward_subs_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out flo
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs_t(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs_t(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -515,9 +519,9 @@ void backward_subs_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out f
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_t_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -529,10 +533,10 @@ void backward_subs_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out f
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs_unit(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs_unit(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void backward_subs_unit_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out float solution[ndim]) {
 	for (int i = ndim - 1; i >= 0; --i) {
 		solution[i] = rhs[i];
@@ -556,9 +560,9 @@ void backward_subs_unit_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], ou
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_unit_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -570,10 +574,10 @@ void backward_subs_unit_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], ou
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs_unit_t(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs_unit_t(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void backward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out float solution[ndim]) {
 	for (int i = ndim - 1; i >= 0; --i) {
 		solution[i] = rhs[i];
@@ -597,9 +601,9 @@ void backward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], 
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_unit_t_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -612,7 +616,7 @@ void backward_subs_unit_t_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], 
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs_diag(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -640,9 +644,9 @@ void backward_subs_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], in
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_diag_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -654,7 +658,7 @@ void backward_subs_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], in
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs_t_diag(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs_t_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -682,9 +686,9 @@ void backward_subs_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], 
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_t_diag_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -696,7 +700,7 @@ void backward_subs_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], 
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs_unit_diag(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs_unit_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -724,9 +728,9 @@ void backward_subs_unit_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_unit_diag_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -738,7 +742,7 @@ void backward_subs_unit_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs_unit_t_diag(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs_unit_t_diag(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -766,9 +770,9 @@ void backward_subs_unit_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[nd
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_unit_t_diag_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -781,7 +785,7 @@ void backward_subs_unit_t_diag_UNIQUEID(in float mat[ndim*ndim], in float rhs[nd
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs_unit_diaged(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs_unit_diaged(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -809,9 +813,9 @@ void backward_subs_unit_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[nd
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_unit_diaged_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -823,10 +827,10 @@ void backward_subs_unit_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[nd
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function backward_subs_unit_t_diaged(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> backward_subs_unit_t_diaged(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void backward_subs_unit_t_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], out float solution[ndim]) {
 	for (int i = ndim - 1; i >= 0; --i) {
 		solution[i] = rhs[i];
@@ -851,9 +855,9 @@ void backward_subs_unit_t_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"backward_subs_unit_t_diaged_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -867,7 +871,7 @@ void backward_subs_unit_t_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function lu(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> lu(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -915,11 +919,11 @@ void lu_UNIQUEID(inout float mat[ndim*ndim], out int pivot[ndim]) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"lu_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({ 
+			std::make_optional<vecptrfunc>({ 
 				max_mag_subrow(ndim, ndim, single_precission), 
 				row_interchange_i(ndim, ndim, single_precission) 
 			})

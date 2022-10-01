@@ -82,18 +82,15 @@ Function::Function(
 	const std::string& function_name,
 	const std::vector<size_t>& argument_hashes,
 	const std::function<std::string()>& code_func,
-	std::optional<std::vector<Function>> dependencies)
+	const std::optional<vecptrfunc>& dependencies)
 	:
 	m_FunctionName(function_name),
 	m_ArgumentHashes(argument_hashes),
-	m_CodeFunc(code_func)
+	m_CodeFunc(code_func),
+	m_Dependencies(dependencies.has_value() ? dependencies.value() : vecptrfunc())
+{}
 
-{
-	if (dependencies.has_value())
-		m_Dependencies = dependencies.value();
-}
-
-const std::vector<Function>& Function::getDependencies() const {
+const std::vector<std::shared_ptr<Function>>& Function::getDependencies() const {
 	return m_Dependencies;
 }
 
@@ -111,12 +108,14 @@ bool glsl::operator==(const Function& lhs, const Function& rhs)
 		lhs.m_ArgumentHashes == rhs.m_ArgumentHashes;
 }
 
-size_t Function::add_function(std::vector<Function>& funcs, const Function& func) {
-	for (auto& f : func.m_Dependencies) {
+size_t Function::add_function(std::vector<std::shared_ptr<Function>>& funcs, const std::shared_ptr<Function>& func) {
+	for (auto& f : func->m_Dependencies) {
 		add_function(funcs, f);
 	}
 
-	auto it = std::find(funcs.begin(), funcs.end(), func);
+	auto it = std::find_if(funcs.begin(), funcs.end(), [&func](const std::shared_ptr<Function>& f) {
+		return *func == *f;
+		});
 	size_t pos = it - funcs.begin();
 	if (it == funcs.end()) {
 		funcs.push_back(func);
@@ -165,7 +164,7 @@ MatrixVariable::MatrixVariable(const std::string& name,
 	: m_Name(name), m_NDim1(ndim1), m_NDim2(ndim2), m_Type(type)
 {}
 
-std::string MatrixVariable::getDeclaration() const
+std::string MatrixVariable::getInputDeclaration() const
 {
 	std::string ret;
 	switch (m_Type) {
@@ -183,8 +182,13 @@ std::string MatrixVariable::getDeclaration() const
 	}
 	ret += m_Name + "[" +
 		std::to_string(m_NDim1) + "*" +
-		std::to_string(m_NDim2) + "];";
+		std::to_string(m_NDim2) + "]";
 	return ret;
+}
+
+std::string MatrixVariable::getDeclaration() const
+{
+	return getInputDeclaration() + ";\n";
 }
 
 std::string MatrixVariable::getName() const
@@ -241,7 +245,7 @@ VectorVariable::VectorVariable(const std::string& name,
 	: m_Name(name), m_NDim(ndim), m_Type(type)
 {}
 
-std::string VectorVariable::getDeclaration() const
+std::string VectorVariable::getInputDeclaration() const
 {
 	std::string ret;
 	switch (m_Type) {
@@ -257,8 +261,13 @@ std::string VectorVariable::getDeclaration() const
 	default:
 		throw std::runtime_error("Unsupported type");
 	}
-	ret += m_Name + "[" + std::to_string(m_NDim) + "];";
+	ret += m_Name + "[" + std::to_string(m_NDim) + "]";
 	return ret;
+}
+
+std::string VectorVariable::getDeclaration() const
+{
+	return getInputDeclaration() + ";\n";
 }
 
 std::string VectorVariable::getName() const
@@ -304,7 +313,6 @@ ShaderVariableType glsl::VectorVariable::getType() const
 }
 
 
-
 // SINGLE VARIABLE
 
 SingleVariable::SingleVariable(const std::string& name, const ShaderVariableType& type,
@@ -312,7 +320,7 @@ SingleVariable::SingleVariable(const std::string& name, const ShaderVariableType
 	: m_Name(name), m_Type(type), m_Value(value)
 {}
 
-std::string SingleVariable::getDeclaration() const
+std::string SingleVariable::getInputDeclaration() const
 {
 	std::string ret;
 	switch (m_Type) {
@@ -330,13 +338,18 @@ std::string SingleVariable::getDeclaration() const
 	}
 	ret += m_Name;
 
+	return ret;
+}
+
+std::string SingleVariable::getDeclaration() const
+{
+	std::string ret = getInputDeclaration();
 	if (m_Value.has_value()) {
-		ret += " = " + m_Value.value() + ";";
+		ret += " = " + m_Value.value() + ";\n";
 	}
 	else {
-		ret += ";";
+		ret += ";\n";
 	}
-	return ret;
 }
 
 std::string SingleVariable::getName() const
@@ -351,10 +364,7 @@ std::string SingleVariable::getUniqueID() const
 
 size_t SingleVariable::getHash() const
 {
-	std::vector<size_t> hashes(2);
-	hashes[0] = (size_t)m_NDim;
-	hashes[1] = (size_t)m_Type;
-	return util::hash_combine(hashes);
+	return (size_t)m_Type;
 }
 
 // TEXTED VARIABLE
@@ -365,9 +375,14 @@ TextedVariable::TextedVariable(const std::string& name,
 	: m_Name(name), m_Type(type), m_Value(value)
 {}
 
+std::string TextedVariable::getInputDeclaration() const
+{
+	return m_Type + " " + m_Name;
+}
+
 std::string TextedVariable::getDeclaration() const
 {
-	return m_Type + " " + m_Name + " = " + m_Value + ";\n";
+	return getInputDeclaration() + " = " + m_Value + ";\n";
 }
 
 std::string TextedVariable::getName() const
@@ -393,114 +408,140 @@ FunctionFactory::FunctionFactory(const std::string& name, const ShaderVariableTy
 
 void FunctionFactory::addMatrix(const std::shared_ptr<MatrixVariable>& mat, const std::optional<FunctionFactory::InputType>& input)
 {
+	auto varidx = _addVariable(mat);
+
 	if (input.has_value()) {
-		std::string ret;
-		switch (input.value())
-		{
-		case FunctionFactory::InputType::IN:
-			ret += "in ";
-			break;
-		case FunctionFactory::InputType::OUT:
-			ret += "out ";
-			break;
-		case FunctionFactory::InputType::INOUT:
-			ret += "inout ";
-			break;
-		default:
-			throw std::runtime_error("Not implemented type");
-		}
-
-		ret += shader_variable_type_to_str(mat->getType()) + " " + mat->getName() +
-			"[" + std::to_string(mat->getNDim1()) + "*" + std::to_string(mat->getNDim2()) + "]";
-
-		m_Inputs.emplace_back(std::move(ret));
+		m_Inputs.emplace_back(varidx, input.value());
 	}
-
-	_addVariable(mat);
 }
 
 void FunctionFactory::addVector(const std::shared_ptr<VectorVariable>& mat, const std::optional<FunctionFactory::InputType>& input)
 {
+	auto varidx = _addVariable(mat);
 	if (input.has_value()) {
-		std::string ret;
-		switch (input.value())
-		{
-		case FunctionFactory::InputType::IN:
-			ret += "in ";
-			break;
-		case FunctionFactory::InputType::OUT:
-			ret += "out ";
-			break;
-		case FunctionFactory::InputType::INOUT:
-			ret += "inout ";
-			break;
-		default:
-			throw std::runtime_error("Not implemented type");
-		}
-
-		ret += shader_variable_type_to_str(mat->getType()) + " " + mat->getName() +
-			"[" + std::to_string(mat->getNDim()) + "]";
-
-		m_Inputs.emplace_back(std::move(ret));
+		m_Inputs.emplace_back(varidx, input.value());
 	}
-
-	_addVariable(mat);
 }
 
 void FunctionFactory::addSingle(const std::shared_ptr<SingleVariable>& mat, const std::optional<FunctionFactory::InputType>& input)
 {
+	auto varidx = _addVariable(mat);
 	if (input.has_value()) {
-		std::string ret;
-		switch (input.value())
-		{
-		case FunctionFactory::InputType::IN:
-			ret += "in ";
-			break;
-		case FunctionFactory::InputType::OUT:
-			ret += "out ";
-			break;
-		case FunctionFactory::InputType::INOUT:
-			ret += "inout ";
-			break;
-		default:
-			throw std::runtime_error("Not implemented type");
+		m_Inputs.emplace_back(varidx, input.value());
+	}
+}
+
+std::shared_ptr<::glsl::Function> FunctionFactory::build()
+{
+	std::string code_str;
+
+	std::string uniqueid;
+	std::vector<size_t> hashes;
+	std::vector<std::shared_ptr<Function>> dependencies;
+
+	// create code str
+	{
+		code_str += glsl::shader_variable_type_to_str(m_ReturnType) + " " + m_Name + "_";
+
+		// add uniqueid
+		hashes.reserve(m_Inputs.size());
+		for (auto& input : m_Inputs) {
+			hashes.emplace_back(m_Variables[input.first]->getHash());
+		}
+		uniqueid = util::hash_combine(hashes);
+		code_str += uniqueid + "(";
+
+		// add inputs
+		std::set<ui16> input_idxs;
+		for (int i = 0; i < m_Inputs.size(); ++i) {
+			auto& input = m_Inputs[i];
+
+			input_idxs.insert(input.first);
+
+			switch (input.second) {
+			case FunctionFactory::InputType::IN:
+				code_str += "in ";
+				break;
+			case FunctionFactory::InputType::OUT:
+				code_str += "out ";
+				break;
+			case FunctionFactory::InputType::INOUT:
+				code_str += "inout ";
+				break;
+			default:
+				throw std::runtime_error("Unsupported InputType");
+			}
+
+			code_str += m_Variables[input.first]->getInputDeclaration();
+			if (i < m_Inputs.size() - 1) {
+				code_str += ", ";
+			}
+		}
+		code_str += ") {\n";
+
+		// declare non input variables
+		for (int i = 0; i < m_Variables.size(); ++i) {
+			auto& var = m_Variables[i];
+			if (!input_idxs.contains(i)) {
+				code_str += "\t" + var->getDeclaration();
+			}
+		}
+		code_str += "\n";
+
+		// add functions calls
+		for (auto& call : m_Calls) {
+			auto& func = m_Functions[std::get<0>(call)];
+
+			dependencies.emplace_back(func);
+
+			code_str += "\t";
+			
+			// add return variable if there is one
+			auto ret_idx = std::get<1>(call);
+			if (ret_idx >= 0) {
+				auto& ret_var = m_Variables[ret_idx];
+				code_str += ret_var->getName() + " = ";
+			}
+
+			// add function name
+			code_str += func->getName() + "(";
+
+			// add input variables
+			auto& inputs = std::get<2>(call);
+			for (int i = 0; i < inputs.size(); ++i) {
+				code_str += m_Variables[inputs[i]]->getName();
+				if (i < inputs.size() - 1) {
+					code_str += ", ";
+				}
+			}
+			code_str += ");\n";
 		}
 
-		ret += shader_variable_type_to_str(mat->getType()) + " " + mat->getName();
-
-		m_Inputs.emplace_back(std::move(ret));
+		code_str += "\n}";
 	}
 
-	_addVariable(mat);
+	return std::make_shared<Function>(
+		m_Name + "_" + uniqueid,
+		hashes,
+		[code_str]() {
+			return code_str;
+		},
+		dependencies.size() > 0 ? std::make_optional(dependencies) : std::nullopt);
 }
 
-::glsl::Function FunctionFactory::build()
-{
-	std::string ret;
-
-	ret += glsl::shader_variable_type_to_str(m_ReturnType) + " " + m_Name + "_";
-
-	// add uniqueid
-	for (auto& input : m_Inputs) {
-
-	}
-
-
-}
-
-ui16 FunctionFactory::_addFunction(const Function& func)
+ui16 FunctionFactory::_addFunction(const std::shared_ptr<Function>& func)
 {
 	return Function::add_function(m_Functions, func);
 }
 
 ui16 FunctionFactory::_addVariable(const std::shared_ptr<ShaderVariable>& var)
 {
-	auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::pair<std::shared_ptr<ShaderVariable>, bool>& v) {
-		return *var == *(v.first);
+	auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::shared_ptr<ShaderVariable>& v) {
+		return *var == *v;
 		});
 	ui16 pos = it - m_Variables.begin();
 	if (it == m_Variables.end()) {
-		m_Variables.emplace_back(var, is_global);
+		m_Variables.emplace_back(var);
 	}
 	return pos;
 }
@@ -519,7 +560,7 @@ void AutogenShader::addBinding(std::unique_ptr<Binding> binding)
 	_addBinding(std::move(binding));
 }
 
-void AutogenShader::addFunction(const Function& func)
+void AutogenShader::addFunction(const std::shared_ptr<Function>& func)
 {
 	_addFunction(func);
 }
@@ -687,7 +728,7 @@ layout (local_size_x = 1) in;
 	ret += "\n";
 
 	for (auto& func : m_Functions) {
-		ret += func.getCode() + "\n";
+		ret += func->getCode() + "\n";
 	}
 	ret += "\n";
 
@@ -725,7 +766,7 @@ layout (local_size_x = 1) in;
 
 		ui16 func_pos = std::get<0>(call);
 
-		ret += m_Functions[func_pos].getName() + "(";
+		ret += m_Functions[func_pos]->getName() + "(";
 
 		auto& input_pos_vec = std::get<2>(call);
 
@@ -757,7 +798,7 @@ layout (local_size_x = 1) in;
 	return ret;
 }
 
-ui16 AutogenShader::_addFunction(const Function& func) {
+ui16 AutogenShader::_addFunction(const std::shared_ptr<Function>& func) {
 	return Function::add_function(m_Functions, func);
 }
 
@@ -915,7 +956,7 @@ const std::string& SymbolicContext::get_params_name(size_t index) const
 	throw std::runtime_error("Index was not in params in SymbolicContext");
 }
 
-uint32_t SymbolicContext::get_consts_index(const std::string& name) const
+ui16 SymbolicContext::get_consts_index(const std::string& name) const
 {
 	for (auto& v : consts_map) {
 		if (v.first == name)

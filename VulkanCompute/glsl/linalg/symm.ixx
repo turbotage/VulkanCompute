@@ -5,6 +5,8 @@ export module symm;
 import <vector>;
 import <string>;
 import <optional>;
+import <memory>;
+import <functional>;
 
 import vc;
 import util;
@@ -17,12 +19,15 @@ using namespace vc;
 namespace glsl {
 namespace linalg {
 
+	using vecptrfunc = std::vector<std::shared_ptr<Function>>;
+	using refvecptrfunc = refw<std::vector<std::shared_ptr<Function>>>;
+
 	export std::string ldl_uniqueid(ui16 ndim, bool single_precission)
 	{
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function ldl(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> ldl(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -61,9 +66,9 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"ldl_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -77,7 +82,7 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function gmw81(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> gmw81(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -160,9 +165,9 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"gmw81_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
 		);
@@ -174,7 +179,7 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function ldl_solve(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> ldl_solve(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -201,11 +206,11 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"ldl_solve_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({
+			std::make_optional<vecptrfunc>({
 				linalg::forward_subs_unit_diaged(ndim, single_precission),
 				linalg::backward_subs_unit_t(ndim, single_precission)
 			})

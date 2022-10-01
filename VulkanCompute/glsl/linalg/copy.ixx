@@ -4,6 +4,10 @@ export module copy;
 
 import <string>;
 import <optional>;
+import <memory>;
+import <vector>;
+import <functional>;
+import <initializer_list>;
 
 import vc;
 import glsl;
@@ -20,10 +24,10 @@ namespace linalg {
 		return single_precission ? "S" : "D";
 	}
 
-	export ::glsl::Function swap(bool single_precission)
+	export std::shared_ptr<::glsl::Function> swap(bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void swap_UNIQUEID(inout float v1, inout float v2) {
 	float temp = v1;
 	v1 = v2;
@@ -43,9 +47,9 @@ void swap_UNIQUEID(inout float v1, inout float v2) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"swap_" + uniqueid,
-			{ size_t(single_precission) },
+			std::vector<size_t>{ size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -56,10 +60,10 @@ void swap_UNIQUEID(inout float v1, inout float v2) {
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_mat(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_mat(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_mat_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 	for (int i = 0; i < nrow*ncol; ++i) {
 		omat[i] = imat[i];
@@ -81,9 +85,9 @@ void copy_mat_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 			return temp;
 		};
 
-		return ::glsl::Function(
-			"copy_mat_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+		return std::make_shared<Function>(
+			std::string("copy_mat_" + uniqueid),
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -94,10 +98,10 @@ void copy_mat_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_mat_ostart(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_mat_ostart(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_mat_ostart_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol], uint start_index) {
 	for (int i = 0; i < nrow*ncol; ++i) {
 		omat[start_index + i] = imat[i];
@@ -119,9 +123,9 @@ void copy_mat_ostart_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"copy_mat_ostart_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -132,10 +136,10 @@ void copy_mat_ostart_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_mat_ostarted(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_mat_ostarted(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_mat_ostarted_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 	uint start_index = nrow*ncol*gl_GlobalInvocationID.x;
 	for (int i = 0; i < nrow*ncol; ++i) {
@@ -158,9 +162,9 @@ void copy_mat_ostarted_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*nc
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"copy_mat_ostarted_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -171,10 +175,10 @@ void copy_mat_ostarted_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*nc
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_mat_istart(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_mat_istart(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_mat_istart_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol], uint start_index) {
 	for (int i = 0; i < nrow*ncol; ++i) {
 		omat[i] = imat[start_index + i];
@@ -196,9 +200,9 @@ void copy_mat_istart_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"copy_mat_istart_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -209,10 +213,10 @@ void copy_mat_istart_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_mat_istarted(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_mat_istarted(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_mat_istarted_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 	uint start_index = nrow*ncol*gl_GlobalInvocationID.x;
 	for (int i = 0; i < nrow*ncol; ++i) {
@@ -235,9 +239,9 @@ void copy_mat_istarted_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*nc
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"copy_mat_istarted_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -248,10 +252,10 @@ void copy_mat_istarted_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*nc
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_vec(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_vec(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_vec_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 	for (int i = 0; i < ndim; ++i) {
 		ovec[i] = ivec[i];
@@ -272,9 +276,9 @@ void copy_vec_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"copy_vec_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -285,10 +289,10 @@ void copy_vec_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_vec_ostart(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_vec_ostart(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_vec_ostart_UNIQUEID(in float ivec[ndim], out float ovec[ndim], uint start_index) {
 	for (int i = 0; i < ndim; ++i) {
 		ovec[start_index + i] = ivec[i];
@@ -309,9 +313,9 @@ void copy_vec_ostart_UNIQUEID(in float ivec[ndim], out float ovec[ndim], uint st
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"copy_vec_ostart_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -322,10 +326,10 @@ void copy_vec_ostart_UNIQUEID(in float ivec[ndim], out float ovec[ndim], uint st
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_vec_ostarted(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_vec_ostarted(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_vec_ostarted_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 	uint start_index = ndim*gl_GlobalInvocationID.x;
 	for (int i = 0; i < ndim; ++i) {
@@ -347,9 +351,9 @@ void copy_vec_ostarted_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"copy_vec_ostarted_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -360,10 +364,10 @@ void copy_vec_ostarted_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_vec_istart(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_vec_istart(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_vec_istart_UNIQUEID(in float ivec[ndim], out float ovec[ndim], uint start_index) {
 	for (int i = 0; i < ndim; ++i) {
 		ovec[i] = ivec[start_index + i];
@@ -384,9 +388,9 @@ void copy_vec_istart_UNIQUEID(in float ivec[ndim], out float ovec[ndim], uint st
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"copy_vec_istart_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -397,10 +401,10 @@ void copy_vec_istart_UNIQUEID(in float ivec[ndim], out float ovec[ndim], uint st
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function copy_vec_istarted(ui16 ndim, bool single_precission)
+	export std::shared_ptr<::glsl::Function> copy_vec_istarted(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void copy_vec_istarted_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 	uint start_index = ndim*gl_GlobalInvocationID.x;
 	for (int i = 0; i < ndim; ++i) {
@@ -422,9 +426,9 @@ void copy_vec_istarted_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"copy_vec_istarted_" + uniqueid,
-			{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}

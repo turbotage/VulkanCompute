@@ -11,6 +11,7 @@ import <functional>;
 import <unordered_set>;
 import <set>;
 import <type_traits>;
+import <memory>;
 
 import util;
 import vc;
@@ -38,9 +39,9 @@ namespace glsl {
 			const std::string& function_name,
 			const std::vector<size_t>& argument_hashes,
 			const std::function<std::string()>& code_func,
-			std::optional<std::vector<Function>> dependencies);
+			const std::optional<std::vector<std::shared_ptr<Function>>>& dependencies);
 
-		const std::vector<Function>& getDependencies() const;
+		const std::vector<std::shared_ptr<Function>>& getDependencies() const;
 
 		std::string getCode() const;
 
@@ -55,17 +56,20 @@ namespace glsl {
 			}
 		};
 
-		static size_t add_function(std::vector<Function>& funcs, const Function& func);
+		static size_t add_function(std::vector<std::shared_ptr<Function>>& funcs, const std::shared_ptr<Function>& func);
 
 	private:
 		
 		std::string m_FunctionName;
 		std::vector<std::size_t> m_ArgumentHashes;
 		std::function<std::string()> m_CodeFunc;
-		std::vector<Function> m_Dependencies;
+		std::vector<std::shared_ptr<Function>> m_Dependencies;
 
 		std::string m_HashName;
 	};
+
+	using vecptrfunc = std::vector<std::shared_ptr<Function>>;
+	using refvecptrfunc = refw<std::vector<std::shared_ptr<Function>>>;
 
 	export class Binding {
 	public:
@@ -98,6 +102,8 @@ namespace glsl {
 	export class ShaderVariable {
 	public:
 
+		virtual std::string getInputDeclaration() const = 0;
+
 		virtual std::string getDeclaration() const = 0;
 
 		virtual std::string getName() const = 0;
@@ -124,6 +130,8 @@ namespace glsl {
 		MatrixVariable(const std::string& name,
 			ui16 ndim1, ui16 ndim2,
 			const ShaderVariableType& type);
+
+		std::string getInputDeclaration() const override;
 
 		std::string getDeclaration() const override;
 		
@@ -156,6 +164,8 @@ namespace glsl {
 			: m_Name(name), m_NDim(ndim), m_Type(type)
 		{}
 
+		std::string getInputDeclaration() const override;
+
 		std::string getDeclaration() const override;
 
 		std::string getName() const override;
@@ -180,6 +190,8 @@ namespace glsl {
 		SingleVariable(const std::string& name, const ShaderVariableType& type,
 			const std::optional<std::string>& value);
 
+		std::string getInputDeclaration() const override;
+
 		std::string getDeclaration() const override;
 
 		std::string getName() const override;
@@ -203,6 +215,8 @@ namespace glsl {
 			const std::string& name,
 			const std::string& type,
 			const std::string& value);
+
+		std::string getInputDeclaration() const override;
 
 		std::string getDeclaration() const override;
 
@@ -236,7 +250,7 @@ namespace glsl {
 		void addSingle(const std::shared_ptr<SingleVariable>& var, const std::optional<FunctionFactory::InputType>& input);
 
 		template<ShaderVariableIterator SVIterator>
-		void apply(const Function& func,
+		void apply(const std::shared_ptr<Function>& func,
 			const std::shared_ptr<ShaderVariable>& ret,
 			std::optional<std::pair<SVIterator, SVIterator>> args_it)
 		{
@@ -260,18 +274,18 @@ namespace glsl {
 			m_Calls.emplace_back(func_pos, ret_pos, std::move(input_pos));
 		}
 
-		void apply(const Function& func,
+		void apply(const std::shared_ptr<Function>& func,
 			const std::shared_ptr<ShaderVariable>& ret,
 			const std::vector<std::shared_ptr<ShaderVariable>>& args)
 		{
 			apply(func, ret, std::make_optional(std::make_pair(args.begin(), args.end())));
 		}
 
-		::glsl::Function build();
+		std::shared_ptr<::glsl::Function> build();
 
 	private:
 
-		ui16 _addFunction(const Function& func);
+		ui16 _addFunction(const std::shared_ptr<Function>& func);
 
 		ui16 _addVariable(const std::shared_ptr<ShaderVariable>& var);
 
@@ -280,10 +294,10 @@ namespace glsl {
 		std::string m_Name;
 		ShaderVariableType m_ReturnType;
 
-		std::vector<std::string> m_Inputs;
+		std::vector<std::pair<ui16, FunctionFactory::InputType>> m_Inputs;
 		std::vector<std::shared_ptr<ShaderVariable>> m_Variables;
 
-		std::vector<Function> m_Functions;
+		std::vector<std::shared_ptr<Function>> m_Functions;
 
 		std::vector<std::tuple<ui16, ui16, std::vector<ui16>>> m_Calls;
 	};
@@ -314,7 +328,7 @@ namespace glsl {
 
 		void addBinding(std::unique_ptr<Binding> binding);
 
-		void addFunction(const Function& func);
+		void addFunction(const std::shared_ptr<Function>& func);
 
 		void addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, ui16 binding);
 
@@ -339,7 +353,7 @@ namespace glsl {
 		void setAfterCopyingBack(const std::string& mi);
 
 		template<ShaderVariableIterator SVIterator> 
-		void apply(const Function& func, 
+		void apply(const std::shared_ptr<Function>& func, 
 			const std::shared_ptr<ShaderVariable>& ret, 
 			std::optional<std::pair<SVIterator,SVIterator>> args_it)
 		{
@@ -363,7 +377,7 @@ namespace glsl {
 			m_Calls.emplace_back(func_pos, ret_pos, std::move(input_pos));
 		}
 
-		void apply(const Function& func,
+		void apply(const std::shared_ptr<Function>& func,
 			const std::shared_ptr<ShaderVariable>& ret,
 			const std::vector<std::shared_ptr<ShaderVariable>>& args)
 		{
@@ -374,7 +388,7 @@ namespace glsl {
 
 	private:
 
-		uint16_t _addFunction(const Function& func);
+		uint16_t _addFunction(const std::shared_ptr<Function>& func);
 
 		bool _addBinding(std::unique_ptr<Binding> binding);
 
@@ -391,7 +405,7 @@ namespace glsl {
 	private:
 
 		std::vector<std::unique_ptr<Binding>> m_Bindings;
-		std::vector<Function> m_Functions;
+		std::vector<std::shared_ptr<Function>> m_Functions;
 
 		std::vector<std::pair<std::shared_ptr<ShaderVariable>,bool>> m_Variables;
 

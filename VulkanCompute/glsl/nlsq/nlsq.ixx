@@ -4,6 +4,8 @@ export module nlsq;
 
 import <string>;
 import <optional>;
+import <functional>;
+import <memory>;
 
 import vc;
 import glsl;
@@ -19,12 +21,15 @@ namespace glsl {
 
 	using namespace vc;
 
+	using vecptrfunc = std::vector<std::shared_ptr<Function>>;
+	using refvecptrfunc = refw<std::vector<std::shared_ptr<Function>>>;
+
 	export std::string nlsq_gain_ratio_uniqueid(ui16 nparam, bool single_precission)
 	{
 		return std::to_string(nparam) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function nlsq_gain_ratio(ui16 nparam, bool single_precission)
+	export std::shared_ptr<::glsl::Function> nlsq_gain_ratio(ui16 nparam, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -48,11 +53,11 @@ float nlsq_gain_UNIQUEID(in float step[nparam], in float neg_gradient[nparam], i
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"nlsq_gain_ratio_" + uniqueid,
-			{ size_t(nparam), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nparam), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({
+			std::make_optional<vecptrfunc>({
 				linalg::inner_prod(nparam, single_precission),
 				linalg::weighted_vec_norm2(nparam, single_precission)
 				})
@@ -65,7 +70,7 @@ float nlsq_gain_UNIQUEID(in float step[nparam], in float neg_gradient[nparam], i
 		return std::to_string(ndata) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function nlsq_error(ui16 ndata, bool single_precission)
+	export std::shared_ptr<::glsl::Function> nlsq_error(ui16 ndata, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -88,11 +93,11 @@ float nlsq_error_UNIQUEID(in float res[ndata]) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"nlsq_error_" + uniqueid,
-			{ size_t(ndata), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndata), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({
+			std::make_optional<vecptrfunc>({
 				linalg::vec_norm2(ndata, single_precission)
 				})
 		);
@@ -107,7 +112,7 @@ float nlsq_error_UNIQUEID(in float res[ndata]) {
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
 	}
 
-	export ::glsl::Function nlsq_slm_step(
+	export std::shared_ptr<::glsl::Function> nlsq_slm_step(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
 		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
 	{
@@ -203,11 +208,11 @@ void nlsq_slm_step_UNIQUEID(
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"nlsq_slm_step_" + uniqueid,
-			{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({ 
+			std::make_optional<vecptrfunc>({ 
 				nlsq::nlsq_residuals_jacobian(expr, context, ndata, nparam, nconst, single_precission),
 				linalg::mul_transpose_mat(ndata, nparam, single_precission),
 				linalg::mat_add_ldiag_out(nparam, single_precission),

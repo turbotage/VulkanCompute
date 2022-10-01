@@ -11,6 +11,7 @@ import <optional>;
 import <string>;
 import <functional>;
 import <vector>;
+import <memory>;
 
 import vc;
 import util;
@@ -23,6 +24,9 @@ namespace nlsq {
 
 	using namespace vc;
 
+	using vecptrfunc = std::vector<std::shared_ptr<Function>>;
+	using refvecptrfunc = refw<std::vector<std::shared_ptr<Function>>>;
+
 	// residuals
 	export std::string nlsq_residuals_uniqueid(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
@@ -32,7 +36,7 @@ namespace nlsq {
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
 	}
 
-	export ::glsl::Function nlsq_residuals(
+	export std::shared_ptr<::glsl::Function> nlsq_residuals(
 		const expression::Expression& expr, const glsl::SymbolicContext& context, 
 		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
 	{
@@ -66,9 +70,9 @@ RESIDUAL_EXPRESSION
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"nlsq_residuals_" + uniqueid,
-			{ hashed_expr, size_t(ndata), 
+			std::vector<size_t>{ hashed_expr, size_t(ndata), 
 			size_t(nparam), size_t(nconst), size_t(single_precission) },
 			code_func,
 			std::nullopt
@@ -84,7 +88,7 @@ RESIDUAL_EXPRESSION
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
 	}
 
-	export ::glsl::Function nlsq_residuals_jacobian(
+	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
 		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
 	{
@@ -140,9 +144,9 @@ JACOBIAN_EXPRESSIONS
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"nlsq_residuals_jacobian_" + uniqueid,
-			{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -156,7 +160,7 @@ JACOBIAN_EXPRESSIONS
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
 	}
 
-	export ::glsl::Function nlsq_residuals_jacobian_hessian(
+	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian_hessian(
 		const expression::Expression& expr, const glsl::SymbolicContext& context, 
 		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
 	{
@@ -245,11 +249,11 @@ HESSIAN_EXPRESSIONS
 			return temp;
 		};
 		
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"nlsq_residuals_jacobian_hessian_" + uniqueid,
-			{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission)},
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission)},
 			code_func,
-			std::make_optional<std::vector<Function>>({
+			std::make_optional<vecptrfunc>({
 				linalg::mul_transpose_mat_add(ndata, nparam, single_precission),
 			})
 		);
@@ -265,7 +269,7 @@ HESSIAN_EXPRESSIONS
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
 	}
 
-	export ::glsl::Function nlsq_residuals_jacobian_hessian_l(
+	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian_hessian_l(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
 		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
 	{
@@ -357,15 +361,15 @@ HESSIAN_EXPRESSIONS
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"nlsq_residuals_jacobian_hessian_l_" + uniqueid,
-			{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({
+			std::make_optional<vecptrfunc>({
 				linalg::mul_transpose_mat_add(ndata, nparam, single_precission),
 				linalg::mat_add_ldiag(nparam, single_precission)
 				})
-				);
+			);
 
 	}
 
@@ -378,7 +382,7 @@ HESSIAN_EXPRESSIONS
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
 	}
 
-	export ::glsl::Function nlsq_residuals_jacobian_hessian_sl(
+	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian_hessian_sl(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
 		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
 	{
@@ -468,11 +472,11 @@ HESSIAN_EXPRESSIONS
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"nlsq_residuals_jacobian_hessian_sl_" + uniqueid,
-			{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({
+			std::make_optional<vecptrfunc>({
 				linalg::mul_transpose_mat_add_ldiag(ndata, nparam, single_precission),
 				})
 				);

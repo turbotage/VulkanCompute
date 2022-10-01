@@ -4,6 +4,9 @@ export module permute;
 
 import <string>;
 import <optional>;
+import <memory>;
+import <functional>;
+import <optional>;
 
 import vc;
 import glsl;
@@ -16,16 +19,18 @@ using namespace vc;
 namespace glsl {
 namespace linalg {
 
+	using vecptrfunc = std::vector<std::shared_ptr<Function>>;
+	using refvecptrfunc = refw<std::vector<std::shared_ptr<Function>>>;
 
 	export std::string max_mag_uniqueid(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function max_mag(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> max_mag(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void max_mag_UNIQUEID(in float mat[nrow*ncol], out int max_row_idx, out int max_col_idx, out float max) {
 	max_row_idx = 0;
 	max_col_idx = 0;
@@ -58,9 +63,9 @@ void max_mag_UNIQUEID(in float mat[nrow*ncol], out int max_row_idx, out int max_
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"max_mag_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -71,10 +76,10 @@ void max_mag_UNIQUEID(in float mat[nrow*ncol], out int max_row_idx, out int max_
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function max_mag_subrow(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> max_mag_subrow(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void max_mag_subrow_UNIQUEID(in float mat[nrow*ncol], int row, int start_col, out int max_idx, out float max) {
 	max_idx = 0;
 	max = 0.0;
@@ -103,9 +108,9 @@ void max_mag_subrow_UNIQUEID(in float mat[nrow*ncol], int row, int start_col, ou
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"max_mag_subrow_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -116,10 +121,10 @@ void max_mag_subrow_UNIQUEID(in float mat[nrow*ncol], int row, int start_col, ou
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function max_mag_subcol(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> max_mag_subcol(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void max_mag_subcol_UNIQUEID(in float mat[nrow*ncol], int col, int start_row, out int max_idx, out float max) {
 	max_idx = 0;
 	max = 0.0;
@@ -148,9 +153,9 @@ void max_mag_subcol_UNIQUEID(in float mat[nrow*ncol], int col, int start_row, ou
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"max_mag_subcol_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
 	}
@@ -161,10 +166,10 @@ void max_mag_subcol_UNIQUEID(in float mat[nrow*ncol], int col, int start_row, ou
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function row_interchange_i(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> row_interchange_i(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
-			R"glsl(
+R"glsl(
 void row_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int ii, int jj) {
 	for (int k = 0; k < ncol; ++k) {
 		swap_SWAPID(mat[ii*ncol + k], mat[jj*ncol + k]);
@@ -187,11 +192,13 @@ void row_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int ii, int jj) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"row_interchange_i_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({ swap(single_precission) })
+			std::make_optional<vecptrfunc>({
+				swap(single_precission)
+				})
 		);
 	}
 
@@ -201,7 +208,7 @@ void row_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int ii, int jj) {
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function subrow_interchange_i(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> subrow_interchange_i(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
@@ -227,11 +234,11 @@ void subrow_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int start_col, in
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"subrow_interchange_i_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({ swap(single_precission) })
+			std::make_optional<vecptrfunc>({ swap(single_precission) })
 		);
 	}
 
@@ -241,7 +248,7 @@ void subrow_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int start_col, in
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function col_interchange_i(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> col_interchange_i(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
@@ -267,11 +274,11 @@ void col_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int ii, int jj) {
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"col_interchange_i_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({ swap(single_precission) })
+			std::make_optional<vecptrfunc>({ swap(single_precission) })
 		);
 	}
 
@@ -281,7 +288,7 @@ void col_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int ii, int jj) {
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export ::glsl::Function subcol_interchange_i(ui16 nrow, ui16 ncol, bool single_precission)
+	export std::shared_ptr<::glsl::Function> subcol_interchange_i(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		static const std::string code = // compute shader
 			R"glsl(
@@ -307,11 +314,11 @@ void col_interchange_i_UNIQUEID(inout float mat[nrow*ncol], int start_row, int i
 			return temp;
 		};
 
-		return ::glsl::Function(
+		return std::make_shared<Function>(
 			"col_interchange_i_" + uniqueid,
-			{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
-			std::make_optional<std::vector<Function>>({ swap(single_precission) })
+			std::make_optional<vecptrfunc>({ swap(single_precission) })
 		);
 	}
 
