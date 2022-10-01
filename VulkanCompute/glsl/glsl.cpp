@@ -481,19 +481,28 @@ void FunctionFactory::addSingle(const std::shared_ptr<SingleVariable>& mat, cons
 	ret += glsl::shader_variable_type_to_str(m_ReturnType) + " " + m_Name + "_";
 
 	// add uniqueid
+	for (auto& input : m_Inputs) {
 
+	}
 
 
 }
 
 ui16 FunctionFactory::_addFunction(const Function& func)
 {
-
+	return Function::add_function(m_Functions, func);
 }
 
 ui16 FunctionFactory::_addVariable(const std::shared_ptr<ShaderVariable>& var)
 {
-
+	auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::pair<std::shared_ptr<ShaderVariable>, bool>& v) {
+		return *var == *(v.first);
+		});
+	ui16 pos = it - m_Variables.begin();
+	if (it == m_Variables.end()) {
+		m_Variables.emplace_back(var, is_global);
+	}
+	return pos;
 }
 
 // STUPIDSHADER

@@ -30,7 +30,7 @@ void test_copying()
 	using namespace vc;
 
 	constexpr ui32 n = 7;
-
+	
 	AutogenShader shader;
 	
 	kp::Manager mgr;
