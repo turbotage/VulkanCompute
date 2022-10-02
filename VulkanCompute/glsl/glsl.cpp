@@ -350,6 +350,7 @@ std::string SingleVariable::getDeclaration() const
 	else {
 		ret += ";\n";
 	}
+	return ret; 
 }
 
 std::string SingleVariable::getName() const

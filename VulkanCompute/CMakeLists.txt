@@ -8,7 +8,7 @@ set(DKOMPUTE_VK_API_MINOR_VERSION 3)
 
 add_subdirectory("external/kompute" ${CMAKE_CURRENT_BINARY_DIR}/kompute_build)
 # Add source to this project's executable.
-add_executable(VulkanCompute 
+add_executable(VulkanCompute
 	"VulkanCompute.cpp"
 	"util.ixx"
 	"glsl/glsl.ixx"
@@ -35,7 +35,7 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/pow.ixx"
 	"expression/algebra/binary/sub.ixx"
 	"expression/expr.ixx" 
-	"expression/expr.cpp" )
+	"expression/expr.cpp")
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 
