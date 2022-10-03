@@ -448,6 +448,58 @@ void test_backward() {
 	}
 }
 
+void test_function_factory()
+{
+	using namespace glsl;
+	using namespace vc;
+	using namespace nlsq;
+
+	auto start = std::chrono::steady_clock::now();
+
+	AutogenShader shader;
+
+	ui16 ndata = 21;
+	ui16 nparam = 4;
+	ui16 nconst = 1;
+
+	std::vector<std::string> vars = { "s0","f","d1","d2","b" };
+	std::string expresh = "s0*(f*exp(-b*d1)+(1-f)*exp(-b*d2))";
+	expression::Expression expr(expresh, vars);
+	SymbolicContext context;
+	context.insert_const(std::make_pair("b", 0));
+	context.insert_param(std::make_pair("s0", 0));
+	context.insert_param(std::make_pair("f", 1));
+	context.insert_param(std::make_pair("d1", 2));
+	context.insert_param(std::make_pair("d2", 3));
+
+	auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::FLOAT);
+	auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, nparam, ShaderVariableType::FLOAT);
+	auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", nparam, nparam, ShaderVariableType::FLOAT);
+	auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::FLOAT);
+	auto params = std::make_shared<glsl::VectorVariable>("params", nparam, ShaderVariableType::FLOAT);
+	auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, nconst, ShaderVariableType::FLOAT);
+	auto lambda = std::make_shared<glsl::SingleVariable>("lambda", ShaderVariableType::FLOAT, std::nullopt);
+	auto step = std::make_shared<glsl::VectorVariable>("step", nparam, ShaderVariableType::FLOAT);
+	auto step_type = std::make_shared<glsl::SingleVariable>("step_type", ShaderVariableType::INT, std::nullopt);
+
+	FunctionFactory factory("nlsq_slm_step", ShaderVariableType::VOID);
+	
+	factory.addVector(residuals, FunctionFactory::InputType::INOUT);
+	factory.addMatrix(jacobian, FunctionFactory::InputType::INOUT);
+	factory.addMatrix(hessian, FunctionFactory::InputType::INOUT);
+	factory.addVector(data, FunctionFactory::InputType::IN);
+	factory.addVector(params, FunctionFactory::InputType::INOUT);
+	factory.addMatrix(consts, FunctionFactory::InputType::IN);
+	factory.addSingle(lambda, FunctionFactory::InputType::INOUT);
+	factory.addSingle(step_type, FunctionFactory::InputType::INOUT);
+
+	factory.apply(nlsq_residuals_jacobian(expresh, context, ndata, nparam, nconst, true),
+		params, consts, data, residuals, jacobian);
+
+	
+
+}
+
 int main() {
 	
 	test_nlsq();

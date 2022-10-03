@@ -18,6 +18,7 @@ import solver;
 export import symbolic;
 
 namespace glsl {
+namespace nlsq {
 
 	using namespace vc;
 
@@ -189,7 +190,7 @@ void nlsq_slm_step_UNIQUEID(
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
-			util::replace_all(temp, "NRJID", nlsq::nlsq_residuals_jacobian_uniqueid(expr, context, ndata, nparam, nconst, single_precission));
+			util::replace_all(temp, "NRJID", nlsq_residuals_jacobian_uniqueid(expr, context, ndata, nparam, nconst, single_precission));
 			util::replace_all(temp, "MTMID", linalg::mul_transpose_mat_uniqueid(ndata, nparam, single_precission));
 			util::replace_all(temp, "MALOID", linalg::mat_add_ldiag_out_uniqueid(nparam, single_precission));
 			util::replace_all(temp, "GID", linalg::gmw81_uniqueid(nparam, single_precission));
@@ -198,7 +199,7 @@ void nlsq_slm_step_UNIQUEID(
 			util::replace_all(temp, "LSID", linalg::ldl_solve_uniqueid(nparam, single_precission));
 			util::replace_all(temp, "AVVID", linalg::add_vec_vec_uniqueid(nparam, single_precission));
 			util::replace_all(temp, "NEID", nlsq_error_uniqueid(ndata, single_precission));
-			util::replace_all(temp, "NRID", nlsq::nlsq_residuals_uniqueid(expr, context, ndata, nparam, nconst, single_precission));
+			util::replace_all(temp, "NRID", nlsq_residuals_uniqueid(expr, context, ndata, nparam, nconst, single_precission));
 			util::replace_all(temp, "NGID", nlsq_gain_ratio_uniqueid(nparam, single_precission));
 			util::replace_all(temp, "MMVID", linalg::mul_mat_vec_uniqueid(ndata, nparam, single_precission));
 			util::replace_all(temp, "VNORMID", linalg::vec_norm_uniqueid(ndata, single_precission));
@@ -213,7 +214,7 @@ void nlsq_slm_step_UNIQUEID(
 			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
 			code_func,
 			std::make_optional<vecptrfunc>({ 
-				nlsq::nlsq_residuals_jacobian(expr, context, ndata, nparam, nconst, single_precission),
+				nlsq_residuals_jacobian(expr, context, ndata, nparam, nconst, single_precission),
 				linalg::mul_transpose_mat(ndata, nparam, single_precission),
 				linalg::mat_add_ldiag_out(nparam, single_precission),
 				linalg::gmw81(nparam, single_precission),
@@ -222,7 +223,7 @@ void nlsq_slm_step_UNIQUEID(
 				linalg::ldl_solve(nparam, single_precission),
 				linalg::add_vec_vec(nparam, single_precission),
 				nlsq_error(ndata, single_precission),
-				nlsq::nlsq_residuals(expr, context, ndata, nparam, nconst, single_precission),
+				nlsq_residuals(expr, context, ndata, nparam, nconst, single_precission),
 				nlsq_gain_ratio(nparam, single_precission),
 				linalg::mul_mat_vec(ndata, nparam, single_precission),
 				linalg::vec_norm(ndata, single_precission)
@@ -230,7 +231,6 @@ void nlsq_slm_step_UNIQUEID(
 		);
 	}
 
-
-
-
 }
+}
+

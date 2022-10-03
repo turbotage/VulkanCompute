@@ -13,12 +13,14 @@ add_executable(VulkanCompute
 	"util.ixx"
 	"glsl/glsl.ixx"
 	"glsl/glsl.cpp"
+	"glsl/function.ixx" 
+	"glsl/variable.ixx"
 	"glsl/linalg/linalg.ixx"
 	"glsl/linalg/solver.ixx"
 	"glsl/linalg/symm.ixx"
 	"glsl/linalg/copy.ixx"
 	"glsl/linalg/permute.ixx"
-	"glsl/nlsq/symbolic.ixx"
+	"glsl/nlsq/nlsq_symbolic.ixx"
 	"glsl/nlsq/nlsq.ixx"
 	"vc.ixx"
 	"expression/parser/token.ixx" 
@@ -35,7 +37,8 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/pow.ixx"
 	"expression/algebra/binary/sub.ixx"
 	"expression/expr.ixx" 
-	"expression/expr.cpp")
+	"expression/expr.cpp" 
+ "glsl/func_factory.ixx" "glsl/shader.ixx" "glsl/symbolic.ixx")
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 

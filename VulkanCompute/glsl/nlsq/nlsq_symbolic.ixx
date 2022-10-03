@@ -4,7 +4,7 @@ module;
 #include <symengine/simplify.h>
 #include <symengine/parser.h>
 
-export module symbolic;
+export module nlsq_symbolic;
 
 import <tuple>;
 import <optional>;
@@ -18,6 +18,7 @@ import util;
 import linalg;
 export import expr;
 export import glsl;
+export import function;
 
 namespace glsl {
 namespace nlsq {
