@@ -8,11 +8,13 @@ import <memory>;
 import <vector>;
 import <functional>;
 import <initializer_list>;
+import <stdexcept>;
 
 import vc;
 import glsl;
 import util;
 
+export import variable;
 export import function;
 
 using namespace vc;
@@ -92,6 +94,43 @@ void copy_mat_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
 			code_func,
 			std::nullopt);
+	}
+
+	export FunctionApplier copy_mat(
+		const std::shared_ptr<MatrixVariable>& imat,
+		const std::shared_ptr<MatrixVariable>& omat)
+	{
+		// type checks and dims
+		{
+			if (imat->getNDim1() != omat->getNDim1()) {
+				throw std::runtime_error("imat dim1 must equal omat dim1");
+			}
+			if (imat->getNDim2() != omat->getNDim2()) {
+				throw std::runtime_error("imat dim2 must equal omat dim2");
+			}
+
+			if ((ui16)imat->getType() &
+				(ui16)omat->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((imat->getType() == ShaderVariableType::FLOAT) ||
+				(imat->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 nrow = imat->getNDim1();
+		ui16 ncol = imat->getNDim2();
+
+		bool single_precission = true;
+		if (imat->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = copy_mat(nrow, ncol, single_precission);
+		auto uniqueid = copy_mat_uniqueid(nrow, ncol, single_precission);
+
+		return FunctionApplier{ func, nullptr, { imat, omat }, uniqueid };
 	}
 
 

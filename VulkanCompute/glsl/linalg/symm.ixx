@@ -7,12 +7,17 @@ import <string>;
 import <optional>;
 import <memory>;
 import <functional>;
+import <stdexcept>;
 
 import vc;
 import util;
 import solver;
 export import linalg;
 import glsl;
+
+import variable;
+import function;
+
 
 using namespace vc;
 
@@ -27,7 +32,7 @@ namespace linalg {
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export std::shared_ptr<::glsl::Function> ldl(ui16 ndim, bool single_precission)
+	export std::shared_ptr<Function> ldl(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -76,13 +81,39 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 
 	}
 
+	export FunctionApplier ldl(const std::shared_ptr<MatrixVariable>& mat)
+	{
+		// type and dim checks
+		{
+			if (mat->getNDim1() != mat->getNDim2()) {
+				throw std::runtime_error("matrices must be square");
+			}
+
+			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
+				(mat->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+
+		}
+
+		ui16 ndim = mat->getNDim1();
+		bool single_precission = true;
+		if (mat->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = ldl(ndim, single_precission);
+		auto uniqueid = ldl_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr, {mat}, uniqueid };
+	}
+
 
 	export std::string gmw81_uniqueid(ui16 ndim, bool single_precission)
 	{
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export std::shared_ptr<::glsl::Function> gmw81(ui16 ndim, bool single_precission)
+	export std::shared_ptr<Function> gmw81(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -173,13 +204,39 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 		);
 	}
 
+	export FunctionApplier gmw81(const std::shared_ptr<MatrixVariable>& mat)
+	{
+		// type and dim checks
+		{
+			if (mat->getNDim1() != mat->getNDim2()) {
+				throw std::runtime_error("matrices must be square");
+			}
+
+			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
+				(mat->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+
+		}
+
+		ui16 ndim = mat->getNDim1();
+		bool single_precission = true;
+		if (mat->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = gmw81(ndim, single_precission);
+		auto uniqueid = gmw81_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr, {mat}, uniqueid };
+	}
+
 
 	export std::string ldl_solve_uniqueid(ui16 ndim, bool single_precission)
 	{
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export std::shared_ptr<::glsl::Function> ldl_solve(ui16 ndim, bool single_precission)
+	export std::shared_ptr<Function> ldl_solve(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -215,6 +272,45 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 				linalg::backward_subs_unit_t(ndim, single_precission)
 			})
 		);
+	}
+
+	export FunctionApplier ldl_solve(const std::shared_ptr<MatrixVariable>& mat,
+		const std::shared_ptr<VectorVariable>& rhs, const std::shared_ptr<VectorVariable>& sol)
+	{
+		// type and dim checks
+		{
+			if (mat->getNDim1() != mat->getNDim2()) {
+				throw std::runtime_error("matrix must be square");
+			}
+			if (rhs->getNDim() != mat->getNDim1()) {
+				throw std::runtime_error("rhs dim must equal mat dim1");
+			}
+			if (sol->getNDim() != mat->getNDim1()) {
+				throw std::runtime_error("sol dim must equal mat dim1");
+			}
+
+			if ((ui16)mat->getType() &
+				(ui16)rhs->getType() &
+				(ui16)sol->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
+				(mat->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+
+		}
+
+		ui16 ndim = mat->getNDim1();
+		bool single_precission = true;
+		if (mat->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = ldl_solve(ndim, single_precission);
+		auto uniqueid = ldl_solve_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr, {mat, rhs, sol}, uniqueid };
 	}
 
 }

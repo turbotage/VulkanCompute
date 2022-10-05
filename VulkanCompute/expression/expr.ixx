@@ -446,6 +446,8 @@ namespace expression {
 
 		std::string glsl_str(const glsl::SymbolicContext& symtext) const override;
 
+		bool is_zero() const;
+
 		std::unique_ptr<Node> copy(LexContext& context) const override;
 
 		static ExpressionCreationMap default_expression_creation_map();

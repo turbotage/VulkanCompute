@@ -70,8 +70,22 @@ namespace util {
         return ret;
     }
 
+    export std::string add_after_newline(const std::string& str, const std::string& adder)
+    {
+        std::string ret = str;
+        for (int i = 0; i < ret.size(); ++i) {
+            if (ret[i] == '\n') {
+                if (i + 1 > ret.size())
+                    return ret;
+                ret.insert(i + 1, adder);
+                i += adder.size() + 2;
+            }
+        }
+        return ret;
+    }
+
     export std::string add_line_numbers(const std::string& str, int max_number_length = 5) {
-        int until = 5;
+        int until = max_number_length;
         std::string ret = str;
         ret.insert(0, util::add_whitespace_until(std::to_string(1), until) + "\t|");
         int k = 2;

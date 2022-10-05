@@ -29,12 +29,11 @@ namespace glsl {
 			auto i2m = dynamic_cast<const MatrixVariable*>(v2.get());
 			if (i1m != nullptr && i2m != nullptr) {
 				copy_str +=
-					R"glsl(
+R"glsl(
 	start_index = nrow*ncol*gl_GlobalInvocationID.x;
 	for (int i = 0; i < nrow*ncol; ++i) {
 		OUTPUT_NAME[i] = INPUT_NAME[start_index + i];
 	}
-
 )glsl";
 				util::replace_all(copy_str, "nrow", std::to_string(i1m->getNDim1()));
 				util::replace_all(copy_str, "ncol", std::to_string(i1m->getNDim2()));
@@ -49,7 +48,7 @@ namespace glsl {
 			auto i2v = dynamic_cast<const VectorVariable*>(v2.get());
 			if (i1v != nullptr && i2v != nullptr) {
 				copy_str +=
-					R"glsl(
+R"glsl(
 	start_index = ndim*gl_GlobalInvocationID.x;
 	for (int i = 0; i < ndim; ++i) {
 		OUTPUT_NAME[i] = INPUT_NAME[start_index + i];
@@ -92,7 +91,7 @@ R"glsl(
 			auto i2v = dynamic_cast<const VectorVariable*>(v2.get());
 			if (i1v != nullptr && i2v != nullptr) {
 				copy_str +=
-					R"glsl(
+R"glsl(
 	start_index = ndim*gl_GlobalInvocationID.x;
 	for (int i = 0; i < ndim; ++i) {
 		OUTPUT_NAME[start_index + i] = INPUT_NAME[i];
@@ -209,7 +208,7 @@ R"glsl(
 		{
 			vc::ui16 func_pos = Function::add_function(m_Functions, func);
 
-			int16_t ret_pos = -1;
+			vc::i16 ret_pos = -1;
 			if (ret) {
 				ret_pos = _addVariable(ret, false);
 			}
@@ -240,7 +239,7 @@ R"glsl(
 			ret.reserve(DEFAULT_SHADER_SIZE);
 
 			ret +=
-				R"glsl(
+R"glsl(
 #version 450
 
 layout (local_size_x = 1) in;
@@ -250,12 +249,14 @@ layout (local_size_x = 1) in;
 			for (auto& bind : m_Bindings) {
 				ret += bind->operator()() + "\n";
 			}
-			ret += "\n";
+			if (m_Bindings.size() > 0)
+				ret += "\n";
 
 			for (auto& func : m_Functions) {
 				ret += func->getCode() + "\n";
 			}
-			ret += "\n";
+			if (m_Functions.size() > 0)
+				ret += "\n";
 
 			// open main
 			ret += "void main() {\n";
@@ -263,12 +264,14 @@ layout (local_size_x = 1) in;
 			// declare variables
 			for (auto& var : m_Variables) {
 				if (!var.second)
-					ret += "\t" + var.first->getDeclaration() + "\n";
+					ret += "\t" + var.first->getDeclaration();
 			}
-			ret += "\n";
+			if (m_Variables.size() > 0)
+				ret += "\n";
 
 			// manual insertions before copy from
-			ret += m_BeforeCopyingFrom;
+			if (m_BeforeCopyingFrom != "")
+				ret += m_BeforeCopyingFrom + "\n";
 
 			// copy globals to locals
 			if (m_Inputs.size() != 0 || m_Outputs.size() != 0)
@@ -279,12 +282,13 @@ layout (local_size_x = 1) in;
 			ret += "\n";
 
 			// manual insertions after copy from
-			ret += m_AfterCopyingFrom;
+			if (m_AfterCopyingFrom != "")
+				ret += m_AfterCopyingFrom + "\n";
 
 			// add in function calls
 			for (auto& call : m_Calls) {
 				ret += "\t";
-				vc::ui16 ret_pos = std::get<1>(call);
+				vc::i16 ret_pos = std::get<1>(call);
 				if (ret_pos != -1) {
 					ret += m_Variables[ret_pos].first->getName() + " = ";
 				}
@@ -304,18 +308,23 @@ layout (local_size_x = 1) in;
 				}
 				ret += ");\n";
 			}
-			ret += "\n";
+			if (m_Calls.size() > 0)
+				ret += "\n";
 
 			// manual insertions before copying back
-			ret += m_BeforeCopyingBack;
+			if (m_BeforeCopyingBack != "")
+				ret += m_BeforeCopyingBack + "\n";
 
 			// copy locals back to globals
 			for (auto& output : m_Outputs) {
 				ret += copying_to(m_Variables[output.first].first, m_Variables[output.second].first);
 			}
+			if (m_Outputs.size() > 0)
+				ret += "\n";
 
 			// manual insertions after copying back
-			ret += m_AfterCopyingBack;
+			if (m_AfterCopyingBack != "")
+				ret += m_AfterCopyingBack + "\n";
 
 			// close main
 			ret += "}\n";
@@ -444,7 +453,7 @@ layout (local_size_x = 1) in;
 		// m_Calls[0] is index to function in m_Functions
 		// m_Calls[i] for i > 0 is variable to use in function call, index is to
 		// m_Variables
-		std::vector<std::tuple<vc::ui16, vc::ui16, std::vector<vc::ui16>>> m_Calls;
+		std::vector<std::tuple<vc::ui16, vc::i16, std::vector<vc::ui16>>> m_Calls;
 
 	};
 

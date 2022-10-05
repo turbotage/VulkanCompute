@@ -18,10 +18,10 @@ import util;
 namespace glsl {
 
 	export enum class ShaderVariableType {
-		FLOAT,
-		DOUBLE,
-		INT,
-		VOID,
+		FLOAT = 0,
+		DOUBLE = 1,
+		INT = 2,
+		VOID = 4,
 	};
 
 	export std::string shader_variable_type_to_str(const ShaderVariableType& type)

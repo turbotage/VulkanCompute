@@ -7,11 +7,13 @@ import <optional>;
 import <functional>;
 import <memory>;
 import <vector>;
+import <stdexcept>;
 
 import vc;
 import glsl;
 import util;
 
+export import variable;
 export import function;
 
 export import copy;
@@ -64,6 +66,29 @@ void mag_neg_UNIQUEID(inout float mat[nrow*ncol]) {
 		);
 	}
 
+	export ::glsl::FunctionApplier mat_neg(const std::shared_ptr<glsl::MatrixVariable>& mat)
+	{
+		// type checks and dims
+		{
+			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
+				(mat->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 nrow = mat->getNDim1();
+		ui16 ncol = mat->getNDim2();
+
+		bool single_precission = true;
+		if (mat->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = mat_neg(nrow, ncol, single_precission);
+		auto uniqueid = mat_neg_uniqueid(nrow, ncol, single_precission);
+
+		return FunctionApplier{ func, nullptr, { mat }, uniqueid };
+	}
+
 
 	export std::string vec_neg_uniqueid(ui16 ndim, bool single_precission)
 	{
@@ -100,6 +125,28 @@ void vec_neg_UNIQUEID(inout float vec[ndim]) {
 			code_func,
 			std::nullopt
 		);
+	}
+
+	export ::glsl::FunctionApplier vec_neg(const std::shared_ptr<glsl::VectorVariable>& vec)
+	{
+		// type checks and dims
+		{
+			if (!((vec->getType() == ShaderVariableType::FLOAT) ||
+				(vec->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndim = vec->getNDim();
+
+		bool single_precission = true;
+		if (vec->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = vec_neg(ndim, single_precission);
+		auto uniqueid = vec_neg_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr, { vec }, uniqueid };
 	}
 
 
@@ -485,6 +532,44 @@ void mul_transpose_vec_UNIQUEID(in float mat[nrow*ncol], in float vec[nrow], out
 		);
 	}
 
+	export ::glsl::FunctionApplier mul_transpose_vec(
+		const std::shared_ptr<glsl::MatrixVariable>& mat, const std::shared_ptr<glsl::VectorVariable>& vec,
+		const std::shared_ptr<glsl::VectorVariable>& out)
+	{
+		// type checks and dims
+		{
+			if (mat->getNDim2() != out->getNDim()) {
+				throw std::runtime_error("mat dim2 must equal out dim");
+			}
+			if (mat->getNDim1() != vec->getNDim()) {
+				throw std::runtime_error("mat dim1 must equal vec dim");
+			}
+
+			if ((ui16)mat->getType() &
+				(ui16)vec->getType() &
+				(ui16)out->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
+				(mat->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 nrow = mat->getNDim1();
+		ui16 ncol = mat->getNDim2();
+
+		bool single_precission = true;
+		if (mat->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = mul_transpose_vec(nrow, ncol, single_precission);
+		auto uniqueid = mul_transpose_vec_uniqueid(nrow, ncol, single_precission);
+
+		return FunctionApplier{ func, nullptr, {mat, vec, out}, uniqueid };
+	}
+
 
 	export std::string add_mat_mat_uniqueid(ui16 nrow, ui16 ncol, bool single_precission)
 	{
@@ -530,7 +615,7 @@ void add_mat_mat_UNIQUEID(in float lmat[nrow*ncol], in float rmat[nrow*ncol], ou
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
 	}
 
-	export std::shared_ptr<::glsl::Function> add_vec_vec(ui16 ndim, bool single_precission)
+	export std::shared_ptr<Function> add_vec_vec(ui16 ndim, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -560,6 +645,45 @@ void add_vec_vec_UNIQUEID(in float lvec[ndim], in float rvec[ndim], out float ov
 			code_func,
 			std::nullopt
 		);
+	}
+
+	export FunctionApplier add_vec_vec(const std::shared_ptr<VectorVariable>& lvec,
+		const std::shared_ptr<VectorVariable>& rvec, const std::shared_ptr<VectorVariable>& ovec)
+	{
+		// types and dimensions
+		{
+			if (lvec->getNDim() != rvec->getNDim()) {
+				throw std::runtime_error("lvec dim and rvec dim1 must agree");
+			}
+			if (rvec->getNDim() != ovec->getNDim()) {
+				throw std::runtime_error("rvec dim and ovec dim1 must agree");
+			}
+
+			if ((ui16)lvec->getType() &
+				(ui16)rvec->getType() &
+				(ui16)ovec->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((lvec->getType() == ShaderVariableType::FLOAT) ||
+				(lvec->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndim = lvec->getNDim();
+
+		bool single_precission = true;
+		if (lvec->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = add_vec_vec(ndim, single_precission);
+
+		auto uniqueid = add_vec_vec_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr,
+			{lvec, rvec, ovec }, uniqueid };
+
 	}
 
 
@@ -758,6 +882,45 @@ void mat_add_ldiag_out_UNIQUEID(in float mat[ndim*ndim], float lambda, out float
 		);
 	}
 
+	export ::glsl::FunctionApplier mat_add_ldiag_out(
+		const std::shared_ptr<MatrixVariable>& in, const std::shared_ptr<SingleVariable>& lambda,
+		const std::shared_ptr<MatrixVariable>& out)
+	{
+		// type and dimension checks
+		{
+			if (in->getNDim1() != out->getNDim1()) {
+				throw std::runtime_error("in dim1 must equal out dim1");
+			}
+			if (out->getNDim2() != out->getNDim2()) {
+				throw std::runtime_error("in dim2 must equal out dim2");
+			}
+			if (in->getNDim1() != in->getNDim2()) {
+				throw std::runtime_error("matrices must be square");
+			}
+
+			if ((ui16)in->getType() &
+				(ui16)out->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((in->getType() == ShaderVariableType::FLOAT) ||
+				(in->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndim = in->getNDim1();
+
+		bool single_precission = true;
+		if (in->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+		
+		auto func = mat_add_ldiag_out(ndim, single_precission);
+
+		auto uniqueid = mat_add_ldiag_out_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr, {in, lambda, out}, uniqueid };
+	}
 
 
 	export std::string mul_mat_transpose_uniqueid(ui16 nrow, ui16 ncol, bool single_precission)
@@ -1010,6 +1173,43 @@ void mul_transpose_mat_UNIQUEID(in float mat[nrow*ncol], out float omat[ncol*nco
 			code_func,
 			std::nullopt
 		);
+	}
+
+	export ::glsl::FunctionApplier mul_transpose_mat(
+		const std::shared_ptr<glsl::MatrixVariable>& in, const std::shared_ptr<glsl::MatrixVariable>& out)
+	{
+		// type and dimension checks
+		{
+			if (in->getNDim2() != out->getNDim1()) {
+				throw std::runtime_error("Input matrix 2nd dim must be equal to out matrix dim1");
+			}
+			if (out->getNDim1() != out->getNDim2() ) {
+				throw std::runtime_error("out dim1 must equal out dim2");
+			}
+
+			if ((ui16)in->getType() &
+				(ui16)out->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((in->getType() == ShaderVariableType::FLOAT) ||
+				(in->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 nrow = in->getNDim1();
+		ui16 ncol = in->getNDim2();
+
+		bool single_precission = true;
+		if (in->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = mul_transpose_mat(nrow, ncol, single_precission);
+
+		auto uniqueid = mul_transpose_mat_uniqueid(nrow, ncol, single_precission);
+
+		return FunctionApplier{ func, nullptr, { in, out }, uniqueid };
 	}
 
 

@@ -6,6 +6,7 @@ import <string>;
 import <optional>;
 import <functional>;
 import <memory>;
+import <stdexcept>;
 
 import vc;
 import glsl;
@@ -15,6 +16,8 @@ import linalg;
 import symm;
 import solver;
 
+import variable;
+import function;
 import func_factory;
 
 export import symbolic;
@@ -68,6 +71,56 @@ float nlsq_gain_UNIQUEID(in float step[nparam], in float neg_gradient[nparam], i
 		);
 	}
 
+	export FunctionApplier nlsq_gain_ratio(
+		const std::shared_ptr<SingleVariable>& ratio,
+		const std::shared_ptr<VectorVariable>& step,
+		const std::shared_ptr<VectorVariable>& gradient,
+		const std::shared_ptr<MatrixVariable>& hessian,
+		const std::shared_ptr<SingleVariable>& error,
+		const std::shared_ptr<SingleVariable>& new_error)
+	{
+		// type and dimension checks
+		{
+			if (step->getNDim() != gradient->getNDim()) {
+				throw std::runtime_error("step dim and gradient dim must agree");
+			}
+			if (hessian->getNDim1() != hessian->getNDim2()) {
+				throw std::runtime_error("hessian must be square");
+			}
+			if (hessian->getNDim1() != step->getNDim()) {
+				throw std::runtime_error("hessian dim1 must agree with step dim");
+			}
+
+			if ((ui16)step->getType() &
+				(ui16)gradient->getType() &
+				(ui16)hessian->getType() &
+				(ui16)error->getType() &
+				(ui16)new_error->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((ratio->getType() == ShaderVariableType::FLOAT) ||
+				(ratio->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+			if (!((step->getType() == ShaderVariableType::FLOAT) ||
+				(step->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndim = step->getNDim();
+
+		bool single_precission = true;
+		if (step->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = nlsq_gain_ratio(ndim, single_precission);
+		auto uniqueid = nlsq_gain_ratio_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, ratio, {step, gradient, hessian, error, new_error }, uniqueid };
+	}
+
 
 	export std::string nlsq_error_uniqueid(ui16 ndata, bool single_precission)
 	{
@@ -105,6 +158,30 @@ float nlsq_error_UNIQUEID(in float res[ndata]) {
 				linalg::vec_norm2(ndata, single_precission)
 				})
 		);
+	}
+
+	export FunctionApplier nlsq_error(
+		const std::shared_ptr<SingleVariable>& error,
+		const std::shared_ptr<VectorVariable>& res)
+	{
+		// type and dims check
+		{
+			if (!((res->getType() == ShaderVariableType::FLOAT) ||
+				(res->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndim = res->getNDim();
+
+		bool single_precission = true;
+		if (res->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = nlsq_error(ndim, single_precission);
+		auto uniqueid = nlsq_error_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr, {res}, uniqueid };
 	}
 
 	/*
@@ -235,6 +312,91 @@ void nlsq_slm_step_UNIQUEID(
 	}
 	*/
 
+	export enum class StepType {
+		NO_STEP,
+		NO_STEP_DAMPING_INCREASED,
+		STEP_DAMPING_UNCHANGED,
+		STEP_DAMPING_DECREASED
+	};
+
+	export FunctionApplier nlsq_slmh_step(
+		const expression::Expression& expr, const glsl::SymbolicContext& context,
+		const std::shared_ptr<VectorVariable>& params,
+		const std::shared_ptr<MatrixVariable>& consts,
+		const std::shared_ptr<VectorVariable>& data,
+		const std::shared_ptr<VectorVariable>& residuals, 
+		const std::shared_ptr<MatrixVariable>& jacobian,
+		const std::shared_ptr<MatrixVariable>& hessian,
+		const std::shared_ptr<SingleVariable>& lambda,
+		const std::shared_ptr<SingleVariable>& mu,
+		const std::shared_ptr<SingleVariable>& eta,
+		const std::shared_ptr<VectorVariable>& step,
+		const std::shared_ptr<SingleVariable>& step_type)
+	{
+		// type and dimension checks
+		/*
+		nlsq_residuals_jacobian_hessian makes all the checks for residuals, jacobian, hessian, data, params, 
+		*/
+
+		glsl::FunctionFactory factory("nlsq_slmh_step", ShaderVariableType::VOID);
+
+		factory.addVector(residuals, FunctionFactory::InputType::INOUT);
+		factory.addMatrix(jacobian, FunctionFactory::InputType::INOUT);
+		factory.addMatrix(hessian, FunctionFactory::InputType::INOUT);
+		factory.addVector(data, FunctionFactory::InputType::IN);
+		factory.addVector(params, FunctionFactory::InputType::INOUT);
+		factory.addMatrix(consts, FunctionFactory::InputType::IN);
+		factory.addSingle(lambda, FunctionFactory::InputType::INOUT);
+		factory.addSingle(step_type, FunctionFactory::InputType::INOUT);
+
+		auto& if_scope = factory.apply_scope(IfScope::make(
+			"step_type > " + std::to_string((int)StepType::STEP_DAMPING_UNCHANGED)));
+			
+		if_scope.apply(nlsq_residuals_jacobian_hessian(expr, context,
+			params, consts, data, residuals, jacobian, hessian));
+
+		auto lambda_hessian = std::make_shared<glsl::MatrixVariable>(
+			"lambda_hessian", hessian->getNDim1(), hessian->getNDim2(), hessian->getType());
+
+		factory.apply(linalg::mul_transpose_mat(jacobian, lambda_hessian));
+
+		factory.apply(linalg::mat_add_ldiag_out(hessian, lambda, lambda_hessian));
+
+		factory.apply(linalg::gmw81(lambda_hessian));
+
+		auto gradient = std::make_shared<VectorVariable>(
+			"gradient", params->getNDim(), params->getType());
+
+		factory.apply(linalg::mul_transpose_vec(jacobian, residuals, gradient));
+		factory.apply(linalg::vec_neg(gradient));
+
+		factory.apply(linalg::ldl_solve(lambda_hessian, gradient, step));
+
+		auto new_params = std::make_shared<VectorVariable>(
+			"new_params", params->getNDim(), params->getType());
+
+		factory.apply(linalg::add_vec_vec(params, step, new_params));
+
+		auto error = std::make_shared<SingleVariable>(
+			"error", params->getType(), std::nullopt);
+
+		factory.apply(nlsq_error(error, residuals));
+
+		auto new_error = std::make_shared<SingleVariable>(
+			"new_error", params->getType(), std::nullopt);
+
+		factory.apply(nlsq_error(new_error, new_params));
+
+		auto gain_ratio = std::make_shared<SingleVariable>(
+			"gain_ratio", params->getType(), std::nullopt);
+
+		factory.apply(nlsq_gain_ratio(gain_ratio, step, gradient, hessian, error, new_error));
+
+		//auto& if_step = factory.apply_scope(IfScope::make("new_error < error || gain_ratio > eta"));
+
+		return factory.build_applier();
+	}
+	
 
 }
 }

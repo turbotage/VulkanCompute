@@ -154,6 +154,30 @@ namespace glsl {
 		std::unique_ptr<FunctionScope> m_ChainChild;
 	};
 	
+	export class TextedScope : public ScopeBase {
+	public:
+
+		TextedScope(const std::string& str)
+			: m_Text(str)
+		{}
+
+		static std::unique_ptr<TextedScope> make(const std::string& str)
+		{
+			return std::make_unique<TextedScope>(str);
+		}
+
+		std::string build() const override {
+			return util::add_after_newline(m_Text, std::string('\t', scope_level()));
+		}
+
+	protected:
+		vc::raw_ptr<ScopeBase> m_Parent;
+
+		std::string m_Text;
+
+		friend class ScopeBase;
+	};
+
 	export class CallScope : public FunctionScope {
 	public:
 
@@ -463,6 +487,96 @@ namespace glsl {
 					return code_str;
 				},
 				dependencies.size() > 0 ? std::make_optional(dependencies) : std::nullopt);
+		}
+
+		FunctionApplier build_applier() const 
+		{
+			std::string code_str;
+
+			std::string uniqueid;
+			std::vector<size_t> hashes;
+			std::vector<std::shared_ptr<Function>> dependencies;
+			dependencies.reserve(m_Functions.size());
+
+			// dependencies
+			for (auto& func : m_Functions) {
+				dependencies.emplace_back(func);
+			}
+
+			// create code str
+			{
+				code_str += glsl::shader_variable_type_to_str(m_ReturnType) + " " + m_Name + "_";
+
+				// add uniqueid
+				hashes.reserve(m_Inputs.size());
+				for (auto& input : m_Inputs) {
+					hashes.emplace_back(m_Variables[input.first]->getHash());
+				}
+				uniqueid = util::stupid_compress(util::hash_combine(hashes));
+				code_str += uniqueid + "(";
+
+				// add inputs
+				std::set<vc::ui16> input_idxs;
+				for (int i = 0; i < m_Inputs.size(); ++i) {
+					auto& input = m_Inputs[i];
+
+					input_idxs.insert(input.first);
+
+					switch (input.second) {
+					case FunctionFactory::InputType::IN:
+						code_str += "in ";
+						break;
+					case FunctionFactory::InputType::OUT:
+						code_str += "out ";
+						break;
+					case FunctionFactory::InputType::INOUT:
+						code_str += "inout ";
+						break;
+					default:
+						throw std::runtime_error("Unsupported InputType");
+					}
+
+					code_str += m_Variables[input.first]->getInputDeclaration();
+					if (i < m_Inputs.size() - 1) {
+						code_str += ", ";
+					}
+				}
+				code_str += ") {\n";
+
+				// declare non input variables
+				for (int i = 0; i < m_Variables.size(); ++i) {
+					auto& var = m_Variables[i];
+					if (!input_idxs.contains(i)) {
+						code_str += "\t" + var->getDeclaration();
+					}
+				}
+				code_str += "\n";
+
+				// declare scope calls
+				for (auto& child : m_Children)
+				{
+					code_str += child->build();
+				}
+
+				code_str += "\n}";
+			}
+
+			auto ret_func = std::make_shared<Function>(
+				m_Name + "_" + uniqueid,
+				hashes,
+				[code_str]() {
+					return code_str;
+				},
+				dependencies.size() > 0 ? std::make_optional(dependencies) : std::nullopt);
+
+			std::vector<std::shared_ptr<ShaderVariable>> input_vars;
+			input_vars.reserve(m_Inputs.size());
+			for (auto& inp : m_Inputs) {
+				input_vars.push_back(m_Variables[inp.first]);
+			}
+
+			return FunctionApplier{ ret_func, nullptr, input_vars, uniqueid };
+
 		}
 
 	private:

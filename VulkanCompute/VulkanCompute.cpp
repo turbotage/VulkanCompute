@@ -23,6 +23,7 @@ import solver;
 import symbolic;
 import expr;
 import symm;
+import nlsq;
 import nlsq_symbolic;
 
 import variable;
@@ -518,9 +519,72 @@ void test_function_factory()
 
 }
 
+void test_function_factorized() {
+	using namespace glsl;
+	using namespace vc;
+	using namespace nlsq;
+
+	auto start = std::chrono::steady_clock::now();
+
+	ui16 ndata = 21;
+	ui16 nparam = 4;
+	ui16 nconst = 1;
+
+	std::vector<std::string> vars = { "s0","f","d1","d2","b" };
+	std::string expresh = "s0*(f*exp(-b*d1)+(1-f)*exp(-b*d2))+1";
+	expression::Expression expr(expresh, vars);
+	SymbolicContext context;
+	context.insert_const(std::make_pair("b", 0));
+	context.insert_param(std::make_pair("s0", 0));
+	context.insert_param(std::make_pair("f", 1));
+	context.insert_param(std::make_pair("d1", 2));
+	context.insert_param(std::make_pair("d2", 3));
+
+	auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::FLOAT);
+	auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, nparam, ShaderVariableType::FLOAT);
+	auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", nparam, nparam, ShaderVariableType::FLOAT);
+	auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::FLOAT);
+	auto params = std::make_shared<glsl::VectorVariable>("params", nparam, ShaderVariableType::FLOAT);
+	auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, nconst, ShaderVariableType::FLOAT);
+	auto lambda = std::make_shared<glsl::SingleVariable>("lambda", ShaderVariableType::FLOAT, std::nullopt);
+	auto step = std::make_shared<glsl::VectorVariable>("step", nparam, ShaderVariableType::FLOAT);
+	auto step_type = std::make_shared<glsl::SingleVariable>("step_type", ShaderVariableType::INT, std::nullopt);
+	auto mu = std::make_shared<glsl::SingleVariable>("mu", ShaderVariableType::FLOAT, "0.25");
+	auto eta = std::make_shared<glsl::SingleVariable>("eta", ShaderVariableType::FLOAT, "0.75");
+
+	auto nlsq_step = nlsq_slmh_step(
+		expr, context,
+		params, consts, data,
+		residuals, jacobian, hessian,
+		lambda, mu, eta, step, step_type);
+
+	AutogenShader shader;
+
+	shader.addInputVector(residuals, 0);
+	shader.addInputMatrix(jacobian, 1);
+	shader.addInputMatrix(hessian, 2);
+	shader.addInputVector(data,	3);
+	shader.addInputVector(params, 4);
+	shader.addInputMatrix(consts, 5);
+
+	shader.apply(nlsq_step.func, nullptr,
+		nlsq_step.args);
+
+	auto shader_code = shader.compile();
+
+	auto end = std::chrono::steady_clock::now();
+
+	std::cout << shader_code << std::endl << std::endl;
+	//std::cout << util::add_line_numbers(shader_code) << std::endl;
+
+	std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+
+}
+
 int main() {
 	
-	test_function_factory();
+	//test_function_factory();
+	test_function_factorized();
 
 	return 0;
 }

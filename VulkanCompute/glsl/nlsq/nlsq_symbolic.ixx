@@ -56,7 +56,7 @@ RESIDUAL_EXPRESSION
 
 		std::string uniqueid = nlsq_residuals_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
 
-		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];";
+		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];\n";
 
 		std::function<std::string()> code_func = 
 			[ndata, nparam, nconst, resexpr, single_precission, uniqueid]() -> std::string
@@ -164,7 +164,7 @@ JACOBIAN_EXPRESSIONS
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 
 		// residuals
-		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];";
+		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];\n";
 
 		// jacobian
 		std::string jacexpr = "";
@@ -304,13 +304,17 @@ HESSIAN_EXPRESSIONS
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 
 		// residuals
-		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];";
+		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];\n";
 
 		// jacobian
 		std::string jacexpr = "";
 		for (int i = 0; i < nparam; ++i) {
 			std::string diff_symbol = context.get_params_name(i);
-			std::string jexpr = expr.diff(diff_symbol)->glsl_str(context);
+			auto dexpr = expr.diff(diff_symbol);
+			bool is_zero = dexpr->is_zero();
+			if (is_zero)
+				continue;
+			std::string jexpr = dexpr->glsl_str(context);
 			std::string partj = "\t\tjacobian[i*" + std::to_string(nparam) + "+" + std::to_string(i) + 
 				"] = " + jexpr + ";\n";
 			jacexpr += partj;
@@ -324,8 +328,11 @@ HESSIAN_EXPRESSIONS
 			auto diff1 = expr.diff(diff_symbol1);
 			for (int j = 0; j <= i; ++j) {
 				std::string diff_symbol2 = context.get_params_name(j);
-
-				std::string hexpr = diff1->diff(diff_symbol2)->glsl_str(context);
+				auto dhexpr = diff1->diff(diff_symbol2);
+				bool is_zero = dhexpr->is_zero();
+				if (is_zero)
+					continue;
+				std::string hexpr = dhexpr->glsl_str(context);
 				std::string parth = "\t\thessian[" + std::to_string(i) + "*" + std::to_string(nparam) + "+" + 
 					std::to_string(j) + "] += residuals[i] * " + hexpr + ";\n";
 				hesexpr += parth;
@@ -376,22 +383,22 @@ HESSIAN_EXPRESSIONS
 	{
 		// type and dimension checks
 		{
-			if (residuals->getNDim() == jacobian->getNDim1()) {
+			if (residuals->getNDim() != jacobian->getNDim1()) {
 				throw std::runtime_error("residuals dim and jacobian dim1 must agree");
 			}
-			if (jacobian->getNDim2() == hessian->getNDim1()) {
+			if (jacobian->getNDim2() != hessian->getNDim1()) {
 				throw std::runtime_error("jacobian dim2 and hessian dim1 must agree");
 			}
-			if (hessian->isSquare()) {
-				throw std::runtime_error("hessian is square");
+			if (!hessian->isSquare()) {
+				throw std::runtime_error("hessian must be square square");
 			}
-			if (params->getNDim() == jacobian->getNDim2()) {
+			if (params->getNDim() != jacobian->getNDim2()) {
 				throw std::runtime_error("params dim and jacobian dim2 must agree");
 			}
-			if (residuals->getNDim() == data->getNDim()) {
+			if (residuals->getNDim() != data->getNDim()) {
 				throw std::runtime_error("residuals dim and data dim must agree");
 			}
-			if (residuals->getNDim() == consts->getNDim1()) {
+			if (residuals->getNDim() != consts->getNDim1()) {
 				throw std::runtime_error("residuals dim and consts dim1 must agree");
 			}
 
@@ -478,7 +485,7 @@ HESSIAN_EXPRESSIONS
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 
 		// residuals
-		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];";
+		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];\n";
 
 		// jacobian
 		std::string jacexpr = "";
@@ -653,7 +660,7 @@ HESSIAN_EXPRESSIONS
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 
 		// residuals
-		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];";
+		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];\n";
 
 		// jacobian
 		std::string jacexpr = "";

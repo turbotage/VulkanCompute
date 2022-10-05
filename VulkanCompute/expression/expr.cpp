@@ -950,6 +950,19 @@ std::string Expression::glsl_str(const glsl::SymbolicContext& symtext) const
 	return children[0]->glsl_str(symtext);
 }
 
+bool Expression::is_zero() const
+{
+	auto& child = children[0];
+	TokenNode* child_node = dynamic_cast<TokenNode*>(child.get());
+	if (child_node != nullptr) {
+		ZeroToken* zero_node = dynamic_cast<ZeroToken*>(child_node->pToken.get());
+		if (zero_node != nullptr) {
+			return true;
+		}
+	}
+	return false;
+}
+
 std::unique_ptr<Node> Expression::copy(LexContext& context) const
 {
 	return std::make_unique<Expression>(children[0], context, m_Expression);
