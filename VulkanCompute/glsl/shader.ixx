@@ -5,6 +5,7 @@ export module shader;
 import <string>;
 import <memory>;
 import <optional>;
+import <stdexcept>;
 
 import vc;
 import util;
@@ -13,6 +14,10 @@ import glsl;
 import variable;
 import function;
 
+namespace {
+	// most shaders are smaller than 30 kB
+	constexpr auto DEFAULT_SHADER_SIZE = 30000;
+}
 
 namespace glsl {
 
@@ -68,7 +73,7 @@ namespace glsl {
 			auto i2m = dynamic_cast<const MatrixVariable*>(v2.get());
 			if (i1m != nullptr && i2m != nullptr) {
 				copy_str +=
-					R"glsl(
+R"glsl(
 	start_index = nrow*ncol*gl_GlobalInvocationID.x;
 	for (int i = 0; i < nrow*ncol; ++i) {
 		OUTPUT_NAME[start_index + i] = INPUT_NAME[i];
@@ -202,14 +207,14 @@ namespace glsl {
 			const std::shared_ptr<ShaderVariable>& ret,
 			std::optional<std::pair<SVIterator, SVIterator>> args_it)
 		{
-			uint16_t func_pos = Function::add_function(m_Functions, func);
+			vc::ui16 func_pos = Function::add_function(m_Functions, func);
 
 			int16_t ret_pos = -1;
 			if (ret) {
 				ret_pos = _addVariable(ret, false);
 			}
 
-			std::vector<uint16_t> input_pos;
+			std::vector<vc::ui16> input_pos;
 			if (args_it.has_value()) {
 				auto& its = args_it.value();
 				size_t ninputs = std::distance(its.first, its.second);
@@ -279,12 +284,12 @@ layout (local_size_x = 1) in;
 			// add in function calls
 			for (auto& call : m_Calls) {
 				ret += "\t";
-				ui16 ret_pos = std::get<1>(call);
+				vc::ui16 ret_pos = std::get<1>(call);
 				if (ret_pos != -1) {
 					ret += m_Variables[ret_pos].first->getName() + " = ";
 				}
 
-				ui16 func_pos = std::get<0>(call);
+				vc::ui16 func_pos = std::get<0>(call);
 
 				ret += m_Functions[func_pos]->getName() + "(";
 
@@ -320,7 +325,7 @@ layout (local_size_x = 1) in;
 
 	private:
 
-		uint16_t _addFunction(const std::shared_ptr<Function>& func)
+		vc::ui16 _addFunction(const std::shared_ptr<Function>& func)
 		{
 			return Function::add_function(m_Functions, func);
 		}
@@ -339,12 +344,12 @@ layout (local_size_x = 1) in;
 			return false;
 		}
 
-		uint16_t _addVariable(const std::shared_ptr<ShaderVariable>& var, bool is_global)
+		vc::ui16 _addVariable(const std::shared_ptr<ShaderVariable>& var, bool is_global)
 		{
 			auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::pair<std::shared_ptr<ShaderVariable>, bool>& v) {
 				return *var == *(v.first);
 				});
-			ui16 pos = it - m_Variables.begin();
+			vc::ui16 pos = it - m_Variables.begin();
 			if (it == m_Variables.end()) {
 				m_Variables.emplace_back(var, is_global);
 			}
@@ -359,8 +364,8 @@ layout (local_size_x = 1) in;
 			auto global_mat = std::make_shared<MatrixVariable>(
 				"global_" + mat->getName(), ndim1, ndim2, mat->getType());
 
-			ui16 mat_index = _addVariable(mat, false);
-			ui16 global_mat_index = _addVariable(global_mat, true);
+			vc::ui16 mat_index = _addVariable(mat, false);
+			vc::ui16 global_mat_index = _addVariable(global_mat, true);
 
 
 			if (add_binding) {
@@ -378,8 +383,8 @@ layout (local_size_x = 1) in;
 			auto global_mat = std::make_shared<MatrixVariable>(
 				"global_" + mat->getName(), ndim1, ndim2, mat->getType());
 
-			uint16_t mat_index = _addVariable(mat, false);
-			uint16_t global_mat_index = _addVariable(global_mat, true);
+			vc::ui16 mat_index = _addVariable(mat, false);
+			vc::ui16 global_mat_index = _addVariable(global_mat, true);
 
 			if (add_binding) {
 				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(mat->getType()), mat->getName()));
@@ -395,8 +400,8 @@ layout (local_size_x = 1) in;
 			auto global_vec = std::make_shared<VectorVariable>(
 				"global_" + vec->getName(), ndim, vec->getType());
 
-			uint16_t vec_index = _addVariable(vec, false);
-			uint16_t global_vec_index = _addVariable(global_vec, true);
+			vc::ui16 vec_index = _addVariable(vec, false);
+			vc::ui16 global_vec_index = _addVariable(global_vec, true);
 
 			if (add_binding) {
 				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(vec->getType()), vec->getName()));
@@ -412,8 +417,8 @@ layout (local_size_x = 1) in;
 			auto global_vec = std::make_shared<VectorVariable>(
 				"global_" + vec->getName(), ndim, vec->getType());
 
-			uint16_t vec_index = _addVariable(vec, false);
-			uint16_t global_vec_index = _addVariable(global_vec, true);
+			vc::ui16 vec_index = _addVariable(vec, false);
+			vc::ui16 global_vec_index = _addVariable(global_vec, true);
 
 			if (add_binding) {
 				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(vec->getType()), vec->getName()));

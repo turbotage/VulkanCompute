@@ -15,7 +15,10 @@ import linalg;
 import symm;
 import solver;
 
+import func_factory;
+
 export import symbolic;
+export import nlsq_symbolic;
 
 namespace glsl {
 namespace nlsq {
@@ -104,7 +107,7 @@ float nlsq_error_UNIQUEID(in float res[ndata]) {
 		);
 	}
 
-
+	/*
 	export std::string nlsq_slm_step_uniqueid(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
 		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
@@ -230,6 +233,8 @@ void nlsq_slm_step_UNIQUEID(
 				})
 		);
 	}
+	*/
+
 
 }
 }

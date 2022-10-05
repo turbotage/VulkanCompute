@@ -12,6 +12,8 @@ import vc;
 import glsl;
 import util;
 
+export import function;
+
 import copy;
 
 using namespace vc;

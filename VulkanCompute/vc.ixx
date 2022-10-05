@@ -31,6 +31,35 @@ export namespace vc {
 	typedef ::std::int_fast16_t i16f;
 	typedef ::std::int_fast8_t i8f;
 
+	template<typename T>
+	class raw_ptr {
+	public:
+
+		raw_ptr() { m_Ptr = nullptr; }
+		raw_ptr(T& in) { m_Ptr = &in; }
+		raw_ptr(const raw_ptr&) = delete;
+		
+		raw_ptr& operator=(const raw_ptr&) = delete;
+
+		raw_ptr(raw_ptr&& other) {
+			m_Ptr = other.m_Ptr;
+			other.m_Ptr = nullptr;
+		}
+		void operator=(raw_ptr&& other) {
+			m_Ptr = other.m_Ptr;
+			other.m_Ptr = nullptr;
+		}
+
+		T* operator->() { return m_Ptr; }
+
+		T* operator->() const { return m_Ptr; }
+
+		T& operator*() { return *m_Ptr; }
+
+	private:
+		T* m_Ptr;
+	};
+
 	// Used to signal output, functions with these parameters will fill the variable which the
 	// reference points to
 	template<typename T>

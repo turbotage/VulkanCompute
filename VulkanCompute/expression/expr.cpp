@@ -19,6 +19,10 @@ import <set>;
 import <iterator>;
 import <optional>;
 
+import symbolic;
+import shunter;
+import defaultexp;
+
 using namespace expression;
 
 void symengine_get_args(const SymEngine::RCP<const SymEngine::Basic>& subexpr, std::set<std::string>& args)

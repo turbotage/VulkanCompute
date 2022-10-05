@@ -383,6 +383,8 @@ namespace glsl {
 
 		vc::ui16 getNDim2() const { return m_NDim2; }
 
+		bool isSquare() const { return getNDim1() == getNDim2(); }
+
 		ShaderVariableType getType() const
 		{
 			return m_Type;

@@ -21,124 +21,50 @@ import function;
 
 namespace glsl {
 
+	export class ScopeBase;
+
 	export class FunctionScope {
 	public:
 
-		FunctionScope(const std::weak_ptr<FunctionScope>& parent_scope)
-			: parent(parent_scope) {}
+		FunctionScope() = default;
 
 		virtual vc::ui16 scope_level() const = 0;
 
 		virtual std::vector<std::shared_ptr<ShaderVariable>>& variables() = 0;
+		virtual const std::vector<std::shared_ptr<ShaderVariable>>& variables() const = 0;
 
 		virtual std::vector<std::shared_ptr<Function>>& functions() = 0;
+		virtual const std::vector<std::shared_ptr<Function>>& functions() const = 0;
 
-		virtual std::string build() = 0;
+		virtual std::string build() const = 0;
 
-		std::weak_ptr<FunctionScope> parent;
-		std::vector<std::shared_ptr<FunctionScope>> children;
-		std::shared_ptr<FunctionScope> chain_child;
-	};
+	protected:
+		vc::raw_ptr<ScopeBase> m_Parent;
 
-	export class CallScope : public FunctionScope {
-	public:
-
-		CallScope(const std::weak_ptr<FunctionScope>& parent_scope, const std::tuple<vc::ui16, vc::ui16, std::vector<vc::ui16>>& call)
-			: FunctionScope(!parent_scope.expired() ? parent_scope : throw std::runtime_error("CallScope was called with nullptr parent")),
-			call(call)
-		{}
-
-		vc::ui16 scope_level() const override
-		{
-			return parent.lock()->scope_level();
-		}
-
-		std::vector<std::shared_ptr<ShaderVariable>>& variables() override
-		{
-			return parent.lock()->variables();
-		}
-
-		std::vector<std::shared_ptr<Function>>& functions() override
-		{
-			return parent.lock()->functions();
-		}
-
-		std::string build() override {
-			std::string code_str;
-
-			auto pparent = parent.lock();
-
-			vc::ui16 scope_level = pparent->scope_level();
-
-			auto add_scope = [scope_level](std::string& scoped_str) {
-				for (int i = 0; i < scope_level; ++i) {
-					scoped_str += "\t";
-				}
-			};
-
-			add_scope(code_str);
-
-			auto& func = pparent->functions()[std::get<0>(call)];
-
-			auto ret_idx = std::get<1>(call);
-			if (ret_idx >= 0) {
-				auto& ret_var = pparent->variables()[ret_idx];
-				code_str += ret_var->getName() + " = ";
-			}
-
-			code_str += func->getName() + "(";
-
-			// add input variables
-			auto& inputs = std::get<2>(call);
-			for (int i = 0; i < inputs.size(); ++i) {
-				code_str += pparent->variables()[inputs[i]]->getName();
-				if (i < inputs.size() - 1) {
-					code_str += ", ";
-				}
-			}
-			code_str += ");\n";
-		}
-
-		std::tuple<vc::ui16, vc::ui16, std::vector<vc::ui16>> call;
+		friend class ScopeBase;
 	};
 
 	export class ScopeBase : public FunctionScope {
+	protected:
+
+		virtual void on_apply() {}
+		virtual void on_apply_scope() {}
+		virtual void on_chain() {}
+		virtual void on_build() const {}
+
 	public:
 
-		ScopeBase(const std::shared_ptr<FunctionScope>& parent_scope)
-			: FunctionScope(parent_scope)
-		{}
+		ScopeBase() = default;
+
+		static std::unique_ptr<ScopeBase> make()
+		{
+			return std::make_unique<ScopeBase>();
+		}
 
 		template<ShaderVariableIterator SVIterator>
 		ScopeBase& apply(const std::shared_ptr<Function>& func,
 			const std::shared_ptr<ShaderVariable>& ret,
-			std::optional<std::pair<SVIterator, SVIterator>> args_it)
-		{
-			auto pparent = parent.lock();
-
-			vc::ui16 func_pos = Function::add_function(pparent->functions(), func);
-
-			int16_t ret_pos = -1;
-			if (ret) {
-				ret_pos = ShaderVariable::add_variable(pparent->variables(), ret);
-			}
-
-			std::vector<vc::ui16> input_pos;
-			if (args_it.has_value()) {
-				auto& its = args_it.value();
-				size_t ninputs = std::distance(its.first, its.second);
-				input_pos.reserve(ninputs);
-				for (auto it = its.first; it != its.second; ++it) {
-					input_pos.emplace_back(ShaderVariable::add_variable(pparent->variables(), *it));
-				}
-			}
-
-			scope_chain.emplace_back(
-				std::move(std::weak_ptr<IfScope>(shared_from_this())),
-				std::make_tuple(func_pos, ret_pos, std::move(input_pos));
-
-			return *this;
-		}
+			std::optional<std::pair<SVIterator, SVIterator>> args_it);
 
 		ScopeBase& apply(const std::shared_ptr<Function>& func,
 			const std::shared_ptr<ShaderVariable>& ret,
@@ -147,26 +73,262 @@ namespace glsl {
 			return apply(func, ret, std::make_optional(std::make_pair(args.begin(), args.end())));
 		}
 		
+		ScopeBase& apply(const FunctionApplier& applier)
+		{
+			return apply(applier.func, applier.ret_var, applier.args);
+		}
+
 		ScopeBase& apply_scope(std::unique_ptr<ScopeBase> scope)
 		{
+			on_apply_scope();
+
+			scope->m_Parent = *this;
 			ScopeBase& ret = *scope;
-			children.emplace_back(std::move(scope));
+			m_Children.push_back(std::move(scope));
 			return ret;
 		}
 
 		ScopeBase& chain(std::unique_ptr<ScopeBase> scope)
 		{
+			on_chain();
+
+			if (m_ChainChild != nullptr)
+				throw std::runtime_error("ScopeBase already had chained child?");
+
+			scope->m_Parent = *this;
 			ScopeBase& ret = *scope;
-			chain_child = std::move(scope);
+			m_ChainChild = std::move(scope);
+			return ret;
+		}
+
+		virtual std::string header() const
+		{
+			return "";
+		}
+
+		virtual vc::ui16 scope_level() const override
+		{
+			return m_Parent->scope_level() + 1;
+		}
+
+		virtual std::vector<std::shared_ptr<ShaderVariable>>& variables() override
+		{
+			return m_Parent->variables();
+		}
+
+		virtual const std::vector<std::shared_ptr<ShaderVariable>>& variables() const override
+		{
+			return m_Parent->variables();
+		}
+
+		virtual std::vector<std::shared_ptr<Function>>& functions() override
+		{
+			return m_Parent->functions();
+		}
+
+		virtual const std::vector<std::shared_ptr<Function>>& functions() const override
+		{
+			return m_Parent->functions();
+		}
+
+		virtual std::string build() const override {
+
+			on_build();
+
+			std::string ret;
+			ret += header() + " {\n";
+
+			for (auto& child : m_Children) {
+				ret += child->build();
+			}
+			util::add_n_str(ret, "\t", scope_level());
+			ret += "}\n";
+			if (m_ChainChild != nullptr)
+				ret += m_ChainChild->build();
+
+			return ret;
+		}
+
+	protected:
+		std::vector<std::unique_ptr<FunctionScope>> m_Children;
+		std::unique_ptr<FunctionScope> m_ChainChild;
+	};
+	
+	export class CallScope : public FunctionScope {
+	public:
+
+		CallScope(const std::tuple<vc::ui16, vc::i16, std::vector<vc::ui16>>& call)
+			: m_Call(call) {}
+
+		static std::unique_ptr<CallScope> make(const std::tuple<vc::ui16, vc::i16, std::vector<vc::ui16>>& call)
+		{
+			return std::make_unique<CallScope>(call);
+		}
+
+		vc::ui16 scope_level() const override
+		{
+			return m_Parent->scope_level() + 1;
+		}
+
+		virtual std::vector<std::shared_ptr<ShaderVariable>>& variables() override
+		{
+			return m_Parent->variables();
+		}
+
+		virtual const std::vector<std::shared_ptr<ShaderVariable>>& variables() const override
+		{
+			return m_Parent->variables();
+		}
+
+
+		virtual std::vector<std::shared_ptr<Function>>& functions() override
+		{
+			return m_Parent->functions();
+		}
+
+		virtual const std::vector<std::shared_ptr<Function>>& functions() const override
+		{
+			return m_Parent->functions();
+		}
+
+		std::string build() const override {
+			std::string code_str;
+
+			vc::ui16 slevel = scope_level();
+
+			util::add_n_str(code_str, "\t", slevel);
+
+			auto& func = (functions())[std::get<0>(m_Call)];
+
+			auto ret_idx = std::get<1>(m_Call);
+			if (ret_idx >= 0) {
+				auto& ret_var = (variables())[ret_idx];
+				code_str += ret_var->getName() + " = ";
+			}
+
+			code_str += func->getName() + "(";
+
+			// add input variables
+			auto& inputs = std::get<2>(m_Call);
+			for (int i = 0; i < inputs.size(); ++i) {
+				code_str += (variables())[inputs[i]]->getName();
+				if (i < inputs.size() - 1) {
+					code_str += ", ";
+				}
+			}
+			code_str += ");\n";
+
+			return code_str;
+		}
+
+	protected:
+
+		std::tuple<vc::ui16, vc::i16, std::vector<vc::ui16>> m_Call;
+
+	};
+
+	export class IfScope : public ScopeBase {
+	public:
+
+		IfScope(const std::string& condition)
+			: m_Condition(condition) {}
+
+		static std::unique_ptr<IfScope> make(const std::string& condition)
+		{
+			return std::make_unique<IfScope>(condition);
+		}
+
+		std::string header() const override
+		{
+			std::string ret;
+			util::add_n_str(ret, "\t", scope_level());
+			ret += "if (" + m_Condition + ")";
 			return ret;
 		}
 
 	private:
+		std::string m_Condition;
+	};
+
+	export class ElseIfScope : public ScopeBase {
+	public:
+
+		ElseIfScope(const std::string& condition) 
+			: m_Condition(condition) {}
+
+		static std::unique_ptr<ElseIfScope> make(const std::string& condition)
+		{
+			return std::make_unique<ElseIfScope>(condition);
+		}
+
+		std::string header() const override
+		{
+			std::string ret;
+			util::add_n_str(ret, "\t", scope_level());
+			ret += "else if (" + m_Condition + ")";
+			return ret;
+		}
+
+	private:
+		std::string m_Condition;
+	};
+
+	export class ElseScope : public ScopeBase {
+	public:
+
+		ElseScope() {}
+
+		static std::unique_ptr<ElseScope> make()
+		{
+			return std::make_unique<ElseScope>();
+		}
+
+		std::string header() const override
+		{
+			std::string ret;
+			util::add_n_str(ret, "\t", scope_level());
+			ret += "else";
+			return ret;
+		}
 
 	};
 
+	export class ForScope : public ScopeBase {
+	public:
 
-	export class FunctionFactory : public FunctionScope {
+		ForScope(const std::string& loop_statement)
+			: m_LoopStatement(loop_statement) {}
+
+		static std::unique_ptr<ForScope> make(const std::string& loop_statement)
+		{
+			return std::make_unique<ForScope>(loop_statement);
+		}
+
+		std::string header() const override
+		{
+			std::string ret;
+			util::add_n_str(ret, "\t", scope_level());
+			ret += "for (" + m_LoopStatement + ")";
+			return ret;
+		}
+
+	private:
+		std::string m_LoopStatement;
+	};
+	
+	export class FunctionFactory : public ScopeBase {
+	protected:
+
+		void on_build() const override
+		{
+			throw std::runtime_error("build should not be called on a FunctionFactory");
+		}
+
+		std::string header() const override
+		{
+			throw std::runtime_error("header should not be called on a FunctionFactory");
+		}
+
 	public:
 
 		enum class InputType {
@@ -176,15 +338,19 @@ namespace glsl {
 		};
 
 		FunctionFactory(const std::string& name, const ShaderVariableType& return_type)
-			: FunctionScope(nullptr), m_Name(name), m_ReturnType(return_type)
-		{}
+			: m_Name(name), m_ReturnType(return_type) {}
 
 		vc::ui16 scope_level() const override 
 		{
-			return 1;
+			return 0;
 		}
 
 		std::vector<std::shared_ptr<ShaderVariable>>& variables() override
+		{
+			return m_Variables;
+		}
+
+		const std::vector<std::shared_ptr<ShaderVariable>>& variables() const override
 		{
 			return m_Variables;
 		}
@@ -194,9 +360,14 @@ namespace glsl {
 			return m_Functions;
 		}
 
+		const std::vector<std::shared_ptr<Function>>& functions() const override
+		{
+			return m_Functions;
+		}
+
 		void addMatrix(const std::shared_ptr<MatrixVariable>& mat, const std::optional<FunctionFactory::InputType>& input)
 		{
-			auto varidx = _addVariable(mat);
+			auto varidx = ShaderVariable::add_variable(m_Variables, mat);
 
 			if (input.has_value()) {
 				m_Inputs.emplace_back(varidx, input.value());
@@ -205,7 +376,7 @@ namespace glsl {
 
 		void addVector(const std::shared_ptr<VectorVariable>& vec, const std::optional<FunctionFactory::InputType>& input)
 		{
-			auto varidx = _addVariable(vec);
+			auto varidx = ShaderVariable::add_variable(m_Variables, vec);
 			if (input.has_value()) {
 				m_Inputs.emplace_back(varidx, input.value());
 			}
@@ -213,45 +384,13 @@ namespace glsl {
 
 		void addSingle(const std::shared_ptr<SingleVariable>& var, const std::optional<FunctionFactory::InputType>& input)
 		{
-			auto varidx = _addVariable(var);
+			auto varidx = ShaderVariable::add_variable(m_Variables, var);
 			if (input.has_value()) {
 				m_Inputs.emplace_back(varidx, input.value());
 			}
 		}
 
-		template<ShaderVariableIterator SVIterator>
-		void apply(const std::shared_ptr<Function>& func,
-			const std::shared_ptr<ShaderVariable>& ret,
-			std::optional<std::pair<SVIterator, SVIterator>> args_it)
-		{
-			uint16_t func_pos = Function::add_function(m_Functions, func);
-
-			int16_t ret_pos = -1;
-			if (ret) {
-				ret_pos = ShaderVariable::add_variable(parent->variables(), ret);
-			}
-
-			std::vector<uint16_t> input_pos;
-			if (args_it.has_value()) {
-				auto& its = args_it.value();
-				size_t ninputs = std::distance(its.first, its.second);
-				input_pos.reserve(ninputs);
-				for (auto it = its.first; it != its.second; ++it) {
-					input_pos.emplace_back(ShaderVariable::add_variable(parent->variables(), *it));
-				}
-			}
-
-			m_Calls.emplace_back(func_pos, ret_pos, std::move(input_pos));
-		}
-
-		void apply(const std::shared_ptr<Function>& func,
-			const std::shared_ptr<ShaderVariable>& ret,
-			const std::vector<std::shared_ptr<ShaderVariable>>& args)
-		{
-			apply(func, ret, std::make_optional(std::make_pair(args.begin(), args.end())));
-		}
-
-		std::shared_ptr<::glsl::Function> build()
+		std::shared_ptr<::glsl::Function> build_function() const
 		{
 			std::string code_str;
 
@@ -268,7 +407,7 @@ namespace glsl {
 				for (auto& input : m_Inputs) {
 					hashes.emplace_back(m_Variables[input.first]->getHash());
 				}
-				uniqueid = util::hash_combine(hashes);
+				uniqueid = util::stupid_compress(util::hash_combine(hashes));
 				code_str += uniqueid + "(";
 
 				// add inputs
@@ -308,33 +447,10 @@ namespace glsl {
 				}
 				code_str += "\n";
 
-				// add functions calls
-				for (auto& call : m_Calls) {
-					auto& func = m_Functions[std::get<0>(call)];
-
-					dependencies.emplace_back(func);
-
-					code_str += "\t";
-
-					// add return variable if there is one
-					auto ret_idx = std::get<1>(call);
-					if (ret_idx >= 0) {
-						auto& ret_var = m_Variables[ret_idx];
-						code_str += ret_var->getName() + " = ";
-					}
-
-					// add function name
-					code_str += func->getName() + "(";
-
-					// add input variables
-					auto& inputs = std::get<2>(call);
-					for (int i = 0; i < inputs.size(); ++i) {
-						code_str += m_Variables[inputs[i]]->getName();
-						if (i < inputs.size() - 1) {
-							code_str += ", ";
-						}
-					}
-					code_str += ");\n";
+				// declare scope calls
+				for (auto& child : m_Children)
+				{
+					code_str += child->build();
 				}
 
 				code_str += "\n}";
@@ -359,5 +475,39 @@ namespace glsl {
 
 		std::vector<std::shared_ptr<Function>> m_Functions;
 	};
+
+	// IMPLEMENTATIONS
+
+	template<ShaderVariableIterator SVIterator>
+	ScopeBase& ScopeBase::apply(const std::shared_ptr<Function>& func, const std::shared_ptr<ShaderVariable>& ret, std::optional<std::pair<SVIterator, SVIterator>> args_it)
+	{
+		{
+			on_apply();
+
+			vc::ui16 func_pos = Function::add_function(functions(), func);
+
+			vc::i16 ret_pos = -1;
+			if (ret) {
+				ret_pos = ShaderVariable::add_variable(variables(), ret);
+			}
+
+			std::vector<vc::ui16> input_pos;
+			if (args_it.has_value()) {
+				auto& its = args_it.value();
+				size_t ninputs = std::distance(its.first, its.second);
+				input_pos.reserve(ninputs);
+				for (auto it = its.first; it != its.second; ++it) {
+					input_pos.emplace_back(ShaderVariable::add_variable(variables(), *it));
+				}
+			}
+
+			auto call = CallScope::make(std::make_tuple(func_pos, ret_pos, std::move(input_pos)));
+			call->m_Parent = *this;
+
+			m_Children.push_back(std::move(call));
+
+			return *this;
+		}
+	}
 
 }

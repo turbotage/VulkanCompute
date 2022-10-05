@@ -10,6 +10,8 @@ import <optional>;
 import vc;
 import util;
 
+import variable;
+
 namespace glsl {
 
 	export class Function;
@@ -84,6 +86,14 @@ namespace glsl {
 		std::vector<std::shared_ptr<Function>> m_Dependencies;
 
 		std::string m_HashName;
+	};
+
+	export struct FunctionApplier {
+		std::shared_ptr<Function> func;
+		std::shared_ptr<ShaderVariable> ret_var;
+		std::vector<std::shared_ptr<ShaderVariable>> args;
+
+		std::string unique_id;
 	};
 
 }

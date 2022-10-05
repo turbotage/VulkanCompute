@@ -12,6 +12,8 @@ import vc;
 import glsl;
 import util;
 
+export import function;
+
 export import copy;
 export import permute;
 

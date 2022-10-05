@@ -28,11 +28,9 @@ namespace util {
         return replace_all(inout, what, "");
     }
 
-
     export template<typename KeyType, typename HashFunc = std::hash<KeyType>>
     concept Hashable = std::regular_invocable<HashFunc, KeyType>
         && std::convertible_to<std::invoke_result_t<HashFunc, KeyType>, std::size_t>;
-
 
     export template <typename KeyType, typename HashFunc = std::hash<KeyType>> requires Hashable<KeyType, HashFunc>
     inline std::size_t hash_combine(const std::size_t& seed, const KeyType& v)
@@ -46,8 +44,8 @@ namespace util {
     export template <typename KeyType, typename HashFunc = std::hash<KeyType>> requires Hashable<KeyType, HashFunc>
     std::size_t hash_combine(const std::vector<KeyType>& hashes)
     {
-        std::size_t ret = hashes.size();
-        for (int i = 0; i < hashes.size(); ++i) {
+        std::size_t ret = hashes.size() > 0 ? hashes.front() : throw std::runtime_error("Can't hash_combine an empty vector");
+        for (int i = 1; i < hashes.size(); ++i) {
             ret = hash_combine(ret, hashes[i]);
         }
         return ret;
@@ -133,6 +131,13 @@ namespace util {
         }
 
         return ret;
+    }
+
+    export void add_n_str(std::string& str, const std::string& adder, int n)
+    {
+        for (int i = 0; i < n; ++i) {
+            str += adder;
+        }
     }
 
 }

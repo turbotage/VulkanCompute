@@ -23,7 +23,14 @@ import solver;
 import symbolic;
 import expr;
 import symm;
+import nlsq_symbolic;
 
+import variable;
+import function;
+import shader;
+import func_factory;
+
+/*
 void test_copying()
 {
 	using namespace glsl;
@@ -447,6 +454,8 @@ void test_backward() {
 		std::cout << printr;
 	}
 }
+*/
+
 
 void test_function_factory()
 {
@@ -463,7 +472,7 @@ void test_function_factory()
 	ui16 nconst = 1;
 
 	std::vector<std::string> vars = { "s0","f","d1","d2","b" };
-	std::string expresh = "s0*(f*exp(-b*d1)+(1-f)*exp(-b*d2))";
+	std::string expresh = "s0*(f*exp(-b*d1)+(1-f)*exp(-b*d2))+1";
 	expression::Expression expr(expresh, vars);
 	SymbolicContext context;
 	context.insert_const(std::make_pair("b", 0));
@@ -493,16 +502,25 @@ void test_function_factory()
 	factory.addSingle(lambda, FunctionFactory::InputType::INOUT);
 	factory.addSingle(step_type, FunctionFactory::InputType::INOUT);
 
-	factory.apply(nlsq_residuals_jacobian(expresh, context, ndata, nparam, nconst, true),
-		params, consts, data, residuals, jacobian);
+	factory.apply(nlsq_residuals_jacobian(expr, context, ndata, nparam, nconst, true), nullptr,
+		{ params, consts, data, residuals, jacobian });
 
-	
+	auto& for_scope = factory.apply_scope(ForScope::make("int i = 0; i < 3; ++i"));
+
+	for_scope.apply(nlsq_residuals_jacobian_hessian(expr, context, ndata, nparam, nconst, true), nullptr,
+		{ params, consts, data, residuals, jacobian, hessian });
+
+	auto built_func = factory.build_function();
+
+	std::cout << built_func->getCode() << std::endl;
+
+
 
 }
 
 int main() {
 	
-	test_nlsq();
+	test_function_factory();
 
 	return 0;
 }

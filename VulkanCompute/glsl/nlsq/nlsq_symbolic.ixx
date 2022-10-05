@@ -16,8 +16,10 @@ import <memory>;
 import vc;
 import util;
 import linalg;
+import symbolic;
 export import expr;
 export import glsl;
+export import variable;
 export import function;
 
 namespace glsl {
@@ -79,6 +81,53 @@ RESIDUAL_EXPRESSION
 			std::nullopt
 		);
 	}
+
+	export ::glsl::FunctionApplier nlsq_residuals_jacobian(
+		const expression::Expression& expr, const glsl::SymbolicContext& context,
+		const std::shared_ptr<glsl::VectorVariable>& params,
+		const std::shared_ptr<glsl::MatrixVariable>& consts,
+		const std::shared_ptr<glsl::VectorVariable>& data,
+		const std::shared_ptr<glsl::VectorVariable>& residuals)
+	{
+		// type and dimension checks
+		{
+			if (residuals->getNDim() == data->getNDim()) {
+				throw std::runtime_error("residuals dim and data dim must agree");
+			}
+			if (residuals->getNDim() == consts->getNDim1()) {
+				throw std::runtime_error("residuals dim and consts dim1 must agree");
+			}
+
+			if ((ui16)residuals->getType() &
+				(ui16)params->getType() &
+				(ui16)data->getType() &
+				(ui16)consts->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((params->getType() == ShaderVariableType::FLOAT) ||
+				(params->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndata = residuals->getNDim();
+		ui16 nparam = params->getNDim();
+		ui16 nconst = consts->getNDim2();
+
+		bool single_precission = true;
+		if (residuals->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = nlsq_residuals(expr, context, ndata, nparam, nconst, single_precission);
+
+		auto uniqueid = nlsq_residuals_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+
+		return FunctionApplier{ func, nullptr,
+			{params, consts, data, residuals }, uniqueid };
+
+	}
+
 
 	// residuals and jacobian
 	export std::string nlsq_residuals_jacobian_uniqueid(
@@ -151,6 +200,61 @@ JACOBIAN_EXPRESSIONS
 			code_func,
 			std::nullopt);
 	}
+
+	export ::glsl::FunctionApplier nlsq_residuals_jacobian(
+		const expression::Expression& expr, const glsl::SymbolicContext& context,
+		const std::shared_ptr<glsl::VectorVariable>& params,
+		const std::shared_ptr<glsl::MatrixVariable>& consts,
+		const std::shared_ptr<glsl::VectorVariable>& data,
+		const std::shared_ptr<glsl::VectorVariable>& residuals,
+		const std::shared_ptr<glsl::MatrixVariable>& jacobian)
+	{
+		// type and dimension checks
+		{
+			if (residuals->getNDim() == jacobian->getNDim1()) {
+				throw std::runtime_error("residuals dim and jacobian dim1 must agree");
+			}
+			if (params->getNDim() == jacobian->getNDim2()) {
+				throw std::runtime_error("params dim and jacobian dim2 must agree");
+			}
+			if (residuals->getNDim() == data->getNDim()) {
+				throw std::runtime_error("residuals dim and data dim must agree");
+			}
+			if (residuals->getNDim() == consts->getNDim1()) {
+				throw std::runtime_error("residuals dim and consts dim1 must agree");
+			}
+
+			if ((ui16)residuals->getType() &
+				(ui16)jacobian->getType() &
+				(ui16)params->getType() &
+				(ui16)data->getType() &
+				(ui16)consts->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((params->getType() == ShaderVariableType::FLOAT) ||
+				(params->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndata = residuals->getNDim();
+		ui16 nparam = params->getNDim();
+		ui16 nconst = consts->getNDim2();
+
+		bool single_precission = true;
+		if (residuals->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = nlsq_residuals_jacobian(expr, context, ndata, nparam, nconst, single_precission);
+
+		auto uniqueid = nlsq_residuals_jacobian_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+
+		return FunctionApplier{ func, nullptr,
+			{params, consts, data, residuals, jacobian}, uniqueid };
+
+	}
+
 
 	// residuals, jacobian and hessian
 	export std::string nlsq_residuals_jacobian_hessian_uniqueid(
@@ -260,6 +364,69 @@ HESSIAN_EXPRESSIONS
 		);
 
 	}
+
+	export ::glsl::FunctionApplier nlsq_residuals_jacobian_hessian(
+		const expression::Expression& expr, const glsl::SymbolicContext& context,
+		const std::shared_ptr<glsl::VectorVariable>& params,
+		const std::shared_ptr<glsl::MatrixVariable>& consts,
+		const std::shared_ptr<glsl::VectorVariable>& data,
+		const std::shared_ptr<glsl::VectorVariable>& residuals,
+		const std::shared_ptr<glsl::MatrixVariable>& jacobian,
+		const std::shared_ptr<glsl::MatrixVariable>& hessian)
+	{
+		// type and dimension checks
+		{
+			if (residuals->getNDim() == jacobian->getNDim1()) {
+				throw std::runtime_error("residuals dim and jacobian dim1 must agree");
+			}
+			if (jacobian->getNDim2() == hessian->getNDim1()) {
+				throw std::runtime_error("jacobian dim2 and hessian dim1 must agree");
+			}
+			if (hessian->isSquare()) {
+				throw std::runtime_error("hessian is square");
+			}
+			if (params->getNDim() == jacobian->getNDim2()) {
+				throw std::runtime_error("params dim and jacobian dim2 must agree");
+			}
+			if (residuals->getNDim() == data->getNDim()) {
+				throw std::runtime_error("residuals dim and data dim must agree");
+			}
+			if (residuals->getNDim() == consts->getNDim1()) {
+				throw std::runtime_error("residuals dim and consts dim1 must agree");
+			}
+
+			if ((ui16)residuals->getType() &
+				(ui16)jacobian->getType() &
+				(ui16)hessian->getType() &
+				(ui16)params->getType() &
+				(ui16)data->getType() &
+				(ui16)consts->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((params->getType() == ShaderVariableType::FLOAT) ||
+				(params->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndata = residuals->getNDim();
+		ui16 nparam = params->getNDim();
+		ui16 nconst = consts->getNDim2();
+
+		bool single_precission = true;
+		if (residuals->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = nlsq_residuals_jacobian_hessian(expr, context, ndata, nparam, nconst, single_precission);
+
+		auto uniqueid = nlsq_residuals_jacobian_hessian_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+
+		return FunctionApplier{ func, nullptr,
+			{params, consts, data, residuals, jacobian, hessian}, uniqueid };
+
+	}
+
 
 	// residuals, jacobian, hessian and lambda-mult
 	export std::string nlsq_residuals_jacobian_hessian_l_uniqueid(
@@ -374,6 +541,69 @@ HESSIAN_EXPRESSIONS
 
 	}
 
+	export ::glsl::FunctionApplier nlsq_residuals_jacobian_hessian_l(
+		const expression::Expression& expr, const glsl::SymbolicContext& context,
+		const std::shared_ptr<glsl::VectorVariable>& params,
+		const std::shared_ptr<glsl::MatrixVariable>& consts,
+		const std::shared_ptr<glsl::VectorVariable>& data,
+		const std::shared_ptr<glsl::VectorVariable>& residuals,
+		const std::shared_ptr<glsl::MatrixVariable>& jacobian,
+		const std::shared_ptr<glsl::MatrixVariable>& hessian)
+	{
+		// type and dimension checks
+		{
+			if (residuals->getNDim() == jacobian->getNDim1()) {
+				throw std::runtime_error("residuals dim and jacobian dim1 must agree");
+			}
+			if (jacobian->getNDim2() == hessian->getNDim1()) {
+				throw std::runtime_error("jacobian dim2 and hessian dim1 must agree");
+			}
+			if (hessian->isSquare()) {
+				throw std::runtime_error("hessian is square");
+			}
+			if (params->getNDim() == jacobian->getNDim2()) {
+				throw std::runtime_error("params dim and jacobian dim2 must agree");
+			}
+			if (residuals->getNDim() == data->getNDim()) {
+				throw std::runtime_error("residuals dim and data dim must agree");
+			}
+			if (residuals->getNDim() == consts->getNDim1()) {
+				throw std::runtime_error("residuals dim and consts dim1 must agree");
+			}
+
+			if ((ui16)residuals->getType() &
+				(ui16)jacobian->getType() &
+				(ui16)hessian->getType() &
+				(ui16)params->getType() &
+				(ui16)data->getType() &
+				(ui16)consts->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((params->getType() == ShaderVariableType::FLOAT) ||
+				(params->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndata = residuals->getNDim();
+		ui16 nparam = params->getNDim();
+		ui16 nconst = consts->getNDim2();
+
+		bool single_precission = true;
+		if (residuals->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = nlsq_residuals_jacobian_hessian_l(expr, context, ndata, nparam, nconst, single_precission);
+
+		auto uniqueid = nlsq_residuals_jacobian_hessian_l_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+
+		return FunctionApplier{ func, nullptr,
+			{params, consts, data, residuals, jacobian, hessian}, uniqueid };
+
+	}
+
+
 	// residuals, jacobian, hessian and scaled lambda-mult
 	export std::string nlsq_residuals_jacobian_hessian_sl_uniqueid(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
@@ -481,6 +711,68 @@ HESSIAN_EXPRESSIONS
 				linalg::mul_transpose_mat_add_ldiag(ndata, nparam, single_precission),
 				})
 				);
+
+	}
+
+	export ::glsl::FunctionApplier nlsq_residuals_jacobian_hessian_sl(
+		const expression::Expression& expr, const glsl::SymbolicContext& context,
+		const std::shared_ptr<glsl::VectorVariable>& params,
+		const std::shared_ptr<glsl::MatrixVariable>& consts,
+		const std::shared_ptr<glsl::VectorVariable>& data,
+		const std::shared_ptr<glsl::VectorVariable>& residuals,
+		const std::shared_ptr<glsl::MatrixVariable>& jacobian,
+		const std::shared_ptr<glsl::MatrixVariable>& hessian)
+	{
+		// type and dimension checks
+		{
+			if (residuals->getNDim() == jacobian->getNDim1()) {
+				throw std::runtime_error("residuals dim and jacobian dim1 must agree");
+			}
+			if (jacobian->getNDim2() == hessian->getNDim1()) {
+				throw std::runtime_error("jacobian dim2 and hessian dim1 must agree");
+			}
+			if (hessian->isSquare()) {
+				throw std::runtime_error("hessian is square");
+			}
+			if (params->getNDim() == jacobian->getNDim2()) {
+				throw std::runtime_error("params dim and jacobian dim2 must agree");
+			}
+			if (residuals->getNDim() == data->getNDim()) {
+				throw std::runtime_error("residuals dim and data dim must agree");
+			}
+			if (residuals->getNDim() == consts->getNDim1()) {
+				throw std::runtime_error("residuals dim and consts dim1 must agree");
+			}
+
+			if ((ui16)residuals->getType() &
+				(ui16)jacobian->getType() &
+				(ui16)hessian->getType() &
+				(ui16)params->getType() &
+				(ui16)data->getType() &
+				(ui16)consts->getType())
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((params->getType() == ShaderVariableType::FLOAT) ||
+				(params->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndata = residuals->getNDim();
+		ui16 nparam = params->getNDim();
+		ui16 nconst = consts->getNDim2();
+
+		bool single_precission = true;
+		if (residuals->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = nlsq_residuals_jacobian_hessian_sl(expr, context, ndata, nparam, nconst, single_precission);
+
+		auto uniqueid = nlsq_residuals_jacobian_hessian_sl_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+
+		return FunctionApplier{ func, nullptr,
+			{params, consts, data, residuals, jacobian, hessian}, uniqueid };
 
 	}
 

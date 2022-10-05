@@ -10,7 +10,7 @@ import <memory>;
 import vc;
 import util;
 import glsl;
-import linalg;
+export import linalg;
 
 using namespace vc;
 

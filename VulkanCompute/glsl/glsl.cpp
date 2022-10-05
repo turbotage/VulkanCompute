@@ -15,11 +15,6 @@ import linalg;
 import vc;
 using namespace vc;
 
-namespace {
-	// most shaders are smaller than 30 kB
-	constexpr auto DEFAULT_SHADER_SIZE = 30000;
-}
-
 std::vector<uint32_t> glsl::compileSource(const std::string& source, bool optimize)
 {
 	std::ofstream fileOut("tmpshader.comp");

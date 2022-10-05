@@ -9,14 +9,13 @@ import <functional>;
 import <unordered_map>;
 import <initializer_list>;
 import <iterator>;
+import <set>;
 
 import util;
-import shunter;
-import defaultexp;
 import token;
 import lexer;
-export import glsl;
-
+import glsl;
+import symbolic;
 
 namespace expression {
 

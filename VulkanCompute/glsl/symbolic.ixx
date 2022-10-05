@@ -125,6 +125,20 @@ namespace glsl {
 			throw std::runtime_error("Variable was neither const nor param");
 		}
 
+		vc::ui16 get_n_params() const 
+		{
+			return params_map.size();
+		}
+
+		vc::ui16 get_n_consts() const 
+		{
+			return consts_map.size();
+		}
+
+		vc::ui16 get_n_vars() const {
+			return symtype_map.size();
+		}
+
 		std::set<std::pair<std::string, vc::ui16>> params_map;
 		std::set<std::pair<std::string, vc::ui16>> consts_map;
 

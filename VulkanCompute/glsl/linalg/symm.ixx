@@ -11,7 +11,7 @@ import <functional>;
 import vc;
 import util;
 import solver;
-import linalg;
+export import linalg;
 import glsl;
 
 using namespace vc;

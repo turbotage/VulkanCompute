@@ -13,6 +13,8 @@ import vc;
 import glsl;
 import util;
 
+export import function;
+
 using namespace vc;
 
 // IMPLEMENTATION
