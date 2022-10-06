@@ -15,6 +15,11 @@ add_executable(VulkanCompute
 	"glsl/glsl.cpp"
 	"glsl/function.ixx" 
 	"glsl/variable.ixx"
+	"glsl/func_factory.ixx" 
+	"glsl/shader.ixx" 
+	"glsl/symbolic.ixx" 
+	"glsl/tensor_var.ixx" 
+	"glsl/tensor_var.cpp"
 	"glsl/linalg/linalg.ixx"
 	"glsl/linalg/solver.ixx"
 	"glsl/linalg/symm.ixx"
@@ -37,8 +42,8 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/pow.ixx"
 	"expression/algebra/binary/sub.ixx"
 	"expression/expr.ixx" 
-	"expression/expr.cpp" 
- "glsl/func_factory.ixx" "glsl/shader.ixx" "glsl/symbolic.ixx")
+	"expression/expr.cpp"
+)
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 

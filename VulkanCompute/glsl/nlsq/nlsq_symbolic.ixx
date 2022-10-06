@@ -402,12 +402,12 @@ HESSIAN_EXPRESSIONS
 				throw std::runtime_error("residuals dim and consts dim1 must agree");
 			}
 
-			if ((ui16)residuals->getType() &
+			if (!((ui16)residuals->getType() &
 				(ui16)jacobian->getType() &
 				(ui16)hessian->getType() &
 				(ui16)params->getType() &
 				(ui16)data->getType() &
-				(ui16)consts->getType())
+				(ui16)consts->getType()))
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}

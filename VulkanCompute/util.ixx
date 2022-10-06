@@ -10,6 +10,9 @@ import <functional>;
 import <random>;
 import <chrono>;
 import <memory>;
+import <fstream>;
+import <ostream>;
+import <map>;
 
 namespace util {
 
@@ -70,9 +73,12 @@ namespace util {
         return ret;
     }
 
-    export std::string add_after_newline(const std::string& str, const std::string& adder)
+    export std::string add_after_newline(const std::string& str, const std::string& adder, bool add_start = true)
     {
         std::string ret = str;
+        if (add_start) {
+            ret.insert(0, adder);
+        }
         for (int i = 0; i < ret.size(); ++i) {
             if (ret[i] == '\n') {
                 if (i + 1 > ret.size())

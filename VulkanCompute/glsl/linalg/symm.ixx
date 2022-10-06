@@ -289,9 +289,9 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 				throw std::runtime_error("sol dim must equal mat dim1");
 			}
 
-			if ((ui16)mat->getType() &
+			if (!((ui16)mat->getType() &
 				(ui16)rhs->getType() &
-				(ui16)sol->getType())
+				(ui16)sol->getType()))
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}

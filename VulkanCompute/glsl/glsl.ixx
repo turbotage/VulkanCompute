@@ -5,13 +5,8 @@ module;
 export module glsl;
 
 import <string>;
-import <optional>;
 import <vector>;
-import <functional>;
-import <unordered_set>;
-import <set>;
-import <type_traits>;
-import <memory>;
+import <optional>;
 
 import util;
 import vc;
@@ -23,7 +18,22 @@ namespace glsl {
 
 	export constexpr auto UNIQUE_ID = "UNIQUEID";
 
-	export std::vector<ui32> compileSource(const std::string& source, bool optimize = true);
+	export enum class OptimizationType {
+		NO_OPTIMIZATION = 1,
+		OPTIMIZE_FOR_SPEED = 2,
+		OPTIMIZE_FOR_SIZE = 4,
+		REMAP = 8
+	};
+
+	export std::vector<ui32> compileSource(const std::string& source, OptimizationType opt_type = 
+		static_cast<OptimizationType>
+			(
+			static_cast<int>(OptimizationType::OPTIMIZE_FOR_SPEED) | 
+			static_cast<int>(OptimizationType::REMAP)
+			)
+		);
+
+	export std::optional<std::string> decompileSPIRV(bool return_string = false);
 
 }
 

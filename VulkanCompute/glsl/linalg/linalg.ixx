@@ -159,10 +159,10 @@ void vec_neg_UNIQUEID(inout float vec[ndim]) {
 	{
 		static const std::string code = // compute shader
 R"glsl(
-float inner_prod_UNIQUEID(in float vec1[ndim], in float vec2[ndim]) {
+float inner_prod_UNIQUEID(in float v1[ndim], in float v2[ndim]) {
 	float ret = 0;
 	for (int i = 0; i < ndim; ++i) {
-		ret += vec1[i] * vec2[i];
+		ret += v1[i] * v2[i];
 	}
 	return ret;
 }
@@ -199,14 +199,14 @@ float inner_prod_UNIQUEID(in float vec1[ndim], in float vec2[ndim]) {
 	{
 		static const std::string code = // compute shader
 R"glsl(
-float weighted_inner_prod_UNIQUEID(in float mat[ndim], in float vec1[ndim], in float vec2[ndim]) {
+float weighted_inner_prod_UNIQUEID(in float mat[ndim*ndim], in float v1[ndim], in float v2[ndim]) {
 	float ret = 0;
 	for (int i = 0; i < ndim; ++i) {
 		float temp = 0;
 		for (int j = 0; j < ndim; ++j) {
-			temp += mat[i*ndim + j] * vec2[j];
+			temp += mat[i*ndim + j] * v2[j];
 		}
-		ret += vec1[i] * temp;
+		ret += v1[i] * temp;
 	}
 	return ret;
 }
@@ -243,7 +243,7 @@ float weighted_inner_prod_UNIQUEID(in float mat[ndim], in float vec1[ndim], in f
 	{
 		static const std::string code = // compute shader
 R"glsl(
-float weighted_inner_prod_UNIQUEID(in float mat[ndim], in float vec[ndim]) {
+float weighted_inner_prod_UNIQUEID(in float mat[ndim*ndim], in float vec[ndim]) {
 	float ret = 0;
 	for (int i = 0; i < ndim; ++i) {
 		float temp = 0;
@@ -287,7 +287,7 @@ float weighted_inner_prod_UNIQUEID(in float mat[ndim], in float vec[ndim]) {
 	{
 		static const std::string code = // compute shader
 R"glsl(
-float weighted_inner_prod_UNIQUEID(in float mat[ndim], in float vec[ndim]) {
+float weighted_vec_norm2_UNIQUEID(in float mat[ndim*ndim], in float vec[ndim]) {
 	float ret = 0;
 	for (int i = 0; i < ndim; ++i) {
 		float temp = 0;
@@ -545,9 +545,9 @@ void mul_transpose_vec_UNIQUEID(in float mat[nrow*ncol], in float vec[nrow], out
 				throw std::runtime_error("mat dim1 must equal vec dim");
 			}
 
-			if ((ui16)mat->getType() &
+			if (!((ui16)mat->getType() &
 				(ui16)vec->getType() &
-				(ui16)out->getType())
+				(ui16)out->getType()))
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
@@ -640,7 +640,7 @@ void add_vec_vec_UNIQUEID(in float lvec[ndim], in float rvec[ndim], out float ov
 		};
 
 		return std::make_shared<::glsl::Function>(
-			"add_mat_mat_" + uniqueid,
+			"add_vec_vec_" + uniqueid,
 			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
 			code_func,
 			std::nullopt
@@ -659,9 +659,9 @@ void add_vec_vec_UNIQUEID(in float lvec[ndim], in float rvec[ndim], out float ov
 				throw std::runtime_error("rvec dim and ovec dim1 must agree");
 			}
 
-			if ((ui16)lvec->getType() &
+			if (!((ui16)lvec->getType() &
 				(ui16)rvec->getType() &
-				(ui16)ovec->getType())
+				(ui16)ovec->getType()))
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
@@ -898,8 +898,8 @@ void mat_add_ldiag_out_UNIQUEID(in float mat[ndim*ndim], float lambda, out float
 				throw std::runtime_error("matrices must be square");
 			}
 
-			if ((ui16)in->getType() &
-				(ui16)out->getType())
+			if (!((ui16)in->getType() &
+				(ui16)out->getType()))
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
@@ -1187,8 +1187,8 @@ void mul_transpose_mat_UNIQUEID(in float mat[nrow*ncol], out float omat[ncol*nco
 				throw std::runtime_error("out dim1 must equal out dim2");
 			}
 
-			if ((ui16)in->getType() &
-				(ui16)out->getType())
+			if (!((ui16)in->getType() &
+				(ui16)out->getType()))
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}

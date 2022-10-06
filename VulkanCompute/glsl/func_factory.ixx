@@ -167,7 +167,11 @@ namespace glsl {
 		}
 
 		std::string build() const override {
-			return util::add_after_newline(m_Text, std::string('\t', scope_level()));
+			std::string ret = util::add_after_newline(m_Text, std::string(scope_level(), '\t'));
+			if (ret.back() != '\n') {
+				ret += "\n";
+			}
+			return ret;
 		}
 
 	protected:

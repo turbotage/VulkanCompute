@@ -324,6 +324,39 @@ void copy_vec_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 			std::nullopt);
 	}
 
+	export FunctionApplier copy_vec(
+		const std::shared_ptr<VectorVariable>& imat,
+		const std::shared_ptr<VectorVariable>& omat)
+	{
+		// type checks and dims
+		{
+			if (imat->getNDim() != omat->getNDim()) {
+				throw std::runtime_error("imat dim1 must equal omat dim1");
+			}
+
+			if (!((ui16)imat->getType() &
+				(ui16)omat->getType()))
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((imat->getType() == ShaderVariableType::FLOAT) ||
+				(imat->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndim = imat->getNDim();
+
+		bool single_precission = true;
+		if (imat->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = copy_vec(ndim, single_precission);
+		auto uniqueid = copy_vec_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr, { imat, omat }, uniqueid };
+	}
+
 
 	export std::string copy_vec_ostart_uniqueid(ui16 ndim, bool single_precission)
 	{

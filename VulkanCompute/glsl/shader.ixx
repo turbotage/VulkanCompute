@@ -61,6 +61,20 @@ R"glsl(
 			}
 		}
 
+		{
+			auto i1v = dynamic_cast<const SingleVariable*>(v1.get());
+			auto i2v = dynamic_cast<const SingleVariable*>(v2.get());
+			if (i1v != nullptr && i2v != nullptr) {
+				copy_str +=
+R"glsl(
+	OUTPUT_NAME = INPUT_NAME[gl_GlobalInvocationID.x];
+)glsl";
+				util::replace_all(copy_str, "INPUT_NAME", i1v->getName());
+				util::replace_all(copy_str, "OUTPUT_NAME", i2v->getName());
+				return copy_str;
+			}
+		}
+
 		throw std::runtime_error("Both variables must be either Vectors and Matrices");
 	}
 
@@ -98,6 +112,20 @@ R"glsl(
 	}
 )glsl";
 				util::replace_all(copy_str, "ndim", std::to_string(i1v->getNDim()));
+				util::replace_all(copy_str, "INPUT_NAME", i1v->getName());
+				util::replace_all(copy_str, "OUTPUT_NAME", i2v->getName());
+				return copy_str;
+			}
+		}
+
+		{
+			auto i1v = dynamic_cast<const SingleVariable*>(v1.get());
+			auto i2v = dynamic_cast<const SingleVariable*>(v2.get());
+			if (i1v != nullptr && i2v != nullptr) {
+				copy_str +=
+R"glsl(
+	OUTPUT_NAME[gl_GlobalInvocationID.x] = INPUT_NAME;
+)glsl";
 				util::replace_all(copy_str, "INPUT_NAME", i1v->getName());
 				util::replace_all(copy_str, "OUTPUT_NAME", i2v->getName());
 				return copy_str;
@@ -174,6 +202,22 @@ R"glsl(
 		{
 			_addInputVector(vec, binding, true);
 			_addOutputVector(vec, binding, false);
+		}
+
+		void addInputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding)
+		{
+			_addInputSingle(var, binding, true);
+		}
+
+		void addOutputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding)
+		{
+			_addOutputSingle(var, binding, true);
+		}
+
+		void addInputOutputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding)
+		{
+			_addInputSingle(var, binding, true);
+			_addOutputSingle(var, binding, false);
 		}
 
 		void addVariable(const std::shared_ptr<ShaderVariable>& var)
@@ -434,6 +478,36 @@ layout (local_size_x = 1) in;
 			}
 
 			m_Outputs.emplace_back(vec_index, global_vec_index);
+		}
+
+		void _addInputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding, bool add_binding)
+		{
+			auto global_vec = std::make_shared<SingleVariable>(
+				"global_" + var->getName(), var->getType(), std::nullopt);
+
+			vc::ui16 var_index = _addVariable(var, false);
+			vc::ui16 global_var_index = _addVariable(global_vec, true);
+
+			if (add_binding) {
+				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(var->getType()), var->getName()));
+			}
+
+			m_Inputs.emplace_back(global_var_index, var_index);
+		}
+
+		void _addOutputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding, bool add_binding)
+		{
+			auto global_var = std::make_shared<SingleVariable>(
+				"global_" + var->getName(), var->getType(), std::nullopt);
+
+			vc::ui16 var_index = _addVariable(var, false);
+			vc::ui16 global_var_index = _addVariable(global_var, true);
+
+			if (add_binding) {
+				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(var->getType()), var->getName()));
+			}
+
+			m_Outputs.emplace_back(var_index, global_var_index);
 		}
 
 	private:

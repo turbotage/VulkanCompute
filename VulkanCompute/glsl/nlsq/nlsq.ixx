@@ -40,8 +40,8 @@ namespace nlsq {
 	{
 		static const std::string code = // compute shader
 R"glsl(
-float nlsq_gain_UNIQUEID(in float step[nparam], in float neg_gradient[nparam], in float hessian[nparam*nparam], float obj_err, float new_obj_err) {
-	return (obj_err - new_obj_err) / (inner_prod_IPID(step, neg_gradient) - weighted_vec_norm2_WVN2ID(hessian, step));
+float nlsq_gain_ratio_UNIQUEID(in float nlstep[nparam], in float neg_gradient[nparam], in float hessian[nparam*nparam], float obj_err, float new_obj_err) {
+	return (obj_err - new_obj_err) / (inner_prod_IPID(nlstep, neg_gradient) - weighted_vec_norm2_WVN2ID(hessian, nlstep));
 }
 )glsl";
 
@@ -91,11 +91,11 @@ float nlsq_gain_UNIQUEID(in float step[nparam], in float neg_gradient[nparam], i
 				throw std::runtime_error("hessian dim1 must agree with step dim");
 			}
 
-			if ((ui16)step->getType() &
+			if (!((ui16)step->getType() &
 				(ui16)gradient->getType() &
 				(ui16)hessian->getType() &
 				(ui16)error->getType() &
-				(ui16)new_error->getType())
+				(ui16)new_error->getType()))
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
@@ -313,10 +313,10 @@ void nlsq_slm_step_UNIQUEID(
 	*/
 
 	export enum class StepType {
-		NO_STEP,
-		NO_STEP_DAMPING_INCREASED,
-		STEP_DAMPING_UNCHANGED,
-		STEP_DAMPING_DECREASED
+		NO_STEP = 0,
+		NO_STEP_DAMPING_INCREASED = 1,
+		STEP_DAMPING_UNCHANGED = 2,
+		STEP_DAMPING_DECREASED = 4
 	};
 
 	export FunctionApplier nlsq_slmh_step(
@@ -348,9 +348,11 @@ void nlsq_slm_step_UNIQUEID(
 		factory.addMatrix(consts, FunctionFactory::InputType::IN);
 		factory.addSingle(lambda, FunctionFactory::InputType::INOUT);
 		factory.addSingle(step_type, FunctionFactory::InputType::INOUT);
+		factory.addSingle(mu, FunctionFactory::InputType::IN);
+		factory.addSingle(eta, FunctionFactory::InputType::IN);
 
 		auto& if_scope = factory.apply_scope(IfScope::make(
-			"step_type > " + std::to_string((int)StepType::STEP_DAMPING_UNCHANGED)));
+			"step_type >= " + std::to_string((int)StepType::STEP_DAMPING_UNCHANGED)));
 			
 		if_scope.apply(nlsq_residuals_jacobian_hessian(expr, context,
 			params, consts, data, residuals, jacobian, hessian));
@@ -393,6 +395,13 @@ void nlsq_slm_step_UNIQUEID(
 		factory.apply(nlsq_gain_ratio(gain_ratio, step, gradient, hessian, error, new_error));
 
 		//auto& if_step = factory.apply_scope(IfScope::make("new_error < error || gain_ratio > eta"));
+		auto& if_step = factory.apply_scope(IfScope::make("gain_ratio > eta"));
+		if_step.apply_scope(TextedScope::make("step_type = " + std::to_string(static_cast<int>(StepType::STEP_DAMPING_UNCHANGED)) + ";"));
+		
+		factory.apply_scope(TextedScope::make("step_type = " + std::to_string(static_cast<int>(StepType::STEP_DAMPING_UNCHANGED)) + ";"));
+		factory.apply_scope(TextedScope::make(";"));
+
+		factory.apply(linalg::copy_vec(new_params, params));
 
 		return factory.build_applier();
 	}

@@ -31,6 +31,8 @@ import function;
 import shader;
 import func_factory;
 
+import tensor_var;
+
 /*
 void test_copying()
 {
@@ -516,7 +518,6 @@ void test_function_factory()
 	std::cout << built_func->getCode() << std::endl;
 
 
-
 }
 
 void test_function_factorized() {
@@ -547,7 +548,7 @@ void test_function_factorized() {
 	auto params = std::make_shared<glsl::VectorVariable>("params", nparam, ShaderVariableType::FLOAT);
 	auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, nconst, ShaderVariableType::FLOAT);
 	auto lambda = std::make_shared<glsl::SingleVariable>("lambda", ShaderVariableType::FLOAT, std::nullopt);
-	auto step = std::make_shared<glsl::VectorVariable>("step", nparam, ShaderVariableType::FLOAT);
+	auto nlstep = std::make_shared<glsl::VectorVariable>("nlstep", nparam, ShaderVariableType::FLOAT);
 	auto step_type = std::make_shared<glsl::SingleVariable>("step_type", ShaderVariableType::INT, std::nullopt);
 	auto mu = std::make_shared<glsl::SingleVariable>("mu", ShaderVariableType::FLOAT, "0.25");
 	auto eta = std::make_shared<glsl::SingleVariable>("eta", ShaderVariableType::FLOAT, "0.75");
@@ -556,28 +557,86 @@ void test_function_factorized() {
 		expr, context,
 		params, consts, data,
 		residuals, jacobian, hessian,
-		lambda, mu, eta, step, step_type);
+		lambda, mu, eta, nlstep, step_type);
 
 	AutogenShader shader;
 
-	shader.addInputVector(residuals, 0);
-	shader.addInputMatrix(jacobian, 1);
-	shader.addInputMatrix(hessian, 2);
+	shader.addInputOutputVector(residuals, 0);
+	shader.addInputOutputMatrix(jacobian, 1);
+	shader.addInputOutputMatrix(hessian, 2);
 	shader.addInputVector(data,	3);
-	shader.addInputVector(params, 4);
+	shader.addInputOutputVector(params, 4);
 	shader.addInputMatrix(consts, 5);
+	shader.addInputOutputSingle(lambda, 6);
+	shader.addInputOutputSingle(step_type, 7);
+	shader.addInputSingle(mu, 8);
+	shader.addInputSingle(eta, 9);
 
 	shader.apply(nlsq_step.func, nullptr,
 		nlsq_step.args);
+
+	shader.setAfterCopyingFrom("\tfor (int iter = 0; iter < 200000000; ++iter) {");
+	shader.setBeforeCopyingBack("\t}");
 
 	auto shader_code = shader.compile();
 
 	auto end = std::chrono::steady_clock::now();
 
-	std::cout << shader_code << std::endl << std::endl;
+	std::cout << util::add_line_numbers(shader_code) << std::endl;
 	//std::cout << util::add_line_numbers(shader_code) << std::endl;
 
-	std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+	std::cout << "shader build time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+
+	/*
+	OptimizationType opt_type =
+		static_cast<OptimizationType>(
+			static_cast<int>(OptimizationType::OPTIMIZE_FOR_SPEED) |
+			static_cast<int>(OptimizationType::REMAP));
+	*/
+
+	OptimizationType opt_type = OptimizationType::NO_OPTIMIZATION;
+
+	auto spirv = glsl::compileSource(shader_code, opt_type);
+
+	glsl::decompileSPIRV();
+
+	uint32_t nelem = 10000000;
+
+	auto mgr = std::make_shared<kp::Manager>();
+
+	auto kp_residuals = glsl::tensor_from_vector(mgr, residuals, nelem);
+	auto kp_jacobian = glsl::tensor_from_matrix(mgr, jacobian, nelem);
+	auto kp_hessian = glsl::tensor_from_matrix(mgr, hessian, nelem);
+	auto kp_data = glsl::tensor_from_vector(mgr, data, nelem);
+	auto kp_params = glsl::tensor_from_vector(mgr, params, nelem);
+	auto kp_consts = glsl::tensor_from_matrix(mgr, consts, nelem);
+	auto kp_lambda = glsl::tensor_from_single(mgr, lambda, nelem);
+	auto kp_step_type = glsl::tensor_from_single(mgr, step_type, nelem);
+	auto kp_mu = glsl::tensor_from_single(mgr, mu, nelem);
+	auto kp_eta = glsl::tensor_from_single(mgr, eta, nelem);
+	
+	std::vector<std::shared_ptr<kp::Tensor>> shader_inputs = {
+		kp_residuals, kp_jacobian, kp_hessian,
+		kp_data, kp_params, kp_consts,
+		kp_lambda, kp_step_type, kp_mu, kp_eta };
+
+	kp::Workgroup wg{ (size_t)nelem, 1, 1 };
+
+	std::shared_ptr<kp::Algorithm> algo = mgr->algorithm(shader_inputs, spirv, wg);
+	
+	start = std::chrono::steady_clock::now();
+
+	auto seq = mgr->sequence()
+		->record<kp::OpTensorSyncDevice>(shader_inputs)
+		->record<kp::OpAlgoDispatch>(algo)
+		->record<kp::OpTensorSyncLocal>(shader_inputs)
+		->eval();
+
+	end = std::chrono::steady_clock::now();
+
+
+	std::cout << "run time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+	
 
 }
 
