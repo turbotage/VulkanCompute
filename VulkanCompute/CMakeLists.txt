@@ -43,7 +43,7 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/sub.ixx"
 	"expression/expr.ixx" 
 	"expression/expr.cpp"
-)
+ "glsl/tensor_var.h")
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 

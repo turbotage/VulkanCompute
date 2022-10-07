@@ -313,10 +313,10 @@ void nlsq_slm_step_UNIQUEID(
 	*/
 
 	export enum class StepType {
-		NO_STEP = 0,
-		NO_STEP_DAMPING_INCREASED = 1,
-		STEP_DAMPING_UNCHANGED = 2,
-		STEP_DAMPING_DECREASED = 4
+		NO_STEP = 1,
+		DAMPING_INCREASED = 2,
+		DAMPING_DECREASED = 4,
+		STEP = 8
 	};
 
 	export FunctionApplier nlsq_slmh_step(
@@ -352,7 +352,7 @@ void nlsq_slm_step_UNIQUEID(
 		factory.addSingle(eta, FunctionFactory::InputType::IN);
 
 		auto& if_scope = factory.apply_scope(IfScope::make(
-			"step_type >= " + std::to_string((int)StepType::STEP_DAMPING_UNCHANGED)));
+			"step_type >= " + std::to_string((int)StepType::STEP)));
 			
 		if_scope.apply(nlsq_residuals_jacobian_hessian(expr, context,
 			params, consts, data, residuals, jacobian, hessian));
@@ -394,14 +394,24 @@ void nlsq_slm_step_UNIQUEID(
 
 		factory.apply(nlsq_gain_ratio(gain_ratio, step, gradient, hessian, error, new_error));
 
-		//auto& if_step = factory.apply_scope(IfScope::make("new_error < error || gain_ratio > eta"));
-		auto& if_step = factory.apply_scope(IfScope::make("gain_ratio > eta"));
-		if_step.apply_scope(TextedScope::make("step_type = " + std::to_string(static_cast<int>(StepType::STEP_DAMPING_UNCHANGED)) + ";"));
-		
-		factory.apply_scope(TextedScope::make("step_type = " + std::to_string(static_cast<int>(StepType::STEP_DAMPING_UNCHANGED)) + ";"));
-		factory.apply_scope(TextedScope::make(";"));
+		factory.apply_scope(TextedScope::make("step_type = 0;"));
 
-		factory.apply(linalg::copy_vec(new_params, params));
+		//auto& if_step = factory.apply_scope(IfScope::make("new_error < error || gain_ratio > eta"));
+		auto& if_scope1 = factory.apply_scope(IfScope::make("new_error < error || gain_ratio > eta"));
+		if_scope1.apply(linalg::copy_vec(new_params, params));
+		if_scope1.apply_scope(
+			TextedScope::make("step_type += " + std::to_string(static_cast<int>(StepType::STEP)) + ";"));
+		if_scope1.chain(ElseScope::make()).apply_scope(
+			TextedScope::make("step_type += " + std::to_string(static_cast<int>(StepType::NO_STEP)) + ";"));
+
+		auto& if_scope2 = factory.apply_scope(IfScope::make("gain_ratio > eta"));
+		if_scope2.apply_scope(TextedScope::make("step_type += " + std::to_string(static_cast<int>(StepType::DAMPING_DECREASED)) + ";"));
+		if_scope2.apply_scope(TextedScope::make("lambda *= 0.5;"));
+
+		auto& elseif_scope = if_scope2.chain(ElseIfScope::make("gain_ratio < mu"));
+		elseif_scope.apply_scope(TextedScope::make("step_type += " + std::to_string(static_cast<int>(StepType::DAMPING_INCREASED)) + ";"));
+		elseif_scope.apply_scope(TextedScope::make("lambda *= 2;"));
+		
 
 		return factory.build_applier();
 	}

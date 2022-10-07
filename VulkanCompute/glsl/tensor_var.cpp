@@ -4,7 +4,7 @@ module;
 
 module tensor_var;
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix(std::shared_ptr<kp::Manager> mgr,
+std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix(const std::shared_ptr<kp::Manager>& mgr,
 	const std::shared_ptr<glsl::MatrixVariable>& mat, vc::ui32 nelem)
 {
 	switch (mat->getType()) {
@@ -34,7 +34,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix(std::shared_ptr<kp::Manager
 	}
 }
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_vector(std::shared_ptr<kp::Manager> mgr,
+std::shared_ptr<kp::Tensor> glsl::tensor_from_vector(const std::shared_ptr<kp::Manager>& mgr,
 	const std::shared_ptr<glsl::VectorVariable>& vec, vc::ui32 nelem)
 {
 	switch (vec->getType()) {
@@ -64,7 +64,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_vector(std::shared_ptr<kp::Manager
 	}
 }
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_single(std::shared_ptr<kp::Manager> mgr,
+std::shared_ptr<kp::Tensor> glsl::tensor_from_single(const std::shared_ptr<kp::Manager>& mgr,
 	const std::shared_ptr<glsl::SingleVariable>& var, vc::ui32 nelem)
 {
 	switch (var->getType()) {
@@ -93,3 +93,4 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_single(std::shared_ptr<kp::Manager
 		throw std::runtime_error("Unsupported type - tensor_from_variable");
 	}
 }
+

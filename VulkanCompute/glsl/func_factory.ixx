@@ -96,6 +96,7 @@ namespace glsl {
 				throw std::runtime_error("ScopeBase already had chained child?");
 
 			scope->m_Parent = *this;
+			scope->m_ImChained = true;
 			ScopeBase& ret = *scope;
 			m_ChainChild = std::move(scope);
 			return ret;
@@ -108,6 +109,9 @@ namespace glsl {
 
 		virtual vc::ui16 scope_level() const override
 		{
+			if (m_ImChained) {
+				return m_Parent->scope_level();
+			}
 			return m_Parent->scope_level() + 1;
 		}
 
@@ -152,6 +156,7 @@ namespace glsl {
 	protected:
 		std::vector<std::unique_ptr<FunctionScope>> m_Children;
 		std::unique_ptr<FunctionScope> m_ChainChild;
+		bool m_ImChained = false;
 	};
 	
 	export class TextedScope : public ScopeBase {
@@ -268,6 +273,7 @@ namespace glsl {
 
 		std::string header() const override
 		{
+
 			std::string ret;
 			util::add_n_str(ret, "\t", scope_level());
 			ret += "if (" + m_Condition + ")";
