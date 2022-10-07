@@ -8,8 +8,6 @@
 #include <symengine/parser.h>
 #include <symengine/parser/parser.h>
 
-#include "glsl/tensor_var.h"
-
 import <vector>;
 import <memory>;
 import <optional>;
@@ -137,9 +135,9 @@ void test_function_factorized() {
 
 	AutogenShader shader;
 
-	shader.addInputOutputVector(residuals, 0);
-	shader.addInputOutputMatrix(jacobian, 1);
-	shader.addInputOutputMatrix(hessian, 2);
+	shader.addOutputVector(residuals, 0);
+	shader.addOutputMatrix(jacobian, 1);
+	shader.addOutputMatrix(hessian, 2);
 	shader.addInputVector(data,	3);
 	shader.addInputOutputVector(params, 4);
 	shader.addInputMatrix(consts, 5);
@@ -147,18 +145,30 @@ void test_function_factorized() {
 	shader.addInputOutputSingle(step_type, 7);
 	shader.addInputSingle(mu, 8);
 	shader.addInputSingle(eta, 9);
+	shader.addOutputVector(nlstep, 10);
 
 	shader.apply(nlsq_step.func, nullptr,
 		nlsq_step.args);
 
-	shader.setAfterCopyingFrom("\tfor (int iter = 0; iter < 1; ++iter) {");
-	shader.setBeforeCopyingBack("\t}");
+	shader.setAfterCopyingFrom(
+R"glsl(
+	for (int iter = 0; iter < 1000; ++iter) {
+		step_type = 10;
+		float old_params[4] = params;
+)glsl");
+	shader.setBeforeCopyingBack(
+R"glsl(
+		for (int i = 0; i < 4; ++i) {
+			nlstep[i] = params[i] - old_params[i];
+		}
+	}
+)glsl");
 
 	auto shader_code = shader.compile();
 
 	auto end = std::chrono::steady_clock::now();
 
-	std::cout << util::add_line_numbers(shader_code) << std::endl;
+	std::cout << shader_code << std::endl;
 	//std::cout << util::add_line_numbers(shader_code) << std::endl;
 
 	std::cout << "shader build time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
@@ -176,7 +186,7 @@ void test_function_factorized() {
 
 	glsl::decompileSPIRV();
 
-	uint32_t nelem = 1;
+	uint32_t nelem = 1000000;
 
 	auto mgr = std::make_shared<kp::Manager>();
 
@@ -190,11 +200,37 @@ void test_function_factorized() {
 	auto kp_step_type = glsl::tensor_from_single(mgr, step_type, nelem);
 	auto kp_mu = glsl::tensor_from_single(mgr, mu, nelem);
 	auto kp_eta = glsl::tensor_from_single(mgr, eta, nelem);
-	
+	auto kp_nlstep = glsl::tensor_from_vector(mgr, nlstep, nelem);
+
+	// INITIALIZE DATA
+	std::vector<float> data_data = { 908.02686, 905.39154, 906.08997, 700.7829 , 753.0848 , 859.9136 ,
+	   870.48846, 755.96893, 617.3499 , 566.2044 , 746.62067, 662.47424,
+	   628.8806 , 459.7746 , 643.30554, 318.58453, 416.5493 , 348.34335,
+	   411.74026, 284.17468, 290.30487 };
+	std::memcpy(kp_data->data<float>(), data_data.data(), sizeof(float)*data_data.size());
+
+	std::vector<float> data_consts = { 0.,   10.,   20.,   30.,   40.,   60.,   80.,  100.,  120.,
+		140.,  160.,  180.,  200.,  300.,  400.,  500.,  600.,  700.,
+		800.,  900., 1000. };
+	std::memcpy(kp_consts->data<float>(), data_consts.data(), sizeof(float)*data_consts.size());
+
+	std::vector<float> data_params = { 700, 0.2, 0.1, 0.001 };
+	std::memcpy(kp_params->data<float>(), data_params.data(), sizeof(float)*data_params.size());
+
+	float data_lambda = 5;
+	std::memcpy(kp_lambda->data<float>(), &data_lambda, sizeof(float));
+
+	float data_mu = 0.25f;
+	std::memcpy(kp_mu->data<float>(), &data_mu, sizeof(float));
+
+	float data_eta = -10.75f;
+	std::memcpy(kp_eta->data<float>(), &data_eta, sizeof(float));
+	// END INITIALIZE DATA
+
 	std::vector<std::shared_ptr<kp::Tensor>> shader_inputs = {
 		kp_residuals, kp_jacobian, kp_hessian,
 		kp_data, kp_params, kp_consts,
-		kp_lambda, kp_step_type, kp_mu, kp_eta };
+		kp_lambda, kp_step_type, kp_mu, kp_eta, kp_nlstep };
 
 	kp::Workgroup wg{ (size_t)nelem, 1, 1 };
 
@@ -213,26 +249,53 @@ void test_function_factorized() {
 
 	std::cout << "run time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
+	std::cout << "FIRST ELEMENTS" << std::endl;
 	std::cout << "residuals: " << std::endl;
-	std::cout << glsl::print_vector<float>(kp_residuals, residuals, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_residuals, residuals, 0) << std::endl;
 	std::cout << "jacobian: " << std::endl;
-	std::cout << glsl::print_matrix<float>(kp_jacobian, jacobian, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_jacobian, jacobian, 0) << std::endl;
 	std::cout << "hessian: " << std::endl;
-	std::cout << glsl::print_matrix<float>(kp_hessian, hessian, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_hessian, hessian, 0) << std::endl;
 	std::cout << "data: " << std::endl;
-	std::cout << glsl::print_vector<float>(kp_data, data, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_data, data, 0) << std::endl;
 	std::cout << "params: " << std::endl;
-	std::cout << glsl::print_vector<float>(kp_params, params, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_params, params, 0) << std::endl;
 	std::cout << "consts: " << std::endl;
-	std::cout << glsl::print_matrix<float>(kp_consts, consts, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_consts, consts, 0) << std::endl;
 	std::cout << "lambda: " << std::endl;
-	std::cout << glsl::print_single<float>(kp_lambda, lambda, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_lambda, lambda, 0) << std::endl;
 	std::cout << "step_type: " << std::endl;
-	std::cout << glsl::print_single<int32_t>(kp_step_type, step_type, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_step_type, step_type, 0) << std::endl;
 	std::cout << "mu: " << std::endl;
-	std::cout << glsl::print_single<float>(kp_mu, mu, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_mu, mu, 0) << std::endl;
 	std::cout << "eta: " << std::endl;
-	std::cout << glsl::print_single<float>(kp_eta, eta, 0, std::nullopt) << std::endl;
+	std::cout << glsl::print_shader_variable(kp_eta, eta, 0) << std::endl;
+	std::cout << "step: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_nlstep, nlstep, 0) << std::endl;
+
+	std::cout << "LAST ELEMENTS" << std::endl;
+	std::cout << "residuals: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_residuals, residuals, nelem - 1) << std::endl;
+	std::cout << "jacobian: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_jacobian, jacobian, nelem - 1) << std::endl;
+	std::cout << "hessian: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_hessian, hessian, nelem - 1) << std::endl;
+	std::cout << "data: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_data, data, nelem - 1) << std::endl;
+	std::cout << "params: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_params, params, nelem - 1) << std::endl;
+	std::cout << "consts: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_consts, consts, nelem - 1) << std::endl;
+	std::cout << "lambda: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_lambda, lambda, nelem - 1) << std::endl;
+	std::cout << "step_type: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_step_type, step_type, nelem - 1) << std::endl;
+	std::cout << "mu: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_mu, mu, nelem - 1) << std::endl;
+	std::cout << "eta: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_eta, eta, nelem - 1) << std::endl;
+	std::cout << "step: " << std::endl;
+	std::cout << glsl::print_shader_variable(kp_nlstep, nlstep, nelem - 1) << std::endl;
 
 }
 

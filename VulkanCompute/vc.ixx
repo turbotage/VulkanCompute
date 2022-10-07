@@ -50,6 +50,12 @@ export namespace vc {
 			other.m_Ptr = nullptr;
 		}
 
+		bool is_null() {
+			return m_Ptr == nullptr;
+		}
+
+		T* get() { return m_Ptr; }
+
 		T* operator->() { return m_Ptr; }
 
 		T* operator->() const { return m_Ptr; }
