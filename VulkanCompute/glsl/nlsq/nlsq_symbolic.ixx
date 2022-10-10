@@ -170,7 +170,8 @@ JACOBIAN_EXPRESSIONS
 		std::string jacexpr = "";
 		for (int i = 0; i < nparam; ++i) {
 			std::string diff_symbol = context.get_params_name(i);
-			std::string jexpr = expr.diff(diff_symbol)->glsl_str(context);
+			auto diff1 = expr.diff(diff_symbol);
+			std::string jexpr = diff1->glsl_str(context);
 			std::string partj = "\t\tjacobian[i*" + std::to_string(nparam) + "+" + std::to_string(i) +
 				"] = " + jexpr + ";\n";
 			jacexpr += partj;
@@ -310,11 +311,8 @@ HESSIAN_EXPRESSIONS
 		std::string jacexpr = "";
 		for (int i = 0; i < nparam; ++i) {
 			std::string diff_symbol = context.get_params_name(i);
-			auto dexpr = expr.diff(diff_symbol);
-			bool is_zero = dexpr->is_zero();
-			if (is_zero)
-				continue;
-			std::string jexpr = dexpr->glsl_str(context);
+			auto diff1 = expr.diff(diff_symbol);
+			std::string jexpr = diff1->glsl_str(context);
 			std::string partj = "\t\tjacobian[i*" + std::to_string(nparam) + "+" + std::to_string(i) + 
 				"] = " + jexpr + ";\n";
 			jacexpr += partj;
@@ -328,11 +326,10 @@ HESSIAN_EXPRESSIONS
 			auto diff1 = expr.diff(diff_symbol1);
 			for (int j = 0; j <= i; ++j) {
 				std::string diff_symbol2 = context.get_params_name(j);
-				auto dhexpr = diff1->diff(diff_symbol2);
-				bool is_zero = dhexpr->is_zero();
-				if (is_zero)
+				auto diff2 = diff1->diff(diff_symbol2);
+				if (diff2->is_zero())
 					continue;
-				std::string hexpr = dhexpr->glsl_str(context);
+				std::string hexpr = diff2->glsl_str(context);
 				std::string parth = "\t\thessian[" + std::to_string(i) + "*" + std::to_string(nparam) + "+" + 
 					std::to_string(j) + "] += residuals[i] * " + hexpr + ";\n";
 				hesexpr += parth;
@@ -493,7 +490,8 @@ HESSIAN_EXPRESSIONS
 		std::string jacexpr = "";
 		for (int i = 0; i < nparam; ++i) {
 			std::string diff_symbol = context.get_params_name(i);
-			std::string jexpr = expr.diff(diff_symbol)->glsl_str(context);
+			auto diff1 = expr.diff(diff_symbol);
+			std::string jexpr = diff1->glsl_str(context);
 			std::string partj = "\t\tjacobian[i*" + std::to_string(nparam) + "+" + std::to_string(i) +
 				"] = " + jexpr + ";\n";
 			jacexpr += partj;
@@ -507,8 +505,10 @@ HESSIAN_EXPRESSIONS
 			auto diff1 = expr.diff(diff_symbol1);
 			for (int j = 0; j <= i; ++j) {
 				std::string diff_symbol2 = context.get_params_name(j);
-
-				std::string hexpr = diff1->diff(diff_symbol2)->glsl_str(context);
+				auto diff2 = diff1->diff(diff_symbol2);
+				if (diff2->is_zero())
+					continue;
+				std::string hexpr = diff2->glsl_str(context);
 				std::string parth = "\t\thessian[" + std::to_string(i) + "*" + std::to_string(nparam) + "+" +
 					std::to_string(j) + "] += residuals[i] * " + hexpr + ";\n";
 				hesexpr += parth;
@@ -694,8 +694,10 @@ HESSIAN_EXPRESSIONS
 			auto diff1 = expr.diff(diff_symbol1);
 			for (int j = 0; j <= i; ++j) {
 				std::string diff_symbol2 = context.get_params_name(j);
-
-				std::string hexpr = diff1->diff(diff_symbol2)->glsl_str(context);
+				auto diff2 = diff1->diff(diff_symbol2);
+				if (diff2->is_zero())
+					continue;
+				std::string hexpr = diff2->glsl_str(context);
 				std::string parth = "\t\thessian[" + std::to_string(i) + "*" + std::to_string(nparam) + "+" +
 					std::to_string(j) + "] += residuals[i] * " + hexpr + ";\n";
 				hesexpr += parth;
