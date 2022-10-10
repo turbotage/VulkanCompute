@@ -1,4 +1,4 @@
-module;
+ module;
 
 export module linalg;
 
@@ -726,6 +726,92 @@ void add_mat_lmat_UNIQUEID(in float lmat[nrow*ncol], in float rmat[nrow*ncol], f
 	}
 
 
+	export std::string add_mat_mat_ldiag_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export std::shared_ptr<Function> add_mat_mat_ldiag(ui16 ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void add_mat_mat_ldiag_UNIQUEID(inout float mat[ndim*ndim], float lambda, inout float lmat[ndim*ndim]) {
+	float entry1;	
+	float entry2;
+	for (int i = 0; i < ndim; ++i) {
+		for (int j = 0; j < ndim; ++j) {
+			entry1 = mat[i*ndim + j];
+			entry2 = lmat[i*ndim + j];
+			mat[i*ndim + j] += entry2;
+			lmat[i*ndim + j] += entry1;
+			if (i == j) {
+				lmat[i*ndim+j] += lambda * entry2;
+			}
+		}
+	}
+}
+)glsl";
+
+		std::string uniqueid = add_mat_mat_ldiag_uniqueid(ndim, single_precission);
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<::glsl::Function>(
+			"add_mat_mat_ldiag_" + uniqueid,
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+			);
+	}
+
+	export ::glsl::FunctionApplier add_mat_mat_ldiag(const std::shared_ptr<glsl::MatrixVariable>& mat1,
+		const std::shared_ptr<glsl::SingleVariable>& lambda, const std::shared_ptr<glsl::MatrixVariable>& mat2)
+	{
+		// type checks and dims
+		{
+			if (mat1->getNDim1() != mat2->getNDim1()) {
+				throw std::runtime_error("lmat dim1 must equal rmat dim1");
+			}
+			if (mat1->getNDim2() != mat2->getNDim2()) {
+				throw std::runtime_error("lmat dim1 must equal rmat dim2");
+			}
+			if (mat1->getNDim1() != mat1->getNDim2()) {
+				throw std::runtime_error("lmat must be square");
+			}
+
+			if (!((ui16)mat1->getType() &
+				(ui16)mat2->getType()))
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((mat1->getType() == ShaderVariableType::FLOAT) ||
+				(mat1->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndim = mat1->getNDim1();
+
+		bool single_precission = true;
+		if (mat2->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = add_mat_mat_ldiag(ndim, single_precission);
+		auto uniqueid = add_mat_mat_ldiag_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr, {mat1, lambda, mat2}, uniqueid };
+	}
+
+
 	export std::string sub_mat_mat_uniqueid(ui16 nrow, ui16 ncol, bool single_precission)
 	{
 		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
@@ -839,6 +925,39 @@ void mat_add_ldiag_UNIQUEID(inout float mat[ndim*ndim], float lambda) {
 			code_func,
 			std::nullopt
 		);
+	}
+
+	export ::glsl::FunctionApplier mat_add_ldiag(const std::shared_ptr<glsl::MatrixVariable>& mat,
+		const std::shared_ptr<glsl::SingleVariable>& lambda)
+	{
+		// type and dimension checks
+		{
+			if (!mat->isSquare()) {
+				throw std::runtime_error("mat isn't square");
+			}
+
+			if (!((ui16)mat->getType() &
+				(ui16)lambda->getType()))
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
+				(mat->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndim = mat->getNDim1();
+
+		bool single_precission = true;
+		if (mat->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = mat_add_ldiag(ndim, single_precission);
+
+		auto uniqueid = mat_add_ldiag_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, nullptr, {mat, lambda}, uniqueid };
 	}
 
 

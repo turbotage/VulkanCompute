@@ -429,6 +429,8 @@ namespace expression {
 	export class Expression : public Node {
 	public:
 
+		Expression(const Expression& other);
+
 		Expression(Expression&&) = default;
 
 		Expression(const std::string& expression, const std::vector<std::string>& variables);

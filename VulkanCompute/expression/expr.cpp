@@ -896,6 +896,16 @@ Expression expression_creator(const std::string& expression, const std::vector<s
 	return Expression(context, shunter_toks, Expression::default_expression_creation_map());
 }
 
+Expression::Expression(const Expression& other)
+	: Expression(other.children[0], other.m_Context, other.m_Expression)
+{
+	for (auto& var : m_Context.variables) {
+		std::string vname = var.name;
+		std::transform(vname.begin(), vname.end(), vname.begin(), [](unsigned char c) { return std::tolower(c); });
+		m_Variables.emplace_back(vname);
+	}
+}
+
 Expression::Expression(const std::string& expression, const std::vector<std::string>& variables)
 : Expression(expression_creator(expression, variables))
 {}

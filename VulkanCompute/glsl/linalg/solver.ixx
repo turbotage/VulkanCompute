@@ -863,7 +863,6 @@ void backward_subs_unit_t_diaged_UNIQUEID(in float mat[ndim*ndim], in float rhs[
 		);
 	}
 
-
 	// LU DECOMPOSITION
 
 	export std::string lu_uniqueid(ui16 ndim, bool single_precission)

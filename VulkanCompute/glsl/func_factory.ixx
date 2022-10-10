@@ -366,9 +366,9 @@ namespace glsl {
 	public:
 
 		enum class InputType {
-			IN,
-			OUT,
-			INOUT
+			IN = 1,
+			OUT = 2,
+			INOUT = IN + OUT
 		};
 
 		FunctionFactory(const std::string& name, const ShaderVariableType& return_type)
@@ -424,6 +424,11 @@ namespace glsl {
 			}
 		}
 
+		void addFunction(const std::shared_ptr<Function>& func)
+		{
+			Function::add_function(m_Functions, func);
+		}
+
 		std::shared_ptr<::glsl::Function> build_function() const
 		{
 			std::string code_str;
@@ -431,6 +436,11 @@ namespace glsl {
 			std::string uniqueid;
 			std::vector<size_t> hashes;
 			std::vector<std::shared_ptr<Function>> dependencies;
+
+			// dependencies
+			for (auto& func : m_Functions) {
+				dependencies.emplace_back(func);
+			}
 
 			// create code str
 			{

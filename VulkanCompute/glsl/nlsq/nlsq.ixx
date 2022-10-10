@@ -12,9 +12,12 @@ import vc;
 import glsl;
 import util;
 
+import expr;
+
 import linalg;
 import symm;
 import solver;
+import permute;
 
 import variable;
 import function;
@@ -181,136 +184,9 @@ float nlsq_error_UNIQUEID(in float res[ndata]) {
 		auto func = nlsq_error(ndim, single_precission);
 		auto uniqueid = nlsq_error_uniqueid(ndim, single_precission);
 
-		return FunctionApplier{ func, nullptr, {res}, uniqueid };
+		return FunctionApplier{ func, error, {res}, uniqueid };
 	}
 
-	/*
-	export std::string nlsq_slm_step_uniqueid(
-		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
-	{
-		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
-		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
-	}
-
-	export std::shared_ptr<::glsl::Function> nlsq_slm_step(
-		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
-	{
-		static const std::string code = // compute shader
-R"glsl(
-void nlsq_slm_step_UNIQUEID(
-	inout float params[nparam], in float consts[ndata*nconst], in float data[ndata],
-	inout float lambda, inout int step_type, float mu, float eta, float inc, float dec, float tol) 
-{
-	float residuals[ndata];
-	float jacobian[ndata*nparam];
-
-	nlsq_residuals_jacobian_NRJID(params, consts, data, residuals, jacobian);
-	
-	float hessian[nparam*nparam];
-
-	mul_transpose_mat_MTMID(jacobian, hessian);
-
-	float lambda_hessian[nparam*nparam];
-
-	mat_add_ldiag_out_MALOID(hessian, lambda, lambda_hessian);
-
-	gmw81_GID(lambda_hessian);
-
-	float gradient[nparam];
-	
-	mul_transpose_vec_MTVID(jacobian, residuals, gradient);
-	vec_neg_VNEGID(gradient);
-	
-	float step[nparam];
-
-	ldl_solve_LSID(lambda_hessian, gradient, step);
-
-	float new_params[nparam];
-
-	add_vec_vec_AVVID(params, step, new_params);
-	
-	float error = nlsq_error_NEID(residuals);	
-	
-	nlsq_residuals_NRID(new_params, consts, data, residuals);
-
-	float new_error = nlsq_error_NEID(residuals);
-
-	float gain_ratio = nlsq_gain_NGID(step, gradient, hessian, error, new_error);
-	
-	step_type = 0;
-	if (new_error < error || gain_ratio > eta) {
-		copy_vec(new_params, params);
-		step_type = 10;
-	}
-	if (gain_ratio > eta) {
-		lambda *= inc;
-		step_type += 1;
-	}
-	if (gain_ratio < mu) {
-		lambda *= dec;
-		step -= 1;
-	}
-	
-	// convergence
-	mul_mat_vec_MMVID(jacobian, step, new_params);
-	float jp_norm = vec_norm_VNORMID(new_params);
-
-	if (jp_norm < tol * (1 + sqrt(2*error))) {
-		step += 10;
-	}
-}
-)glsl";
-
-		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
-		std::string uniqueid = nlsq_slm_step_uniqueid(expr, context, nparam, ndata, nconst, single_precission);
-
-		std::function<std::string()> code_func = [ndata, nparam, nconst, single_precission, &expr, &context, uniqueid]() -> std::string
-		{
-			std::string temp = code;
-			util::replace_all(temp, UNIQUE_ID, uniqueid);
-			util::replace_all(temp, "NRJID", nlsq_residuals_jacobian_uniqueid(expr, context, ndata, nparam, nconst, single_precission));
-			util::replace_all(temp, "MTMID", linalg::mul_transpose_mat_uniqueid(ndata, nparam, single_precission));
-			util::replace_all(temp, "MALOID", linalg::mat_add_ldiag_out_uniqueid(nparam, single_precission));
-			util::replace_all(temp, "GID", linalg::gmw81_uniqueid(nparam, single_precission));
-			util::replace_all(temp, "MTVID", linalg::mul_transpose_vec_uniqueid(ndata, nparam, single_precission));
-			util::replace_all(temp, "VNEGID", linalg::vec_neg_uniqueid(nparam, single_precission));
-			util::replace_all(temp, "LSID", linalg::ldl_solve_uniqueid(nparam, single_precission));
-			util::replace_all(temp, "AVVID", linalg::add_vec_vec_uniqueid(nparam, single_precission));
-			util::replace_all(temp, "NEID", nlsq_error_uniqueid(ndata, single_precission));
-			util::replace_all(temp, "NRID", nlsq_residuals_uniqueid(expr, context, ndata, nparam, nconst, single_precission));
-			util::replace_all(temp, "NGID", nlsq_gain_ratio_uniqueid(nparam, single_precission));
-			util::replace_all(temp, "MMVID", linalg::mul_mat_vec_uniqueid(ndata, nparam, single_precission));
-			util::replace_all(temp, "VNORMID", linalg::vec_norm_uniqueid(ndata, single_precission));
-			if (!single_precission) {
-				util::replace_all(temp, "float", "double");
-			}
-			return temp;
-		};
-
-		return std::make_shared<Function>(
-			"nlsq_slm_step_" + uniqueid,
-			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
-			code_func,
-			std::make_optional<vecptrfunc>({ 
-				nlsq_residuals_jacobian(expr, context, ndata, nparam, nconst, single_precission),
-				linalg::mul_transpose_mat(ndata, nparam, single_precission),
-				linalg::mat_add_ldiag_out(nparam, single_precission),
-				linalg::gmw81(nparam, single_precission),
-				linalg::mul_transpose_vec(ndata, nparam, single_precission),
-				linalg::vec_neg(nparam, single_precission),
-				linalg::ldl_solve(nparam, single_precission),
-				linalg::add_vec_vec(nparam, single_precission),
-				nlsq_error(ndata, single_precission),
-				nlsq_residuals(expr, context, ndata, nparam, nconst, single_precission),
-				nlsq_gain_ratio(nparam, single_precission),
-				linalg::mul_mat_vec(ndata, nparam, single_precission),
-				linalg::vec_norm(ndata, single_precission)
-				})
-		);
-	}
-	*/
 
 	export enum class StepType {
 		NO_STEP = 1,
@@ -319,103 +195,225 @@ void nlsq_slm_step_UNIQUEID(
 		STEP = 8
 	};
 
+	export std::string nlsq_slmh_step_uniqueid(const expression::Expression& expr, const glsl::SymbolicContext& context,
+		vc::ui16 ndata, vc::ui16 nparam, vc::ui16 nconst, bool single_precission)
+	{
+		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
+		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
+	}
+
+	export std::shared_ptr<::glsl::Function> nlsq_slmh_step(
+		const expression::Expression& expr, const glsl::SymbolicContext& context,
+		vc::ui16 ndata, vc::ui16 nparam, vc::ui16 nconst, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void nlsq_slmh_step_UNIQUEID(
+	inout float params[nparam], in float consts[ndata*nconst], in float data[ndata],
+	inout float lambda, inout int step_type, float mu, float eta, float acc, float dec,
+	inout float nlstep[nparam], inout float error, inout float new_error,
+	inout float residuals[ndata], inout float jacobian[ndata*nparam], 
+	inout float hessian[nparam*nparam], inout float lambda_hessian[nparam*nparam]) 
+{
+	nlsq_residuals_jacobian_hessian_l_NRJHLID(params, consts, data, lambda, residuals, jacobian, hessian, lambda_hessian);
+	int perm[nparam];
+	diagonal_pivoting_DPID(lambda_hessian, perm);
+	gmw81_G81ID(lambda_hessian);
+	
+	float gradient[nparam];
+	mul_transpose_vec_MTVID(jacobian, residuals, gradient);
+	vec_neg_VNID(gradient);
+	
+	float steplike[nparam];
+	permute_vec_PVID(gradient, perm, steplike);
+	
+	ldl_solve_LSID(lambda_hessian, steplike, nlstep);
+
+	permute_o_vec_POVID(nlstep, perm, nlstep);	
+
+	add_vec_vec_AVVID(params, nlstep, steplike);
+	
+	error = nlsq_error_NEID(residuals);
+
+	float new_residuals[ndata];
+	nlsq_residuals_NRID(steplike, consts, data, new_residuals);
+
+	new_error = nlsq_error_NEID(new_residuals);
+
+	float gain_ratio = nlsq_gain_ratio_NGRID(nlstep, gradient, hessian, error, new_error);
+	
+	step_type = 0;
+	if (new_error < error && gain_ratio > mu) {
+		params = steplike;
+		step_type += STEP_TYPE_STEP;
+
+		if (gain_ratio > eta) {
+			lambda *= acc;
+			step_type += STEP_TYPE_DECREASED;
+		}
+	}
+	else {
+		step_type += STEP_TYPE_NOSTEP;
+	}
+	
+	if (gain_ratio < mu) {
+		lambda *= dec;
+		step_type += STEP_TYPE_INCREASED;
+	}
+	
+}
+)glsl";
+
+		using namespace glsl::linalg;
+		using namespace glsl::nlsq;
+
+		std::string uniqueid = nlsq_slmh_step_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+
+		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
+
+		std::function<std::string()> code_func =
+			[expr, context, ndata, nparam, nconst, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndata", std::to_string(ndata));
+			util::replace_all(temp, "nparam", std::to_string(nparam));
+			util::replace_all(temp, "nconst", std::to_string(nconst));
+
+			util::replace_all(temp, "STEP_TYPE_STEP", std::to_string(static_cast<int>(StepType::STEP)));
+			util::replace_all(temp, "STEP_TYPE_DECREASED", std::to_string(static_cast<int>(StepType::DAMPING_DECREASED)));
+			util::replace_all(temp, "STEP_TYPE_NOSTEP", std::to_string(static_cast<int>(StepType::NO_STEP)));
+			util::replace_all(temp, "STEP_TYPE_INCREASED", std::to_string(static_cast<int>(StepType::DAMPING_INCREASED)));
+
+			util::replace_all(temp, "NRJHLID", nlsq_residuals_jacobian_hessian_l_uniqueid(expr, 
+				context, ndata, nparam, nconst, single_precission));
+			util::replace_all(temp, "DPID", diagonal_pivoting_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "G81ID", gmw81_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "MTVID", mul_transpose_vec_uniqueid(ndata, nparam, single_precission));
+			util::replace_all(temp, "VNID", vec_neg_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "PVID", permute_vec_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "LSID", ldl_solve_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "POVID", permute_o_vec_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "AVVID", add_vec_vec_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "NEID", nlsq_error_uniqueid(ndata, single_precission));
+			util::replace_all(temp, "NRID", nlsq_residuals_uniqueid(expr,
+				context, ndata, nparam, nconst, single_precission));
+			util::replace_all(temp, "NGRID", nlsq_gain_ratio_uniqueid(nparam, single_precission));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<Function>(
+			"nlsq_slmh_step_" + uniqueid,
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			code_func,
+			std::make_optional<vecptrfunc>({
+				nlsq_residuals_jacobian_hessian_l(expr, context,
+					ndata, nparam, nconst, single_precission),
+				diagonal_pivoting(nparam, single_precission),
+				gmw81(nparam, single_precission),
+				mul_transpose_vec(ndata, nparam, single_precission),
+				vec_neg(nparam, single_precission),
+				permute_vec(nparam, single_precission),
+				ldl_solve(nparam, single_precission),
+				permute_o_vec(nparam, single_precission),
+				add_vec_vec(nparam, single_precission),
+				nlsq_error(ndata, single_precission),
+				nlsq_residuals(expr, context, 
+					ndata, nparam, nconst, single_precission),
+				nlsq_gain_ratio(nparam, single_precission)
+				})
+			);
+	}
+
 	export FunctionApplier nlsq_slmh_step(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
 		const std::shared_ptr<VectorVariable>& params,
 		const std::shared_ptr<MatrixVariable>& consts,
 		const std::shared_ptr<VectorVariable>& data,
-		const std::shared_ptr<VectorVariable>& residuals, 
-		const std::shared_ptr<MatrixVariable>& jacobian,
-		const std::shared_ptr<MatrixVariable>& hessian,
 		const std::shared_ptr<SingleVariable>& lambda,
+		const std::shared_ptr<SingleVariable>& step_type,
 		const std::shared_ptr<SingleVariable>& mu,
 		const std::shared_ptr<SingleVariable>& eta,
-		const std::shared_ptr<VectorVariable>& step,
-		const std::shared_ptr<SingleVariable>& step_type)
+		const std::shared_ptr<SingleVariable>& acc,
+		const std::shared_ptr<SingleVariable>& dec,
+		const std::shared_ptr<VectorVariable>& nlstep,
+		const std::shared_ptr<SingleVariable>& error,
+		const std::shared_ptr<SingleVariable>& new_error,
+		const std::shared_ptr<VectorVariable>& residuals,
+		const std::shared_ptr<MatrixVariable>& jacobian,
+		const std::shared_ptr<MatrixVariable>& hessian,
+		const std::shared_ptr<MatrixVariable>& lambda_hessian)
 	{
 		// type and dimension checks
-		/*
-		nlsq_residuals_jacobian_hessian makes all the checks for residuals, jacobian, hessian, data, params, 
-		*/
+		{
+			if (residuals->getNDim() != jacobian->getNDim1()) {
+				throw std::runtime_error("residuals dim and jacobian dim1 must agree");
+			}
+			if (jacobian->getNDim2() != hessian->getNDim1()) {
+				throw std::runtime_error("jacobian dim2 and hessian dim1 must agree");
+			}
+			if (!hessian->isSquare()) {
+				throw std::runtime_error("hessian isn't square");
+			}
+			if (params->getNDim() != jacobian->getNDim2()) {
+				throw std::runtime_error("params dim and jacobian dim2 must agree");
+			}
+			if (residuals->getNDim() != data->getNDim()) {
+				throw std::runtime_error("residuals dim and data dim must agree");
+			}
+			if (residuals->getNDim() != consts->getNDim1()) {
+				throw std::runtime_error("residuals dim and consts dim1 must agree");
+			}
+			if (lambda_hessian->getNDim1() != hessian->getNDim1()) {
+				throw std::runtime_error("hessian and lambda_hessian must have the same dimension");
+			}
+			if (!lambda_hessian->isSquare()) {
+				throw std::runtime_error("lambda_hessian isn't square");
+			}
+			if (nlstep->getNDim() != params->getNDim()) {
+				throw std::runtime_error("step dim and params dim doesn't agree");
+			}
 
-		glsl::FunctionFactory factory("nlsq_slmh_step", ShaderVariableType::VOID);
+			if (!((ui16)residuals->getType() &
+				(ui16)jacobian->getType() &
+				(ui16)hessian->getType() &
+				(ui16)params->getType() &
+				(ui16)data->getType() &
+				(ui16)consts->getType() &
+				(ui16)lambda->getType() &
+				(ui16)lambda_hessian->getType() &
+				(ui16)nlstep->getType()
+				))
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((params->getType() == ShaderVariableType::FLOAT) ||
+				(params->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
 
-		factory.addVector(residuals, FunctionFactory::InputType::INOUT);
-		factory.addMatrix(jacobian, FunctionFactory::InputType::INOUT);
-		factory.addMatrix(hessian, FunctionFactory::InputType::INOUT);
-		factory.addVector(data, FunctionFactory::InputType::IN);
-		factory.addVector(params, FunctionFactory::InputType::INOUT);
-		factory.addMatrix(consts, FunctionFactory::InputType::IN);
-		factory.addSingle(lambda, FunctionFactory::InputType::INOUT);
-		factory.addSingle(step_type, FunctionFactory::InputType::INOUT);
-		factory.addSingle(mu, FunctionFactory::InputType::IN);
-		factory.addSingle(eta, FunctionFactory::InputType::IN);
+		ui16 ndata = residuals->getNDim();
+		ui16 nparam = params->getNDim();
+		ui16 nconst = consts->getNDim2();
 
-		auto& if_scope = factory.apply_scope(IfScope::make(
-			"step_type >= " + std::to_string((int)StepType::STEP)));
-			
-		if_scope.apply(nlsq_residuals_jacobian_hessian(expr, context,
-			params, consts, data, residuals, jacobian, hessian));
+		bool single_precission = true;
+		if (residuals->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
 
-		auto lambda_hessian = std::make_shared<glsl::MatrixVariable>(
-			"lambda_hessian", hessian->getNDim1(), hessian->getNDim2(), hessian->getType());
+		auto func = nlsq_slmh_step(expr, context, ndata, nparam, nconst, single_precission);
 
-		factory.apply(linalg::mul_transpose_mat(jacobian, lambda_hessian));
+		auto uniqueid = nlsq_slmh_step_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
 
-		factory.apply(linalg::mat_add_ldiag_out(hessian, lambda, lambda_hessian));
-
-		factory.apply(linalg::gmw81(lambda_hessian));
-
-		auto gradient = std::make_shared<VectorVariable>(
-			"gradient", params->getNDim(), params->getType());
-
-		factory.apply(linalg::mul_transpose_vec(jacobian, residuals, gradient));
-		factory.apply(linalg::vec_neg(gradient));
-
-		factory.apply(linalg::ldl_solve(lambda_hessian, gradient, step));
-
-		auto new_params = std::make_shared<VectorVariable>(
-			"new_params", params->getNDim(), params->getType());
-
-		factory.apply(linalg::add_vec_vec(params, step, new_params));
-
-		auto error = std::make_shared<SingleVariable>(
-			"error", params->getType(), std::nullopt);
-
-		factory.apply(nlsq_error(error, residuals));
-
-		auto new_error = std::make_shared<SingleVariable>(
-			"new_error", params->getType(), std::nullopt);
-
-		factory.apply(nlsq_error(new_error, new_params));
-
-		auto gain_ratio = std::make_shared<SingleVariable>(
-			"gain_ratio", params->getType(), std::nullopt);
-
-		factory.apply(nlsq_gain_ratio(gain_ratio, step, gradient, hessian, error, new_error));
-
-		factory.apply_scope(TextedScope::make("step_type = 0;"));
-
-		//auto& if_step = factory.apply_scope(IfScope::make("new_error < error || gain_ratio > eta"));
-		auto& if_scope1 = factory.apply_scope(IfScope::make("new_error < error || gain_ratio > eta"));
-		if_scope1.apply(linalg::copy_vec(new_params, params));
-		if_scope1.apply_scope(
-			TextedScope::make("step_type += " + std::to_string(static_cast<int>(StepType::STEP)) + ";"));
-		if_scope1.chain(ElseScope::make()).apply_scope(
-			TextedScope::make("step_type += " + std::to_string(static_cast<int>(StepType::NO_STEP)) + ";"));
-
-		auto& if_scope2 = factory.apply_scope(IfScope::make("gain_ratio > eta"));
-		if_scope2.apply_scope(TextedScope::make("step_type += " + std::to_string(static_cast<int>(StepType::DAMPING_DECREASED)) + ";"));
-		if_scope2.apply_scope(TextedScope::make("lambda *= 0.5;"));
-
-		auto& elseif_scope = if_scope2.chain(ElseIfScope::make("gain_ratio < mu"));
-		elseif_scope.apply_scope(TextedScope::make("step_type += " + std::to_string(static_cast<int>(StepType::DAMPING_INCREASED)) + ";"));
-		elseif_scope.apply_scope(TextedScope::make("lambda *= 2;"));
-		
-
-		return factory.build_applier();
+		return FunctionApplier{ func, nullptr,
+			{params, consts, data, lambda, step_type, mu, eta,
+			acc, dec, nlstep, error, new_error, residuals,
+			jacobian, hessian, lambda_hessian }, 
+			uniqueid };
 	}
-	
 
 }
 }
