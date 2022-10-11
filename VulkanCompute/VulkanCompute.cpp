@@ -611,7 +611,7 @@ void test_slmh_w() {
 
 	shader.setAfterCopyingFrom(
 R"glsl(
-	for (int i = 0; i < 25; ++i) {
+	for (int i = 0; i < 8; ++i) {
 )glsl");
 	shader.apply(nlsq_step.func, nullptr,
 		nlsq_step.args);
@@ -670,8 +670,8 @@ R"glsl(
 	auto kp_lower_bound = glsl::tensor_from_vector(mgr, lower_bound, nelem);
 
 
-	float S0_div = 1.0f;
-	float b_div = 1.0f;
+	float S0_div = 100.0f;
+	float b_div = 10.0f;
 	// INITIALIZE DATA
 	std::vector<float> data_data = { 908.02686, 905.39154, 906.08997, 700.7829, 753.0848, 859.9136,
 	   870.48846, 755.96893, 617.3499, 566.2044 , 746.62067, 662.47424,
@@ -693,10 +693,10 @@ R"glsl(
 	}
 	std::memcpy(kp_consts->data<float>(), data_consts.data(), sizeof(float) * data_consts.size());
 
-	std::vector<float> data_params = { 700.0f / S0_div, 0.2, 0.1f * b_div, 0.001f * b_div };
+	std::vector<float> data_params = { 700.0f / S0_div, 0.2, 0.01f * b_div, 0.001f * b_div };
 	std::memcpy(kp_params->data<float>(), data_params.data(), sizeof(float) * data_params.size());
 
-	float data_lambda = 0.1f;
+	float data_lambda = 1.0f;
 	std::memcpy(kp_lambda->data<float>(), &data_lambda, sizeof(float));
 
 	float data_mu = 0.25f;
@@ -705,10 +705,10 @@ R"glsl(
 	float data_eta = 0.75f;
 	std::memcpy(kp_eta->data<float>(), &data_eta, sizeof(float));
 	
-	std::vector<float> data_upper_bound = { 1200.0, 1.0, 0.1, 0.01 };
+	std::vector<float> data_upper_bound = { 1200.0f / S0_div, 1.0f, 0.1f * b_div, 0.01f * b_div };
 	std::memcpy(kp_upper_bound->data<float>(), data_upper_bound.data(), sizeof(float) * data_upper_bound.size());
 	
-	std::vector<float> data_lower_bound = { 500.0, 0.01, 0.0005, 0.00005 };
+	std::vector<float> data_lower_bound = { 500.0f / S0_div, 0.01f, 0.0005f * b_div, 0.00005f * b_div };
 	std::memcpy(kp_lower_bound->data<float>(), data_lower_bound.data(), sizeof(float) * data_lower_bound.size());
 
 	// END INITIALIZE DATA
