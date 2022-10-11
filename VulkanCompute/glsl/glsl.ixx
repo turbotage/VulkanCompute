@@ -1,5 +1,6 @@
 module;
 
+#define KOMPUTE_LOG_LEVEL KOMPUTE_LOG_LEVEL_CRITICAL
 #include <kompute/Kompute.hpp>
 
 export module glsl;

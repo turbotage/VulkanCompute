@@ -625,8 +625,8 @@ HESSIAN_EXPRESSIONS
 	}
 
 
-	// residuals, jacobian, hessian and scaled lambda-mult
-	export std::string nlsq_residuals_jacobian_hessian_sl_uniqueid(
+	// residuals, jacobian, hessian and lambda-mult
+	export std::string nlsq_residuals_jacobian_hessian_lw_uniqueid(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
 		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
 	{
@@ -634,21 +634,25 @@ HESSIAN_EXPRESSIONS
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
 	}
 
-	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian_hessian_sl(
+	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian_hessian_lw(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
 		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void nlsq_residuals_jacobian_hessian_sl_UNIQUEID(
+void nlsq_residuals_jacobian_hessian_lw_UNIQUEID(
 	in float params[nparam],
 	in float consts[ndata*nconst],
 	in float data[ndata],
+	in float weights[ndata],
 	float lambda,
 	out float residuals[ndata],
 	out float jacobian[ndata*nparam], 
-	out float hessian[nparam*nparam]) {
+	out float hessian[nparam*nparam],
+	out float lambda_hessian[nparam*nparam]) {
 	
+	mat_set_zero_MSZ(hessian);
+
 	for (int i = 0; i < ndata; ++i) {
 		// eval
 RESIDUAL_EXPRESSIONS
@@ -665,9 +669,9 @@ HESSIAN_EXPRESSIONS
 		}
 	}
 
-	// add first order part of hessian and add lambda diagonal
-	mul_transpose_mat_add_ldiag_MTMAID(jacobian, hessian);
-
+	// store J^T @ J inside lambda_hessian, second order terms are in hessian
+	mul_transpose_diag_mat_MTDMID(jacobian, weights, lambda_hessian);
+	add_mat_mat_ldiag_AMML(hessian, lambda, lambda_hessian);
 }
 )glsl";
 
@@ -680,7 +684,8 @@ HESSIAN_EXPRESSIONS
 		std::string jacexpr = "";
 		for (int i = 0; i < nparam; ++i) {
 			std::string diff_symbol = context.get_params_name(i);
-			std::string jexpr = expr.diff(diff_symbol)->glsl_str(context);
+			auto diff1 = expr.diff(diff_symbol);
+			std::string jexpr = diff1->glsl_str(context);
 			std::string partj = "\t\tjacobian[i*" + std::to_string(nparam) + "+" + std::to_string(i) +
 				"] = " + jexpr + ";\n";
 			jacexpr += partj;
@@ -699,14 +704,14 @@ HESSIAN_EXPRESSIONS
 					continue;
 				std::string hexpr = diff2->glsl_str(context);
 				std::string parth = "\t\thessian[" + std::to_string(i) + "*" + std::to_string(nparam) + "+" +
-					std::to_string(j) + "] += residuals[i] * " + hexpr + ";\n";
+					std::to_string(j) + "] += residuals[i] * weights[i] * " + hexpr + ";\n";
 				hesexpr += parth;
 
 				++k;
 			}
 		}
 
-		std::string uniqueid = nlsq_residuals_jacobian_hessian_sl_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		std::string uniqueid = nlsq_residuals_jacobian_hessian_lw_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
 
 		std::function<std::string()> code_func =
 			[ndata, nparam, nconst, resexpr, jacexpr, hesexpr, single_precission, uniqueid]() -> std::string
@@ -719,7 +724,9 @@ HESSIAN_EXPRESSIONS
 			util::replace_all(temp, "ndata", std::to_string(ndata));
 			util::replace_all(temp, "nparam", std::to_string(nparam));
 			util::replace_all(temp, "nconst", std::to_string(nconst));
-			util::replace_all(temp, "MTMAID", linalg::mul_transpose_mat_add_ldiag_uniqueid(ndata, nparam, single_precission));
+			util::replace_all(temp, "MSZ", linalg::mat_set_zero_uniqueid(nparam, nparam, single_precission));
+			util::replace_all(temp, "MTDMID", linalg::mul_transpose_diag_mat_uniqueid(ndata, nparam, single_precission));
+			util::replace_all(temp, "AMML", linalg::add_mat_mat_ldiag_uniqueid(nparam, single_precission));
 			if (!single_precission) {
 				util::replace_all(temp, "float", "double");
 			}
@@ -727,52 +734,68 @@ HESSIAN_EXPRESSIONS
 		};
 
 		return std::make_shared<Function>(
-			"nlsq_residuals_jacobian_hessian_sl_" + uniqueid,
+			"nlsq_residuals_jacobian_hessian_lw_" + uniqueid,
 			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
 			code_func,
 			std::make_optional<vecptrfunc>({
-				linalg::mul_transpose_mat_add_ldiag(ndata, nparam, single_precission),
+				linalg::mat_set_zero(nparam, nparam, single_precission),
+				linalg::mul_transpose_diag_mat(ndata, nparam, single_precission),
+				linalg::add_mat_mat_ldiag(nparam, single_precission)
 				})
-				);
+			);
 
 	}
 
-	export ::glsl::FunctionApplier nlsq_residuals_jacobian_hessian_sl(
+	export ::glsl::FunctionApplier nlsq_residuals_jacobian_hessian_lw(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
 		const std::shared_ptr<glsl::VectorVariable>& params,
 		const std::shared_ptr<glsl::MatrixVariable>& consts,
 		const std::shared_ptr<glsl::VectorVariable>& data,
+		const std::shared_ptr<glsl::VectorVariable>& weights,
+		const std::shared_ptr<glsl::SingleVariable>& lambda,
 		const std::shared_ptr<glsl::VectorVariable>& residuals,
 		const std::shared_ptr<glsl::MatrixVariable>& jacobian,
-		const std::shared_ptr<glsl::MatrixVariable>& hessian)
+		const std::shared_ptr<glsl::MatrixVariable>& hessian,
+		const std::shared_ptr<glsl::MatrixVariable>& lambda_hessian)
 	{
 		// type and dimension checks
 		{
-			if (residuals->getNDim() == jacobian->getNDim1()) {
+			if (residuals->getNDim() != jacobian->getNDim1()) {
 				throw std::runtime_error("residuals dim and jacobian dim1 must agree");
 			}
-			if (jacobian->getNDim2() == hessian->getNDim1()) {
+			if (jacobian->getNDim2() != hessian->getNDim1()) {
 				throw std::runtime_error("jacobian dim2 and hessian dim1 must agree");
 			}
-			if (hessian->isSquare()) {
-				throw std::runtime_error("hessian is square");
+			if (!hessian->isSquare()) {
+				throw std::runtime_error("hessian isn't square");
 			}
-			if (params->getNDim() == jacobian->getNDim2()) {
+			if (params->getNDim() != jacobian->getNDim2()) {
 				throw std::runtime_error("params dim and jacobian dim2 must agree");
 			}
-			if (residuals->getNDim() == data->getNDim()) {
+			if (residuals->getNDim() != data->getNDim()) {
 				throw std::runtime_error("residuals dim and data dim must agree");
 			}
-			if (residuals->getNDim() == consts->getNDim1()) {
+			if (residuals->getNDim() != consts->getNDim1()) {
 				throw std::runtime_error("residuals dim and consts dim1 must agree");
 			}
+			if (lambda_hessian->getNDim1() != hessian->getNDim1()) {
+				throw std::runtime_error("hessian and lambda_hessian must have the same dimension");
+			}
+			if (!lambda_hessian->isSquare()) {
+				throw std::runtime_error("lambda_hessian isn't square");
+			}
+			if (jacobian->getNDim1() != weights->getNDim()) {
+				throw std::runtime_error("hacibuab dun1 must equal weights dim");
+			}
 
-			if ((ui16)residuals->getType() &
+			if (!((ui16)residuals->getType() &
 				(ui16)jacobian->getType() &
 				(ui16)hessian->getType() &
 				(ui16)params->getType() &
 				(ui16)data->getType() &
-				(ui16)consts->getType())
+				(ui16)consts->getType() &
+				(ui16)lambda->getType() &
+				(ui16)lambda_hessian->getType()))
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
@@ -790,15 +813,14 @@ HESSIAN_EXPRESSIONS
 		if (residuals->getType() == ShaderVariableType::DOUBLE)
 			single_precission = false;
 
-		auto func = nlsq_residuals_jacobian_hessian_sl(expr, context, ndata, nparam, nconst, single_precission);
+		auto func = nlsq_residuals_jacobian_hessian_lw(expr, context, ndata, nparam, nconst, single_precission);
 
-		auto uniqueid = nlsq_residuals_jacobian_hessian_sl_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		auto uniqueid = nlsq_residuals_jacobian_hessian_lw_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
 
 		return FunctionApplier{ func, nullptr,
-			{params, consts, data, residuals, jacobian, hessian}, uniqueid };
+			{params, consts, data, weights, lambda, residuals, jacobian, hessian, lambda_hessian }, uniqueid };
 
 	}
-
 
 }
 }

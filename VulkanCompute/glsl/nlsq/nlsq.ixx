@@ -188,14 +188,87 @@ float nlsq_error_UNIQUEID(in float res[ndata]) {
 	}
 
 
+	export std::string nlsq_weighted_error_uniqueid(ui16 ndata, bool single_precission)
+	{
+		return std::to_string(ndata) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export std::shared_ptr<::glsl::Function> nlsq_weighted_error(ui16 ndata, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+float nlsq_weighted_error_UNIQUEID(in float res[ndata], in float weights[ndata]) {
+	return 0.5 * diag_weighted_vec_norm2_VN2ID(weights, res);
+}
+)glsl";
+
+		std::string uniqueid = nlsq_weighted_error_uniqueid(ndata, single_precission);
+
+		std::function<std::string()> code_func = [ndata, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndata", std::to_string(ndata));
+			util::replace_all(temp, "VN2ID", linalg::diag_weighted_vec_norm2_uniqueid(ndata, single_precission));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<Function>(
+			"nlsq_error_" + uniqueid,
+			std::vector<size_t>{ size_t(ndata), size_t(single_precission) },
+			code_func,
+			std::make_optional<vecptrfunc>({
+				linalg::diag_weighted_vec_norm2(ndata, single_precission)
+				})
+			);
+	}
+
+	export FunctionApplier nlsq_weighted_error(
+		const std::shared_ptr<SingleVariable>& error,
+		const std::shared_ptr<VectorVariable>& res,
+		const std::shared_ptr<VectorVariable>& weights)
+	{
+		// type and dims check
+		{
+			if (res->getNDim() != weights->getNDim()) {
+				throw std::runtime_error("res and weights dimensions must agree");
+			}
+
+			if (!((ui16)res->getType() &
+				(ui16)weights->getType()))
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+
+			if (!((res->getType() == ShaderVariableType::FLOAT) ||
+				(res->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndim = res->getNDim();
+
+		bool single_precission = true;
+		if (res->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = nlsq_error(ndim, single_precission);
+		auto uniqueid = nlsq_error_uniqueid(ndim, single_precission);
+
+		return FunctionApplier{ func, error, {weights, res}, uniqueid };
+	}
+
+
+
 	export enum class StepType {
 		NO_STEP = 1,
 		DAMPING_INCREASED = 2,
 		DAMPING_DECREASED = 4,
 		STEP = 8
 	};
-
-
 
 	export std::string nlsq_slmj_step_uniqueid(const expression::Expression& expr, const glsl::SymbolicContext& context,
 		vc::ui16 ndata, vc::ui16 nparam, vc::ui16 nconst, bool single_precission)
@@ -435,7 +508,7 @@ void nlsq_slmj_step_UNIQUEID(
 	{
 		static const std::string code = // compute shader
 R"glsl(
-void nlsq_slmh_step_UNIQUEID(
+float nlsq_slmh_step_UNIQUEID(
 	inout float params[nparam], in float consts[ndata*nconst], in float data[ndata],
 	inout float lambda, inout int step_type, float mu, float eta, float acc, float dec,
 	inout float nlstep[nparam], inout float error, inout float new_error,
@@ -488,6 +561,7 @@ void nlsq_slmh_step_UNIQUEID(
 		step_type += STEP_TYPE_INCREASED;
 	}
 	
+	return gain_ratio;
 }
 )glsl";
 
@@ -641,6 +715,231 @@ void nlsq_slmh_step_UNIQUEID(
 			jacobian, hessian, lambda_hessian }, 
 			uniqueid };
 	}
+
+
+	export std::string nlsq_slmh_w_step_uniqueid(const expression::Expression& expr, const glsl::SymbolicContext& context,
+		vc::ui16 ndata, vc::ui16 nparam, vc::ui16 nconst, bool single_precission)
+	{
+		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
+		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
+	}
+
+	export std::shared_ptr<::glsl::Function> nlsq_slmh_w_step(
+		const expression::Expression& expr, const glsl::SymbolicContext& context,
+		vc::ui16 ndata, vc::ui16 nparam, vc::ui16 nconst, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+float nlsq_slmh_w_step_UNIQUEID(
+	inout float params[nparam], in float consts[ndata*nconst], in float data[ndata], in float weights[ndata],
+	inout float lambda, inout int step_type, float mu, float eta, float acc, float dec,
+	inout float nlstep[nparam], inout float error, inout float new_error,
+	inout float residuals[ndata], inout float jacobian[ndata*nparam], 
+	inout float hessian[nparam*nparam], inout float lambda_hessian[nparam*nparam]) 
+{
+	nlsq_residuals_jacobian_hessian_lw_NRJHLID(params, consts, data, weights, lambda, residuals, jacobian, hessian, lambda_hessian);
+	int perm[nparam];
+	diagonal_pivoting_DPID(lambda_hessian, perm);
+	gmw81_G81ID(lambda_hessian);
+	
+	float gradient[nparam];
+	mul_transpose_diag_vec_MTVID(jacobian, weights, residuals, gradient);
+	vec_neg_VNID(gradient);
+	
+	float steplike[nparam];
+	permute_vec_PVID(gradient, perm, steplike);
+	
+	ldl_solve_LSID(lambda_hessian, steplike, nlstep);
+
+	permute_o_vec_POVID(nlstep, perm, nlstep);	
+
+	add_vec_vec_AVVID(params, nlstep, steplike);
+	
+	error = nlsq_weighted_error_NWEID(residuals, weights);
+
+	float new_residuals[ndata];
+	nlsq_residuals_NRID(steplike, consts, data, new_residuals);
+
+	new_error = nlsq_weighted_error_NWEID(new_residuals, weights);
+
+	float gain_ratio = nlsq_gain_ratio_NGRID(nlstep, gradient, hessian, error, new_error);
+	
+	step_type = 0;
+	if (new_error < error && gain_ratio > mu) {
+		params = steplike;
+		step_type += STEP_TYPE_STEP;
+
+		if (gain_ratio > eta) {
+			lambda *= acc;
+			step_type += STEP_TYPE_DECREASED;
+		}
+	}
+	else {
+		step_type += STEP_TYPE_NOSTEP;
+	}
+	
+	if (gain_ratio < mu) {
+		lambda *= dec;
+		step_type += STEP_TYPE_INCREASED;
+	}
+	
+	return gain_ratio;
+}
+)glsl";
+
+		using namespace glsl::linalg;
+		using namespace glsl::nlsq;
+
+		std::string uniqueid = nlsq_slmh_w_step_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+
+		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
+
+		std::function<std::string()> code_func =
+			[expr, context, ndata, nparam, nconst, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndata", std::to_string(ndata));
+			util::replace_all(temp, "nparam", std::to_string(nparam));
+			util::replace_all(temp, "nconst", std::to_string(nconst));
+
+			util::replace_all(temp, "STEP_TYPE_STEP", std::to_string(static_cast<int>(StepType::STEP)));
+			util::replace_all(temp, "STEP_TYPE_DECREASED", std::to_string(static_cast<int>(StepType::DAMPING_DECREASED)));
+			util::replace_all(temp, "STEP_TYPE_NOSTEP", std::to_string(static_cast<int>(StepType::NO_STEP)));
+			util::replace_all(temp, "STEP_TYPE_INCREASED", std::to_string(static_cast<int>(StepType::DAMPING_INCREASED)));
+
+			util::replace_all(temp, "NRJHLID", nlsq_residuals_jacobian_hessian_lw_uniqueid(expr,
+				context, ndata, nparam, nconst, single_precission));
+			util::replace_all(temp, "DPID", diagonal_pivoting_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "G81ID", gmw81_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "MTVID", mul_transpose_diag_vec_uniqueid(ndata, nparam, single_precission));
+			util::replace_all(temp, "VNID", vec_neg_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "PVID", permute_vec_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "LSID", ldl_solve_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "POVID", permute_o_vec_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "AVVID", add_vec_vec_uniqueid(nparam, single_precission));
+			util::replace_all(temp, "NWEID", nlsq_weighted_error_uniqueid(ndata, single_precission));
+			util::replace_all(temp, "NRID", nlsq_residuals_uniqueid(expr,
+				context, ndata, nparam, nconst, single_precission));
+			util::replace_all(temp, "NGRID", nlsq_gain_ratio_uniqueid(nparam, single_precission));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<Function>(
+			"nlsq_slmh_w_step_" + uniqueid,
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			code_func,
+			std::make_optional<vecptrfunc>({
+				nlsq_residuals_jacobian_hessian_lw(expr, context,
+					ndata, nparam, nconst, single_precission),
+				diagonal_pivoting(nparam, single_precission),
+				gmw81(nparam, single_precission),
+				mul_transpose_diag_vec(ndata, nparam, single_precission),
+				vec_neg(nparam, single_precission),
+				permute_vec(nparam, single_precission),
+				ldl_solve(nparam, single_precission),
+				permute_o_vec(nparam, single_precission),
+				add_vec_vec(nparam, single_precission),
+				nlsq_weighted_error(ndata, single_precission),
+				nlsq_residuals(expr, context,
+					ndata, nparam, nconst, single_precission),
+				nlsq_gain_ratio(nparam, single_precission)
+				})
+			);
+	}
+
+	export FunctionApplier nlsq_slmh_w_step(
+		const expression::Expression& expr, const glsl::SymbolicContext& context,
+		const std::shared_ptr<VectorVariable>& params,
+		const std::shared_ptr<MatrixVariable>& consts,
+		const std::shared_ptr<VectorVariable>& data,
+		const std::shared_ptr<VectorVariable>& weights,
+		const std::shared_ptr<SingleVariable>& lambda,
+		const std::shared_ptr<SingleVariable>& step_type,
+		const std::shared_ptr<SingleVariable>& mu,
+		const std::shared_ptr<SingleVariable>& eta,
+		const std::shared_ptr<SingleVariable>& acc,
+		const std::shared_ptr<SingleVariable>& dec,
+		const std::shared_ptr<VectorVariable>& nlstep,
+		const std::shared_ptr<SingleVariable>& error,
+		const std::shared_ptr<SingleVariable>& new_error,
+		const std::shared_ptr<VectorVariable>& residuals,
+		const std::shared_ptr<MatrixVariable>& jacobian,
+		const std::shared_ptr<MatrixVariable>& hessian,
+		const std::shared_ptr<MatrixVariable>& lambda_hessian)
+	{
+		// type and dimension checks
+		{
+			if (residuals->getNDim() != jacobian->getNDim1()) {
+				throw std::runtime_error("residuals dim and jacobian dim1 must agree");
+			}
+			if (jacobian->getNDim2() != hessian->getNDim1()) {
+				throw std::runtime_error("jacobian dim2 and hessian dim1 must agree");
+			}
+			if (!hessian->isSquare()) {
+				throw std::runtime_error("hessian isn't square");
+			}
+			if (params->getNDim() != jacobian->getNDim2()) {
+				throw std::runtime_error("params dim and jacobian dim2 must agree");
+			}
+			if (residuals->getNDim() != data->getNDim()) {
+				throw std::runtime_error("residuals dim and data dim must agree");
+			}
+			if (residuals->getNDim() != consts->getNDim1()) {
+				throw std::runtime_error("residuals dim and consts dim1 must agree");
+			}
+			if (lambda_hessian->getNDim1() != hessian->getNDim1()) {
+				throw std::runtime_error("hessian and lambda_hessian must have the same dimension");
+			}
+			if (!lambda_hessian->isSquare()) {
+				throw std::runtime_error("lambda_hessian isn't square");
+			}
+			if (nlstep->getNDim() != params->getNDim()) {
+				throw std::runtime_error("step dim and params dim doesn't agree");
+			}
+
+			if (!((ui16)residuals->getType() &
+				(ui16)jacobian->getType() &
+				(ui16)hessian->getType() &
+				(ui16)params->getType() &
+				(ui16)data->getType() &
+				(ui16)consts->getType() &
+				(ui16)lambda->getType() &
+				(ui16)lambda_hessian->getType() &
+				(ui16)nlstep->getType()
+				))
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((params->getType() == ShaderVariableType::FLOAT) ||
+				(params->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 ndata = residuals->getNDim();
+		ui16 nparam = params->getNDim();
+		ui16 nconst = consts->getNDim2();
+
+		bool single_precission = true;
+		if (residuals->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = nlsq_slmh_w_step(expr, context, ndata, nparam, nconst, single_precission);
+
+		auto uniqueid = nlsq_slmh_w_step_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+
+		return FunctionApplier{ func, nullptr,
+			{params, consts, data, weights, lambda, step_type, mu, eta,
+			acc, dec, nlstep, error, new_error, residuals,
+			jacobian, hessian, lambda_hessian },
+			uniqueid };
+	}
+
+
 
 }
 }

@@ -234,6 +234,47 @@ float weighted_inner_prod_UNIQUEID(in float mat[ndim*ndim], in float v1[ndim], i
 	}
 
 
+	export std::string diag_weighted_inner_prod_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export std::shared_ptr<::glsl::Function> diag_weighted_inner_prod(ui16 ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+float diag_weighted_inner_prod_UNIQUEID(in float diag[ndim], in float v1[ndim], in float v2[ndim]) {
+	float ret = 0;
+	for (int i = 0; i < ndim; ++i) {
+		ret += v1[i] * diag[i] * v2[i];
+	}
+	return ret;
+}
+)glsl";
+
+		std::string uniqueid = diag_weighted_inner_prod_uniqueid(ndim, single_precission);
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<::glsl::Function>(
+			"diag_weighted_inner_prod_" + uniqueid,
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+			);
+	}
+
+
+
 	export std::string weighted_vec_norm_uniqueid(ui16 ndim, bool single_precission)
 	{
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
@@ -278,6 +319,46 @@ float weighted_inner_prod_UNIQUEID(in float mat[ndim*ndim], in float vec[ndim]) 
 	}
 
 
+	export std::string diag_weighted_vec_norm_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export std::shared_ptr<::glsl::Function> diag_weighted_vec_norm(ui16 ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+float diag_weighted_inner_prod_UNIQUEID(in float diag[ndim], in float vec[ndim]) {
+	float ret = 0;
+	for (int i = 0; i < ndim; ++i) {
+		ret += vec[i] * diag[i] * vec[i];
+	}
+	return sqrt(ret);
+}
+)glsl";
+
+		std::string uniqueid = diag_weighted_vec_norm_uniqueid(ndim, single_precission);
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<::glsl::Function>(
+			"diag_weighted_vec_norm_" + uniqueid,
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+			);
+	}
+
+
 	export std::string weighted_vec_norm2_uniqueid(ui16 ndim, bool single_precission)
 	{
 		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
@@ -319,6 +400,46 @@ float weighted_vec_norm2_UNIQUEID(in float mat[ndim*ndim], in float vec[ndim]) {
 			code_func,
 			std::nullopt
 		);
+	}
+
+
+	export std::string diag_weighted_vec_norm2_uniqueid(ui16 ndim, bool single_precission)
+	{
+		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export std::shared_ptr<::glsl::Function> diag_weighted_vec_norm2(ui16 ndim, bool single_precission)
+	{
+		static const std::string code = // compute shader
+			R"glsl(
+float diag_weighted_vec_norm2_UNIQUEID(in float diag[ndim], in float vec[ndim]) {
+	float ret = 0;
+	for (int i = 0; i < ndim; ++i) {
+		ret += vec[i] * diag[i] * vec[i];
+	}
+	return ret;
+}
+)glsl";
+
+		std::string uniqueid = diag_weighted_vec_norm2_uniqueid(ndim, single_precission);
+
+		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "ndim", std::to_string(ndim));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<::glsl::Function>(
+			"diag_weighted_vec_norm2_" + uniqueid,
+			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
+			code_func,
+			std::nullopt
+			);
 	}
 
 
@@ -568,6 +689,92 @@ void mul_transpose_vec_UNIQUEID(in float mat[nrow*ncol], in float vec[nrow], out
 		auto uniqueid = mul_transpose_vec_uniqueid(nrow, ncol, single_precission);
 
 		return FunctionApplier{ func, nullptr, {mat, vec, out}, uniqueid };
+	}
+
+
+	export std::string mul_transpose_diag_vec_uniqueid(ui16 nrow, ui16 ncol, bool single_precission)
+	{
+		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export std::shared_ptr<::glsl::Function> mul_transpose_diag_vec(ui16 nrow, ui16 ncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void mul_transpose_diag_vec_UNIQUEID(in float mat[nrow*ncol], in float diag[nrow], in float vec[nrow], out float ovec[ncol]) {
+	for (int i = 0; i < ncol; ++i) {
+		ovec[i] = 0;
+		for (int j = 0; j < nrow; ++j) {
+			ovec[i] += mat[j*ncol + i] * diag[j] * vec[j];
+		}
+	}
+}
+)glsl";
+
+		std::string uniqueid = mul_transpose_diag_vec_uniqueid(nrow, ncol, single_precission);
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<::glsl::Function>(
+			"mul_transpose_vec_" + uniqueid,
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt
+			);
+	}
+
+	export ::glsl::FunctionApplier mul_transpose_diag_vec(
+		const std::shared_ptr<glsl::MatrixVariable>& mat, 
+		const std::shared_ptr<glsl::VectorVariable>& diag,
+		const std::shared_ptr<glsl::VectorVariable>& vec,
+		const std::shared_ptr<glsl::VectorVariable>& out)
+	{
+		// type checks and dims
+		{
+			if (mat->getNDim2() != out->getNDim()) {
+				throw std::runtime_error("mat dim2 must equal out dim");
+			}
+			if (mat->getNDim1() != vec->getNDim()) {
+				throw std::runtime_error("mat dim1 must equal vec dim");
+			}
+			if (mat->getNDim1() != diag->getNDim()) {
+				throw std::runtime_error("mat dim1 must equal diag dim");
+			}
+
+			if (!((ui16)mat->getType() &
+				(ui16)diag->getType() &
+				(ui16)vec->getType() &
+				(ui16)out->getType()))
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
+				(mat->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 nrow = mat->getNDim1();
+		ui16 ncol = mat->getNDim2();
+
+		bool single_precission = true;
+		if (mat->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = mul_transpose_vec(nrow, ncol, single_precission);
+		auto uniqueid = mul_transpose_vec_uniqueid(nrow, ncol, single_precission);
+
+		return FunctionApplier{ func, nullptr, {mat, diag, vec, out}, uniqueid };
 	}
 
 
@@ -1329,6 +1536,98 @@ void mul_transpose_mat_UNIQUEID(in float mat[nrow*ncol], out float omat[ncol*nco
 		auto uniqueid = mul_transpose_mat_uniqueid(nrow, ncol, single_precission);
 
 		return FunctionApplier{ func, nullptr, { in, out }, uniqueid };
+	}
+
+
+	export std::string mul_transpose_diag_mat_uniqueid(ui16 nrow, ui16 ncol, bool single_precission)
+	{
+		return std::to_string(nrow) + "_" + std::to_string(ncol) + "_" + (single_precission ? "S" : "D");
+	}
+
+	export std::shared_ptr<::glsl::Function> mul_transpose_diag_mat(ui16 nrow, ui16 ncol, bool single_precission)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+void mul_transpose_diag_mat_UNIQUEID(in float mat[nrow*ncol], in float diag[nrow], out float omat[ncol*ncol]) {
+	float entry;
+	for (int i = 0; i < ncol; ++i) {
+		for (int j = 0; j <= i; ++j) {
+			entry = 0.0;
+			for (int k = 0; k < nrow; ++k) {
+				entry += mat[k*ncol + i] * diag[k] * mat[k*ncol + j];
+			}
+			omat[i*ncol + j] = entry;
+			if (i != j) {
+				omat[j*ncol + i] = entry;
+			}
+		}
+	}
+}
+)glsl";
+
+		std::string uniqueid = mul_transpose_mat_uniqueid(nrow, ncol, single_precission);
+
+		std::function<std::string()> code_func = [nrow, ncol, single_precission, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			util::replace_all(temp, "nrow", std::to_string(nrow));
+			util::replace_all(temp, "ncol", std::to_string(ncol));
+			if (!single_precission) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<::glsl::Function>(
+			"mul_transpose_diag_mat_" + uniqueid,
+			std::vector<size_t>{ size_t(nrow), size_t(ncol), size_t(single_precission) },
+			code_func,
+			std::nullopt
+			);
+	}
+
+	export ::glsl::FunctionApplier mul_transpose_diag_mat(
+		const std::shared_ptr<glsl::MatrixVariable>& in, 
+		const std::shared_ptr<glsl::VectorVariable>& diag,
+		const std::shared_ptr<glsl::MatrixVariable>& out)
+	{
+		// type and dimension checks
+		{
+			if (in->getNDim2() != out->getNDim1()) {
+				throw std::runtime_error("Input matrix 2nd dim must be equal to out matrix dim1");
+			}
+			if (out->getNDim1() != out->getNDim2()) {
+				throw std::runtime_error("out dim1 must equal out dim2");
+			}
+			if (in->getNDim1() != diag->getNDim()) {
+				throw std::runtime_error("in dim1 must equal diag dim");
+			}
+
+			if (!((ui16)in->getType() &
+				(ui16)diag->getType() &
+				(ui16)out->getType()))
+			{
+				throw std::runtime_error("All inputs must have same type");
+			}
+			if (!((in->getType() == ShaderVariableType::FLOAT) ||
+				(in->getType() == ShaderVariableType::DOUBLE))) {
+				throw std::runtime_error("Inputs must have float or double type");
+			}
+		}
+
+		ui16 nrow = in->getNDim1();
+		ui16 ncol = in->getNDim2();
+
+		bool single_precission = true;
+		if (in->getType() == ShaderVariableType::DOUBLE)
+			single_precission = false;
+
+		auto func = mul_transpose_diag_mat(nrow, ncol, single_precission);
+
+		auto uniqueid = mul_transpose_diag_mat_uniqueid(nrow, ncol, single_precission);
+
+		return FunctionApplier{ func, nullptr, { in, diag, out }, uniqueid };
 	}
 
 
