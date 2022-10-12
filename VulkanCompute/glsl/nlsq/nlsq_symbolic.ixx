@@ -33,7 +33,7 @@ namespace nlsq {
 	// residuals
 	export std::string nlsq_residuals_uniqueid(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
@@ -41,7 +41,7 @@ namespace nlsq {
 
 	export std::shared_ptr<::glsl::Function> nlsq_residuals(
 		const expression::Expression& expr, const glsl::SymbolicContext& context, 
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -54,12 +54,12 @@ RESIDUAL_EXPRESSION
 
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 
-		std::string uniqueid = nlsq_residuals_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		std::string uniqueid = nlsq_residuals_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		std::string resexpr = "\t\tresiduals[i] = " + expr.glsl_str(context) + " - data[i];\n";
 
 		std::function<std::string()> code_func = 
-			[ndata, nparam, nconst, resexpr, single_precission, uniqueid]() -> std::string
+			[ndata, nparam, nconst, resexpr, single_precision, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
@@ -67,7 +67,7 @@ RESIDUAL_EXPRESSION
 			util::replace_all(temp, "ndata", std::to_string(ndata));
 			util::replace_all(temp, "nparam", std::to_string(nparam));
 			util::replace_all(temp, "nconst", std::to_string(nconst));
-			if (!single_precission) {
+			if (!single_precision) {
 				util::replace_all(temp, "float", "double");
 			}
 			return temp;
@@ -76,7 +76,7 @@ RESIDUAL_EXPRESSION
 		return std::make_shared<Function>(
 			"nlsq_residuals_" + uniqueid,
 			std::vector<size_t>{ hashed_expr, size_t(ndata), 
-			size_t(nparam), size_t(nconst), size_t(single_precission) },
+			size_t(nparam), size_t(nconst), size_t(single_precision) },
 			code_func,
 			std::nullopt
 		);
@@ -115,13 +115,13 @@ RESIDUAL_EXPRESSION
 		ui16 nparam = params->getNDim();
 		ui16 nconst = consts->getNDim2();
 
-		bool single_precission = true;
+		bool single_precision = true;
 		if (residuals->getType() == ShaderVariableType::DOUBLE)
-			single_precission = false;
+			single_precision = false;
 
-		auto func = nlsq_residuals(expr, context, ndata, nparam, nconst, single_precission);
+		auto func = nlsq_residuals(expr, context, ndata, nparam, nconst, single_precision);
 
-		auto uniqueid = nlsq_residuals_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		auto uniqueid = nlsq_residuals_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		return FunctionApplier{ func, nullptr,
 			{params, consts, data, residuals }, uniqueid };
@@ -132,7 +132,7 @@ RESIDUAL_EXPRESSION
 	// residuals and jacobian
 	export std::string nlsq_residuals_jacobian_uniqueid(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
@@ -140,7 +140,7 @@ RESIDUAL_EXPRESSION
 
 	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -177,10 +177,10 @@ JACOBIAN_EXPRESSIONS
 			jacexpr += partj;
 		}
 	
-		std::string uniqueid = nlsq_residuals_jacobian_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		std::string uniqueid = nlsq_residuals_jacobian_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		std::function<std::string()> code_func =
-			[ndata, nparam, nconst, resexpr, jacexpr, single_precission, uniqueid]() -> std::string
+			[ndata, nparam, nconst, resexpr, jacexpr, single_precision, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
@@ -189,7 +189,7 @@ JACOBIAN_EXPRESSIONS
 			util::replace_all(temp, "ndata", std::to_string(ndata));
 			util::replace_all(temp, "nparam", std::to_string(nparam));
 			util::replace_all(temp, "nconst", std::to_string(nconst));
-			if (!single_precission) {
+			if (!single_precision) {
 				util::replace_all(temp, "float", "double");
 			}
 			return temp;
@@ -197,7 +197,7 @@ JACOBIAN_EXPRESSIONS
 
 		return std::make_shared<Function>(
 			"nlsq_residuals_jacobian_" + uniqueid,
-			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precision) },
 			code_func,
 			std::nullopt);
 	}
@@ -243,13 +243,13 @@ JACOBIAN_EXPRESSIONS
 		ui16 nparam = params->getNDim();
 		ui16 nconst = consts->getNDim2();
 
-		bool single_precission = true;
+		bool single_precision = true;
 		if (residuals->getType() == ShaderVariableType::DOUBLE)
-			single_precission = false;
+			single_precision = false;
 
-		auto func = nlsq_residuals_jacobian(expr, context, ndata, nparam, nconst, single_precission);
+		auto func = nlsq_residuals_jacobian(expr, context, ndata, nparam, nconst, single_precision);
 
-		auto uniqueid = nlsq_residuals_jacobian_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		auto uniqueid = nlsq_residuals_jacobian_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		return FunctionApplier{ func, nullptr,
 			{params, consts, data, residuals, jacobian}, uniqueid };
@@ -260,7 +260,7 @@ JACOBIAN_EXPRESSIONS
 	// residuals, jacobian and hessian
 	export std::string nlsq_residuals_jacobian_hessian_uniqueid(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
@@ -268,7 +268,7 @@ JACOBIAN_EXPRESSIONS
 
 	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian_hessian(
 		const expression::Expression& expr, const glsl::SymbolicContext& context, 
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -338,10 +338,10 @@ HESSIAN_EXPRESSIONS
 			}
 		}
 
-		std::string uniqueid = nlsq_residuals_jacobian_hessian_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		std::string uniqueid = nlsq_residuals_jacobian_hessian_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		std::function<std::string()> code_func =
-			[ndata, nparam, nconst, resexpr, jacexpr, hesexpr, single_precission, uniqueid]() -> std::string
+			[ndata, nparam, nconst, resexpr, jacexpr, hesexpr, single_precision, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
@@ -351,8 +351,8 @@ HESSIAN_EXPRESSIONS
 			util::replace_all(temp, "ndata", std::to_string(ndata));
 			util::replace_all(temp, "nparam", std::to_string(nparam));
 			util::replace_all(temp, "nconst", std::to_string(nconst));
-			util::replace_all(temp, "MTMAID", linalg::mul_transpose_mat_add_uniqueid(ndata, nparam, single_precission));
-			if (!single_precission) {
+			util::replace_all(temp, "MTMAID", linalg::mul_transpose_mat_add_uniqueid(ndata, nparam, single_precision));
+			if (!single_precision) {
 				util::replace_all(temp, "float", "double");
 			}
 			return temp;
@@ -360,10 +360,10 @@ HESSIAN_EXPRESSIONS
 		
 		return std::make_shared<Function>(
 			"nlsq_residuals_jacobian_hessian_" + uniqueid,
-			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission)},
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precision)},
 			code_func,
 			std::make_optional<vecptrfunc>({
-				linalg::mul_transpose_mat_add(ndata, nparam, single_precission),
+				linalg::mul_transpose_mat_add(ndata, nparam, single_precision),
 			})
 		);
 
@@ -418,13 +418,13 @@ HESSIAN_EXPRESSIONS
 		ui16 nparam = params->getNDim();
 		ui16 nconst = consts->getNDim2();
 
-		bool single_precission = true;
+		bool single_precision = true;
 		if (residuals->getType() == ShaderVariableType::DOUBLE)
-			single_precission = false;
+			single_precision = false;
 
-		auto func = nlsq_residuals_jacobian_hessian(expr, context, ndata, nparam, nconst, single_precission);
+		auto func = nlsq_residuals_jacobian_hessian(expr, context, ndata, nparam, nconst, single_precision);
 
-		auto uniqueid = nlsq_residuals_jacobian_hessian_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		auto uniqueid = nlsq_residuals_jacobian_hessian_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		return FunctionApplier{ func, nullptr,
 			{params, consts, data, residuals, jacobian, hessian}, uniqueid };
@@ -435,7 +435,7 @@ HESSIAN_EXPRESSIONS
 	// residuals, jacobian, hessian and lambda-mult
 	export std::string nlsq_residuals_jacobian_hessian_l_uniqueid(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
@@ -443,7 +443,7 @@ HESSIAN_EXPRESSIONS
 
 	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian_hessian_l(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -517,10 +517,10 @@ HESSIAN_EXPRESSIONS
 			}
 		}
 
-		std::string uniqueid = nlsq_residuals_jacobian_hessian_l_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		std::string uniqueid = nlsq_residuals_jacobian_hessian_l_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		std::function<std::string()> code_func =
-			[ndata, nparam, nconst, resexpr, jacexpr, hesexpr, single_precission, uniqueid]() -> std::string
+			[ndata, nparam, nconst, resexpr, jacexpr, hesexpr, single_precision, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
@@ -530,10 +530,10 @@ HESSIAN_EXPRESSIONS
 			util::replace_all(temp, "ndata", std::to_string(ndata));
 			util::replace_all(temp, "nparam", std::to_string(nparam));
 			util::replace_all(temp, "nconst", std::to_string(nconst));
-			util::replace_all(temp, "MSZ", linalg::mat_set_zero_uniqueid(nparam, nparam, single_precission));
-			util::replace_all(temp, "MTMID", linalg::mul_transpose_mat_uniqueid(ndata, nparam, single_precission));
-			util::replace_all(temp, "AMML", linalg::add_mat_mat_ldiag_uniqueid(nparam, single_precission));
-			if (!single_precission) {
+			util::replace_all(temp, "MSZ", linalg::mat_set_zero_uniqueid(nparam, nparam, single_precision));
+			util::replace_all(temp, "MTMID", linalg::mul_transpose_mat_uniqueid(ndata, nparam, single_precision));
+			util::replace_all(temp, "AMML", linalg::add_mat_mat_ldiag_uniqueid(nparam, single_precision));
+			if (!single_precision) {
 				util::replace_all(temp, "float", "double");
 			}
 			return temp;
@@ -541,12 +541,12 @@ HESSIAN_EXPRESSIONS
 
 		return std::make_shared<Function>(
 			"nlsq_residuals_jacobian_hessian_l_" + uniqueid,
-			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precision) },
 			code_func,
 			std::make_optional<vecptrfunc>({
-				linalg::mat_set_zero(nparam, nparam, single_precission),
-				linalg::mul_transpose_mat(ndata, nparam, single_precission),
-				linalg::add_mat_mat_ldiag(nparam, single_precission)
+				linalg::mat_set_zero(nparam, nparam, single_precision),
+				linalg::mul_transpose_mat(ndata, nparam, single_precision),
+				linalg::add_mat_mat_ldiag(nparam, single_precision)
 				})
 			);
 
@@ -611,13 +611,13 @@ HESSIAN_EXPRESSIONS
 		ui16 nparam = params->getNDim();
 		ui16 nconst = consts->getNDim2();
 
-		bool single_precission = true;
+		bool single_precision = true;
 		if (residuals->getType() == ShaderVariableType::DOUBLE)
-			single_precission = false;
+			single_precision = false;
 
-		auto func = nlsq_residuals_jacobian_hessian_l(expr, context, ndata, nparam, nconst, single_precission);
+		auto func = nlsq_residuals_jacobian_hessian_l(expr, context, ndata, nparam, nconst, single_precision);
 
-		auto uniqueid = nlsq_residuals_jacobian_hessian_l_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		auto uniqueid = nlsq_residuals_jacobian_hessian_l_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		return FunctionApplier{ func, nullptr,
 			{params, consts, data, lambda, residuals, jacobian, hessian, lambda_hessian }, uniqueid };
@@ -628,7 +628,7 @@ HESSIAN_EXPRESSIONS
 	// residuals, jacobian, hessian and lambda-mult
 	export std::string nlsq_residuals_jacobian_hessian_lw_uniqueid(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		size_t hashed_expr = std::hash<std::string>()(expr.get_expression());
 		return std::to_string(ndata) + "_" + std::to_string(nparam) + "_" + std::to_string(nconst) + "_" + util::stupid_compress(hashed_expr);
@@ -636,7 +636,7 @@ HESSIAN_EXPRESSIONS
 
 	export std::shared_ptr<::glsl::Function> nlsq_residuals_jacobian_hessian_lw(
 		const expression::Expression& expr, const glsl::SymbolicContext& context,
-		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precission)
+		ui16 ndata, ui16 nparam, ui16 nconst, bool single_precision)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -711,10 +711,10 @@ HESSIAN_EXPRESSIONS
 			}
 		}
 
-		std::string uniqueid = nlsq_residuals_jacobian_hessian_lw_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		std::string uniqueid = nlsq_residuals_jacobian_hessian_lw_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		std::function<std::string()> code_func =
-			[ndata, nparam, nconst, resexpr, jacexpr, hesexpr, single_precission, uniqueid]() -> std::string
+			[ndata, nparam, nconst, resexpr, jacexpr, hesexpr, single_precision, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
@@ -724,10 +724,10 @@ HESSIAN_EXPRESSIONS
 			util::replace_all(temp, "ndata", std::to_string(ndata));
 			util::replace_all(temp, "nparam", std::to_string(nparam));
 			util::replace_all(temp, "nconst", std::to_string(nconst));
-			util::replace_all(temp, "MSZ", linalg::mat_set_zero_uniqueid(nparam, nparam, single_precission));
-			util::replace_all(temp, "MTDMID", linalg::mul_transpose_diag_mat_uniqueid(ndata, nparam, single_precission));
-			util::replace_all(temp, "AMML", linalg::add_mat_mat_ldiag_uniqueid(nparam, single_precission));
-			if (!single_precission) {
+			util::replace_all(temp, "MSZ", linalg::mat_set_zero_uniqueid(nparam, nparam, single_precision));
+			util::replace_all(temp, "MTDMID", linalg::mul_transpose_diag_mat_uniqueid(ndata, nparam, single_precision));
+			util::replace_all(temp, "AMML", linalg::add_mat_mat_ldiag_uniqueid(nparam, single_precision));
+			if (!single_precision) {
 				util::replace_all(temp, "float", "double");
 			}
 			return temp;
@@ -735,12 +735,12 @@ HESSIAN_EXPRESSIONS
 
 		return std::make_shared<Function>(
 			"nlsq_residuals_jacobian_hessian_lw_" + uniqueid,
-			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precission) },
+			std::vector<size_t>{ hashed_expr, size_t(ndata), size_t(nparam), size_t(nconst), size_t(single_precision) },
 			code_func,
 			std::make_optional<vecptrfunc>({
-				linalg::mat_set_zero(nparam, nparam, single_precission),
-				linalg::mul_transpose_diag_mat(ndata, nparam, single_precission),
-				linalg::add_mat_mat_ldiag(nparam, single_precission)
+				linalg::mat_set_zero(nparam, nparam, single_precision),
+				linalg::mul_transpose_diag_mat(ndata, nparam, single_precision),
+				linalg::add_mat_mat_ldiag(nparam, single_precision)
 				})
 			);
 
@@ -809,13 +809,13 @@ HESSIAN_EXPRESSIONS
 		ui16 nparam = params->getNDim();
 		ui16 nconst = consts->getNDim2();
 
-		bool single_precission = true;
+		bool single_precision = true;
 		if (residuals->getType() == ShaderVariableType::DOUBLE)
-			single_precission = false;
+			single_precision = false;
 
-		auto func = nlsq_residuals_jacobian_hessian_lw(expr, context, ndata, nparam, nconst, single_precission);
+		auto func = nlsq_residuals_jacobian_hessian_lw(expr, context, ndata, nparam, nconst, single_precision);
 
-		auto uniqueid = nlsq_residuals_jacobian_hessian_lw_uniqueid(expr, context, ndata, nparam, nconst, single_precission);
+		auto uniqueid = nlsq_residuals_jacobian_hessian_lw_uniqueid(expr, context, ndata, nparam, nconst, single_precision);
 
 		return FunctionApplier{ func, nullptr,
 			{params, consts, data, weights, lambda, residuals, jacobian, hessian, lambda_hessian }, uniqueid };

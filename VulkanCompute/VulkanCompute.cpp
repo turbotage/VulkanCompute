@@ -28,6 +28,8 @@ import symm;
 import nlsq;
 import nlsq_symbolic;
 
+import qmri;
+
 import variable;
 import function;
 import shader;
@@ -596,35 +598,62 @@ void test_slmh_w() {
 	shader.addInputVector(weights, 3);
 	shader.addInputOutputSingle(lambda, 4);
 	shader.addInputOutputSingle(step_type, 5);
-	shader.addInputSingle(mu, 6);
-	shader.addInputSingle(eta, 7);
-	shader.addOutputVector(nlstep, 8);
-	shader.addOutputSingle(error, 9);
-	shader.addOutputSingle(new_error, 10);
-	shader.addOutputVector(residuals, 11);
-	shader.addOutputMatrix(jacobian, 12);
-	shader.addOutputMatrix(hessian, 13);
-	shader.addOutputMatrix(lambda_hessian, 14);
-	shader.addInputVector(upper_bound, 15);
-	shader.addInputVector(lower_bound, 16);
+	//shader.addInputSingle(mu, 6);
+	//shader.addInputSingle(eta, 7);
+	shader.addOutputVector(nlstep, 6);
+	//shader.addOutputSingle(error, 9);
+	//shader.addOutputSingle(new_error, 10);
+	shader.addOutputVector(residuals, 7);
+	shader.addOutputMatrix(jacobian, 8);
+	shader.addOutputMatrix(hessian, 9);
+	//shader.addOutputMatrix(lambda_hessian, 14);
+	shader.addInputOutputVector(upper_bound, 10);
+	shader.addInputOutputVector(lower_bound, 11);
 
 
-	shader.setAfterCopyingFrom(
+	shader.addFunction(nlsq::nlsq_clamping(nparam, true));
+
+	shader.addFunction(qmri::ivim_guess(21, true));
+
+	/*
+	upper_bound[0] = params[0] * 1.5;
+	lower_bound[0] = params[0] * 0.5;
+
+	upper_bound[1] = min(1.0, params[1] * 4);
+	lower_bound[1] = params[1] / 6;
+
+	upper_bound[2] = params[2] * 30;
+	lower_bound[2] = params[2] * 0.05;
+
+	upper_bound[3] = params[3] * 5;
+	lower_bound[3] = params[3] * 0.2;
+	*/
+
+
+	std::string after_str =
 R"glsl(
-	for (int i = 0; i < 8; ++i) {
-)glsl");
+	//ivim_guess_IGID(params, consts, data, 6, 17);
+	for (int i = 0; i < 10; ++i) {
+)glsl";
+
+	util::replace_all(after_str, "IGID", qmri::ivim_guess_uniqueid(21, true));
+
+	shader.setAfterCopyingFrom(after_str);
+
 	shader.apply(nlsq_step.func, nullptr,
 		nlsq_step.args);
-	shader.setBeforeCopyingBack(
+
+	std::string before_str =
 R"glsl(
-	for (int j = 0; j < 4; ++j) {
-		if (isnan(params[j]) || isinf(params[j])) {
-			params[j] = 0.5 * (upper_bound[j] - lower_bound[j]);
+		if (nlsq_clamping_NCID(params, upper_bound, lower_bound)) {
+			lambda *= dec;
 		}
-		params[j] = clamp(params[j], lower_bound[j], upper_bound[j]);
 	}
-	}
-)glsl");
+)glsl";
+
+	util::replace_all(before_str, "NCID", nlsq_clamping_uniqueid(nparam, true));
+
+	shader.setBeforeCopyingBack(before_str);
 
 	auto shader_code = shader.compile();
 
@@ -636,18 +665,27 @@ R"glsl(
 	std::cout << "shader build time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
 
+	
 	OptimizationType opt_type =
 		static_cast<OptimizationType>(
 			static_cast<int>(OptimizationType::OPTIMIZE_FOR_SPEED) |
 			static_cast<int>(OptimizationType::REMAP));
 
 	//OptimizationType opt_type = OptimizationType::NO_OPTIMIZATION;
+	//OptimizationType opt_type = OptimizationType::OPTIMIZE_FOR_SPEED;
+
+	/*
+	OptimizationType opt_type =
+		static_cast<OptimizationType>(
+			static_cast<int>(OptimizationType::OPTIMIZE_FOR_SIZE) |
+			static_cast<int>(OptimizationType::REMAP));
+	*/
 
 	auto spirv = glsl::compileSource(shader_code, opt_type);
 
 	glsl::decompileSPIRV();
 
-	uint32_t nelem = 500000;
+	uint32_t nelem = 400000;
 
 	auto mgr = std::make_shared<kp::Manager>();
 
@@ -657,15 +695,15 @@ R"glsl(
 	auto kp_consts = glsl::tensor_from_matrix(mgr, consts, nelem);
 	auto kp_lambda = glsl::tensor_from_single(mgr, lambda, nelem);
 	auto kp_step_type = glsl::tensor_from_single(mgr, step_type, nelem);
-	auto kp_mu = glsl::tensor_from_single(mgr, mu, nelem);
-	auto kp_eta = glsl::tensor_from_single(mgr, eta, nelem);
+	//auto kp_mu = glsl::tensor_from_single(mgr, mu, nelem);
+	//auto kp_eta = glsl::tensor_from_single(mgr, eta, nelem);
 	auto kp_nlstep = glsl::tensor_from_vector(mgr, nlstep, nelem);
-	auto kp_error = glsl::tensor_from_single(mgr, error, nelem);
-	auto kp_new_error = glsl::tensor_from_single(mgr, new_error, nelem);
+	//auto kp_error = glsl::tensor_from_single(mgr, error, nelem);
+	//auto kp_new_error = glsl::tensor_from_single(mgr, new_error, nelem);
 	auto kp_residuals = glsl::tensor_from_vector(mgr, residuals, nelem);
 	auto kp_jacobian = glsl::tensor_from_matrix(mgr, jacobian, nelem);
 	auto kp_hessian = glsl::tensor_from_matrix(mgr, hessian, nelem);
-	auto kp_lambda_hessian = glsl::tensor_from_matrix(mgr, lambda_hessian, nelem);
+	//auto kp_lambda_hessian = glsl::tensor_from_matrix(mgr, lambda_hessian, nelem);
 	auto kp_upper_bound = glsl::tensor_from_vector(mgr, upper_bound, nelem);
 	auto kp_lower_bound = glsl::tensor_from_vector(mgr, lower_bound, nelem);
 
@@ -696,14 +734,14 @@ R"glsl(
 	std::vector<float> data_params = { 700.0f / S0_div, 0.2, 0.01f * b_div, 0.001f * b_div };
 	std::memcpy(kp_params->data<float>(), data_params.data(), sizeof(float) * data_params.size());
 
-	float data_lambda = 1.0f;
+	float data_lambda = 0.5f;
 	std::memcpy(kp_lambda->data<float>(), &data_lambda, sizeof(float));
 
-	float data_mu = 0.25f;
-	std::memcpy(kp_mu->data<float>(), &data_mu, sizeof(float));
+	//float data_mu = 0.25f;
+	//std::memcpy(kp_mu->data<float>(), &data_mu, sizeof(float));
 
-	float data_eta = 0.75f;
-	std::memcpy(kp_eta->data<float>(), &data_eta, sizeof(float));
+	//float data_eta = 0.75f;
+	//std::memcpy(kp_eta->data<float>(), &data_eta, sizeof(float));
 	
 	std::vector<float> data_upper_bound = { 1200.0f / S0_div, 1.0f, 0.1f * b_div, 0.01f * b_div };
 	std::memcpy(kp_upper_bound->data<float>(), data_upper_bound.data(), sizeof(float) * data_upper_bound.size());
@@ -715,8 +753,7 @@ R"glsl(
 
 	std::vector<std::shared_ptr<kp::Tensor>> shader_inputs = {
 		kp_params, kp_consts, kp_data, kp_weights, kp_lambda, kp_step_type,
-		kp_mu, kp_eta, kp_nlstep, kp_error, kp_new_error,
-		kp_residuals, kp_jacobian, kp_hessian, kp_lambda_hessian, 
+		kp_nlstep, kp_residuals, kp_jacobian, kp_hessian, 
 		kp_upper_bound, kp_lower_bound
 	};
 
@@ -747,8 +784,8 @@ R"glsl(
 		std::cout << glsl::print_shader_variable(kp_jacobian, jacobian, 0) << std::endl;
 		std::cout << "hessian: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_hessian, hessian, 0) << std::endl;
-		std::cout << "lambda_hessian: " << std::endl;
-		std::cout << glsl::print_shader_variable(kp_lambda_hessian, lambda_hessian, 0) << std::endl;
+		//std::cout << "lambda_hessian: " << std::endl;
+		//std::cout << glsl::print_shader_variable(kp_lambda_hessian, lambda_hessian, 0) << std::endl;
 		std::cout << "data: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_data, data, 0) << std::endl;
 		std::cout << "weights: " << std::endl;
@@ -761,10 +798,10 @@ R"glsl(
 		std::cout << glsl::print_shader_variable(kp_lambda, lambda, 0) << std::endl;
 		std::cout << "step_type: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_step_type, step_type, 0) << std::endl;
-		std::cout << "mu: " << std::endl;
-		std::cout << glsl::print_shader_variable(kp_mu, mu, 0) << std::endl;
-		std::cout << "eta: " << std::endl;
-		std::cout << glsl::print_shader_variable(kp_eta, eta, 0) << std::endl;
+		//std::cout << "mu: " << std::endl;
+		//std::cout << glsl::print_shader_variable(kp_mu, mu, 0) << std::endl;
+		//std::cout << "eta: " << std::endl;
+		//std::cout << glsl::print_shader_variable(kp_eta, eta, 0) << std::endl;
 		std::cout << "step: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_nlstep, nlstep, 0) << std::endl;
 		std::cout << "upper_bound: " << std::endl;

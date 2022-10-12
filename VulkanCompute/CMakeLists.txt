@@ -16,8 +16,8 @@ add_executable(VulkanCompute
 	"glsl/function.ixx" 
 	"glsl/variable.ixx"
 	"glsl/func_factory.ixx" 
-	"glsl/shader.ixx" 
-	"glsl/symbolic.ixx" 
+	"glsl/shader.ixx"
+	"glsl/symbolic.ixx"
 	"glsl/tensor_var.ixx" 
 	"glsl/tensor_var.cpp"
 	"glsl/linalg/linalg.ixx"
@@ -27,6 +27,8 @@ add_executable(VulkanCompute
 	"glsl/linalg/permute.ixx"
 	"glsl/nlsq/nlsq_symbolic.ixx"
 	"glsl/nlsq/nlsq.ixx"
+	"glsl/lsq/lsq.ixx"
+	"glsl/qmri/qmri.ixx"
 	"vc.ixx"
 	"expression/parser/token.ixx" 
 	"expression/parser/lexer.ixx" 
@@ -43,7 +45,7 @@ add_executable(VulkanCompute
 	"expression/algebra/binary/sub.ixx"
 	"expression/expr.ixx" 
 	"expression/expr.cpp"
- )
+)
 
 set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
 
@@ -54,5 +56,12 @@ target_link_libraries(VulkanCompute
 find_package(SymEngine CONFIG REQUIRED)
 message(${SYMENGINE_LIBRARIES})
 target_link_libraries(VulkanCompute symengine)
+
+message("SOURCE_DIR")
+message(${CMAKE_SOURCE_DIR})
+
+add_custom_command(TARGET VulkanCompute PRE_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		${CMAKE_SOURCE_DIR}/VulkanCompute/python/export/ $<TARGET_FILE_DIR:VulkanCompute>)
 
 # TODO: Add tests and install targets if needed.

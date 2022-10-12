@@ -27,12 +27,12 @@ namespace linalg {
 	using vecptrfunc = std::vector<std::shared_ptr<Function>>;
 	using refvecptrfunc = refw<std::vector<std::shared_ptr<Function>>>;
 
-	export std::string ldl_uniqueid(ui16 ndim, bool single_precission)
+	export std::string ldl_uniqueid(ui16 ndim, bool single_precision)
 	{
-		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		return std::to_string(ndim) + "_" + (single_precision ? "S" : "D");
 	}
 
-	export std::shared_ptr<Function> ldl(ui16 ndim, bool single_precission)
+	export std::shared_ptr<Function> ldl(ui16 ndim, bool single_precision)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -58,14 +58,14 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 }
 )glsl";
 
-		std::string uniqueid = ldl_uniqueid(ndim, single_precission);
+		std::string uniqueid = ldl_uniqueid(ndim, single_precision);
 
-		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		std::function<std::string()> code_func = [ndim, single_precision, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
-			if (!single_precission) {
+			if (!single_precision) {
 				util::replace_all(temp, "float", "double");
 			}
 			return temp;
@@ -73,7 +73,7 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 
 		return std::make_shared<Function>(
 			"ldl_" + uniqueid,
-			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precision) },
 			code_func,
 			std::nullopt
 		);
@@ -97,23 +97,23 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 		}
 
 		ui16 ndim = mat->getNDim1();
-		bool single_precission = true;
+		bool single_precision = true;
 		if (mat->getType() == ShaderVariableType::DOUBLE)
-			single_precission = false;
+			single_precision = false;
 
-		auto func = ldl(ndim, single_precission);
-		auto uniqueid = ldl_uniqueid(ndim, single_precission);
+		auto func = ldl(ndim, single_precision);
+		auto uniqueid = ldl_uniqueid(ndim, single_precision);
 
 		return FunctionApplier{ func, nullptr, {mat}, uniqueid };
 	}
 
 
-	export std::string gmw81_uniqueid(ui16 ndim, bool single_precission)
+	export std::string gmw81_uniqueid(ui16 ndim, bool single_precision)
 	{
-		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		return std::to_string(ndim) + "_" + (single_precision ? "S" : "D");
 	}
 
-	export std::shared_ptr<Function> gmw81(ui16 ndim, bool single_precission)
+	export std::shared_ptr<Function> gmw81(ui16 ndim, bool single_precision)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -183,14 +183,14 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 }
 )glsl";
 
-		std::string uniqueid = gmw81_uniqueid(ndim, single_precission);
+		std::string uniqueid = gmw81_uniqueid(ndim, single_precision);
 
-		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		std::function<std::string()> code_func = [ndim, single_precision, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
-			if (!single_precission) {
+			if (!single_precision) {
 				util::replace_all(temp, "float", "double");
 			}
 			return temp;
@@ -198,7 +198,7 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 
 		return std::make_shared<Function>(
 			"gmw81_" + uniqueid,
-			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precision) },
 			code_func,
 			std::nullopt
 		);
@@ -220,23 +220,23 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 		}
 
 		ui16 ndim = mat->getNDim1();
-		bool single_precission = true;
+		bool single_precision = true;
 		if (mat->getType() == ShaderVariableType::DOUBLE)
-			single_precission = false;
+			single_precision = false;
 
-		auto func = gmw81(ndim, single_precission);
-		auto uniqueid = gmw81_uniqueid(ndim, single_precission);
+		auto func = gmw81(ndim, single_precision);
+		auto uniqueid = gmw81_uniqueid(ndim, single_precision);
 
 		return FunctionApplier{ func, nullptr, {mat}, uniqueid };
 	}
 
 
-	export std::string ldl_solve_uniqueid(ui16 ndim, bool single_precission)
+	export std::string ldl_solve_uniqueid(ui16 ndim, bool single_precision)
 	{
-		return std::to_string(ndim) + "_" + (single_precission ? "S" : "D");
+		return std::to_string(ndim) + "_" + (single_precision ? "S" : "D");
 	}
 
-	export std::shared_ptr<Function> ldl_solve(ui16 ndim, bool single_precission)
+	export std::shared_ptr<Function> ldl_solve(ui16 ndim, bool single_precision)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -248,16 +248,16 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 }
 )glsl";
 
-		std::string uniqueid = ldl_solve_uniqueid(ndim, single_precission);
+		std::string uniqueid = ldl_solve_uniqueid(ndim, single_precision);
 
-		std::function<std::string()> code_func = [ndim, single_precission, uniqueid]() -> std::string
+		std::function<std::string()> code_func = [ndim, single_precision, uniqueid]() -> std::string
 		{
 			std::string temp = code;
 			util::replace_all(temp, UNIQUE_ID, uniqueid);
 			util::replace_all(temp, "ndim", std::to_string(ndim));
-			util::replace_all(temp, "FSUDID", linalg::forward_subs_unit_diaged_uniqueid(ndim, single_precission));
-			util::replace_all(temp, "BSUTID", linalg::backward_subs_unit_t_uniqueid(ndim, single_precission));
-			if (!single_precission) {
+			util::replace_all(temp, "FSUDID", linalg::forward_subs_unit_diaged_uniqueid(ndim, single_precision));
+			util::replace_all(temp, "BSUTID", linalg::backward_subs_unit_t_uniqueid(ndim, single_precision));
+			if (!single_precision) {
 				util::replace_all(temp, "float", "double");
 			}
 			return temp;
@@ -265,11 +265,11 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 
 		return std::make_shared<Function>(
 			"ldl_solve_" + uniqueid,
-			std::vector<size_t>{ size_t(ndim), size_t(single_precission) },
+			std::vector<size_t>{ size_t(ndim), size_t(single_precision) },
 			code_func,
 			std::make_optional<vecptrfunc>({
-				linalg::forward_subs_unit_diaged(ndim, single_precission),
-				linalg::backward_subs_unit_t(ndim, single_precission)
+				linalg::forward_subs_unit_diaged(ndim, single_precision),
+				linalg::backward_subs_unit_t(ndim, single_precision)
 			})
 		);
 	}
@@ -303,12 +303,12 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 		}
 
 		ui16 ndim = mat->getNDim1();
-		bool single_precission = true;
+		bool single_precision = true;
 		if (mat->getType() == ShaderVariableType::DOUBLE)
-			single_precission = false;
+			single_precision = false;
 
-		auto func = ldl_solve(ndim, single_precission);
-		auto uniqueid = ldl_solve_uniqueid(ndim, single_precission);
+		auto func = ldl_solve(ndim, single_precision);
+		auto uniqueid = ldl_solve_uniqueid(ndim, single_precision);
 
 		return FunctionApplier{ func, nullptr, {mat, rhs, sol}, uniqueid };
 	}
