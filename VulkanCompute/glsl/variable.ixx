@@ -47,6 +47,51 @@ namespace glsl {
 
 		virtual bool operator==(const Binding* other) const = 0;
 
+		static size_t add_binding(std::vector<std::unique_ptr<Binding>>& vars,
+			std::unique_ptr<Binding> binding)
+		{
+			auto it = std::find_if(vars.begin(), vars.end(), [&binding](const std::unique_ptr<Binding>& b)
+				{
+					return binding->operator==(b.get());
+				});
+
+			if (it == vars.end()) {
+				vars.emplace_back(std::move(binding));
+				return true;
+			}
+			return false;
+		}
+
+	};
+
+	export class ConstBinding : public Binding {
+	public:
+
+		ConstBinding(vc::ui16 binding, const std::string& type, const std::string& name)
+			: m_Binding(binding), m_Type(type), m_Name(name) {}
+
+		ConstBinding(vc::ui16 binding, const ShaderVariableType& type, const std::string& name)
+			: m_Binding(binding), m_Type(shader_variable_type_to_str(type)), m_Name(name) {}
+
+		std::string operator()() const override
+		{
+			return "layout(set = 0, binding = " + std::to_string(m_Binding) + ") buffer buf_" +
+				m_Name + " { " + m_Type + " " + m_Name + "; };";
+		}
+
+		bool operator==(const Binding* other) const override
+		{
+			if (auto* b = dynamic_cast<const ConstBinding*>(other); b != nullptr) {
+				return (b->m_Binding == m_Binding) &&
+					(b->m_Type == m_Type) && (b->m_Name == m_Name);
+			}
+			return false;
+		}
+
+	private:
+		vc::ui16 m_Binding;
+		std::string m_Type;
+		std::string m_Name;
 	};
 
 	export class BufferBinding : public Binding {
@@ -60,8 +105,8 @@ namespace glsl {
 
 		std::string operator()() const override
 		{
-			return "layout(set = 0, binding = " + std::to_string(m_Binding) + ") buffer buf_global_" +
-				m_Name + " { " + m_Type + " " + "global_" + m_Name + "[]; };";
+			return "layout(set = 0, binding = " + std::to_string(m_Binding) + ") buffer buf_" +
+				m_Name + " { " + m_Type + " " + m_Name + "[]; };";
 		}
 
 		bool operator==(const Binding* other) const override
@@ -77,6 +122,37 @@ namespace glsl {
 		vc::ui16 m_Binding;
 		std::string m_Type;
 		std::string m_Name;
+	};
+
+	export class ConstBufferBinding : public Binding {
+	public:
+
+		ConstBufferBinding(vc::ui16 binding, const std::string& type, const std::string& name, vc::ui16 nelem)
+			: m_Binding(binding), m_Type(type), m_Name(name), m_NElem(nelem) {}
+
+		ConstBufferBinding(vc::ui16 binding, const ShaderVariableType& type, const std::string& name, vc::ui16 nelem)
+			: m_Binding(binding), m_Type(shader_variable_type_to_str(type)), m_Name(name), m_NElem(nelem) {}
+
+		std::string operator()() const override
+		{
+			return "layout(set = 0, binding = " + std::to_string(m_Binding) + ") buffer buf_" +
+				m_Name + " { " + m_Type + " " + m_Name + "[" + std::to_string(m_NElem) + "]; };";
+		}
+
+		bool operator==(const Binding* other) const override
+		{
+			if (auto* b = dynamic_cast<const ConstBufferBinding*>(other); b != nullptr) {
+				return (b->m_Binding == m_Binding) &&
+					(b->m_Type == m_Type) && (b->m_Name == m_Name) && (b->m_NElem == m_NElem);
+			}
+			return false;
+		}
+
+	private:
+		vc::ui16 m_Binding;
+		std::string m_Type;
+		std::string m_Name;
+		vc::ui16 m_NElem;
 	};
 
 	export class ShaderVariable {
@@ -205,6 +281,10 @@ namespace glsl {
 		std::string getUniqueID() const override
 		{
 			return glsl::shader_variable_type_to_str(m_Type);
+		}
+
+		std::optional<std::string> getValue() const {
+			return m_Value;
 		}
 
 		size_t getHash() const override

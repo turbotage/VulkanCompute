@@ -14,6 +14,8 @@ import glsl;
 import variable;
 import function;
 
+import func_factory;
+
 namespace {
 	// most shaders are smaller than 30 kB
 	constexpr auto DEFAULT_SHADER_SIZE = 30000;
@@ -159,7 +161,16 @@ R"glsl(
 		std::string m_Str;
 	};
 
-	export class AutogenShader : public ShaderBase {
+	export enum class IOShaderVariableType
+	{
+		INPUT_TYPE = 1,
+		OUTPUT_TYPE = 2,
+		INPUT_OUTPUT_TYPE = INPUT_TYPE | OUTPUT_TYPE,
+		CONST_TYPE = 4,
+		LOCAL_TYPE = 8
+	};
+
+	export class AutogenShader : public ShaderBase, public ScopeBase {
 	public:
 
 		void addBinding(std::unique_ptr<Binding> binding)
@@ -167,62 +178,42 @@ R"glsl(
 			_addBinding(std::move(binding));
 		}
 
-		void addFunction(const std::shared_ptr<Function>& func)
+		// MATRIX
+		void addMatrix(const std::shared_ptr<MatrixVariable>& mat, vc::ui16 binding, const IOShaderVariableType& type)
 		{
-			_addFunction(func);
+			_addMatrix(mat, binding, type);
 		}
 
-		void addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, vc::ui16 binding)
+		// VECTOR
+		void addVector(const std::shared_ptr<VectorVariable>& vec, vc::ui16 binding, const IOShaderVariableType& type)
 		{
-			_addInputMatrix(mat, binding, true);
+			_addVector(vec, binding, type);
 		}
 
-		void addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, vc::ui16 binding)
+		// SINGLE
+		void addSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding, const IOShaderVariableType& type)
 		{
-			_addOutputMatrix(mat, binding, true);
+			_addSingle(var, binding, type);
 		}
 
-		void addInputOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, vc::ui16 binding)
-		{
-			_addInputMatrix(mat, binding, true);
-			_addOutputMatrix(mat, binding, false);
+		vc::ui16 scope_level() const override {
+			return 0;
 		}
 
-		void addInputVector(const std::shared_ptr<VectorVariable>& vec, vc::ui16 binding)
-		{
-			_addInputVector(vec, binding, true);
+		vc::ui16 addVariable(const std::shared_ptr<ShaderVariable>& var) override {
+			return _addVariable(var, IOShaderVariableType::LOCAL_TYPE);
 		}
 
-		void addOutputVector(const std::shared_ptr<VectorVariable>& vec, vc::ui16 binding)
-		{
-			_addOutputVector(vec, binding, true);
+		const std::shared_ptr<ShaderVariable>& getVariable(vc::ui16 index) const override {
+			return m_Variables[index];
 		}
 
-		void addInputOutputVector(const std::shared_ptr<VectorVariable>& vec, vc::ui16 binding)
-		{
-			_addInputVector(vec, binding, true);
-			_addOutputVector(vec, binding, false);
+		vc::ui16 addFunction(const std::shared_ptr<Function>& func) override {
+			return _addFunction(func);
 		}
 
-		void addInputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding)
-		{
-			_addInputSingle(var, binding, true);
-		}
-
-		void addOutputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding)
-		{
-			_addOutputSingle(var, binding, true);
-		}
-
-		void addInputOutputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding)
-		{
-			_addInputSingle(var, binding, true);
-			_addOutputSingle(var, binding, false);
-		}
-
-		void addVariable(const std::shared_ptr<ShaderVariable>& var)
-		{
-			_addVariable(var, false);
+		const std::shared_ptr<Function>& getFunction(vc::ui16 index) const override {
+			return m_Functions[index];
 		}
 
 		void setBeforeCopyingFrom(const std::string& mi)
@@ -243,38 +234,6 @@ R"glsl(
 		void setAfterCopyingBack(const std::string& mi)
 		{
 			m_AfterCopyingBack = mi;
-		}
-
-		template<ShaderVariableIterator SVIterator>
-		void apply(const std::shared_ptr<Function>& func,
-			const std::shared_ptr<ShaderVariable>& ret,
-			std::optional<std::pair<SVIterator, SVIterator>> args_it)
-		{
-			vc::ui16 func_pos = Function::add_function(m_Functions, func);
-
-			vc::i16 ret_pos = -1;
-			if (ret) {
-				ret_pos = _addVariable(ret, false);
-			}
-
-			std::vector<vc::ui16> input_pos;
-			if (args_it.has_value()) {
-				auto& its = args_it.value();
-				size_t ninputs = std::distance(its.first, its.second);
-				input_pos.reserve(ninputs);
-				for (auto it = its.first; it != its.second; ++it) {
-					input_pos.emplace_back(_addVariable(*it, false));
-				}
-			}
-
-			m_Calls.emplace_back(func_pos, ret_pos, std::move(input_pos));
-		}
-
-		void apply(const std::shared_ptr<Function>& func,
-			const std::shared_ptr<ShaderVariable>& ret,
-			const std::vector<std::shared_ptr<ShaderVariable>>& args)
-		{
-			apply(func, ret, std::make_optional(std::make_pair(args.begin(), args.end())));
 		}
 
 		std::string compile() const override
@@ -306,9 +265,9 @@ layout (local_size_x = 1) in;
 			ret += "void main() {\n";
 
 			// declare variables
-			for (auto& var : m_Variables) {
-				if (!var.second)
-					ret += "\t" + var.first->getDeclaration();
+			for (int i = 0; i < m_Variables.size(); ++i) {
+				if (m_VariableTypes[i] == IOShaderVariableType::LOCAL_TYPE)
+					ret += "\t" + m_Variables[i]->getDeclaration();
 			}
 			if (m_Variables.size() > 0)
 				ret += "\n";
@@ -321,7 +280,7 @@ layout (local_size_x = 1) in;
 			if (m_Inputs.size() != 0 || m_Outputs.size() != 0)
 				ret += "\tuint start_index;\n";
 			for (auto& input : m_Inputs) {
-				ret += copying_from(m_Variables[input.first].first, m_Variables[input.second].first);
+				ret += copying_from(m_Variables[input.first], m_Variables[input.second]);
 			}
 			ret += "\n";
 
@@ -330,29 +289,10 @@ layout (local_size_x = 1) in;
 				ret += m_AfterCopyingFrom + "\n";
 
 			// add in function calls
-			for (auto& call : m_Calls) {
-				ret += "\t";
-				vc::i16 ret_pos = std::get<1>(call);
-				if (ret_pos != -1) {
-					ret += m_Variables[ret_pos].first->getName() + " = ";
-				}
-
-				vc::ui16 func_pos = std::get<0>(call);
-
-				ret += m_Functions[func_pos]->getName() + "(";
-
-				auto& input_pos_vec = std::get<2>(call);
-
-				for (int i = 0; i < input_pos_vec.size(); ++i) {
-					size_t arg_pos = input_pos_vec[i];
-					ret += m_Variables[arg_pos].first->getName();
-					if ((i + 1) != input_pos_vec.size()) {
-						ret += ", ";
-					}
-				}
-				ret += ");\n";
+			for (auto& child : m_Children) {
+				ret += child->build();
 			}
-			if (m_Calls.size() > 0)
+			if (m_Children.size() > 0)
 				ret += "\n";
 
 			// manual insertions before copying back
@@ -361,7 +301,7 @@ layout (local_size_x = 1) in;
 
 			// copy locals back to globals
 			for (auto& output : m_Outputs) {
-				ret += copying_to(m_Variables[output.first].first, m_Variables[output.second].first);
+				ret += copying_to(m_Variables[output.first], m_Variables[output.second]);
 			}
 			if (m_Outputs.size() > 0)
 				ret += "\n";
@@ -376,6 +316,20 @@ layout (local_size_x = 1) in;
 			return ret;
 		}
 
+	protected:
+
+		void on_chain() override {
+			throw std::runtime_error("One cannot chain on a shader");
+		}
+
+		void on_build() const override {
+			throw std::runtime_error("One shall not build on a shader, use compile instead");
+		}
+
+		std::string header() const override {
+			throw std::runtime_error("header should not be called on a shader");
+		}
+
 	private:
 
 		vc::ui16 _addFunction(const std::shared_ptr<Function>& func)
@@ -385,129 +339,123 @@ layout (local_size_x = 1) in;
 
 		bool _addBinding(std::unique_ptr<Binding> binding)
 		{
-			auto it = std::find_if(m_Bindings.begin(), m_Bindings.end(), [&binding](const std::unique_ptr<Binding>& b)
-				{
-					return binding->operator==(b.get());
-				});
-
-			if (it == m_Bindings.end()) {
-				m_Bindings.emplace_back(std::move(binding));
-				return true;
-			}
-			return false;
+			return Binding::add_binding(m_Bindings, std::move(binding));
 		}
 
-		vc::ui16 _addVariable(const std::shared_ptr<ShaderVariable>& var, bool is_global)
+		vc::ui16 _addVariable(const std::shared_ptr<ShaderVariable>& var, IOShaderVariableType type)
 		{
-			auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::pair<std::shared_ptr<ShaderVariable>, bool>& v) {
-				return *var == *(v.first);
+			auto it = std::find_if(m_Variables.begin(), m_Variables.end(), [&var](const std::shared_ptr<ShaderVariable>& v) {
+				return *var == *v;
 				});
 			vc::ui16 pos = it - m_Variables.begin();
 			if (it == m_Variables.end()) {
-				m_Variables.emplace_back(var, is_global);
+				m_VariableTypes.emplace_back(type);
+				m_Variables.emplace_back(var);
 			}
 			return pos;
 		}
 
-		void _addInputMatrix(const std::shared_ptr<MatrixVariable>& mat, vc::ui16 binding, bool add_binding)
+		void _addMatrix(const std::shared_ptr<MatrixVariable>& mat, vc::ui16 binding, const IOShaderVariableType& type)
 		{
 			auto ndim1 = mat->getNDim1();
 			auto ndim2 = mat->getNDim2();
 
-			auto global_mat = std::make_shared<MatrixVariable>(
+			std::shared_ptr<MatrixVariable> global_var = std::make_shared<MatrixVariable>(
 				"global_" + mat->getName(), ndim1, ndim2, mat->getType());
 
-			vc::ui16 mat_index = _addVariable(mat, false);
-			vc::ui16 global_mat_index = _addVariable(global_mat, true);
-
-
-			if (add_binding) {
-				_addBinding(std::make_unique<BufferBinding>(binding, mat->getType(), mat->getName()));
+			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::CONST_TYPE)) {
+				_addBinding(std::make_unique<ConstBufferBinding>(binding, mat->getType(), mat->getName(), mat->getNDim1() * mat->getNDim2()));
+				_addVariable(mat, IOShaderVariableType::CONST_TYPE);
+				return;
 			}
 
-			m_Inputs.emplace_back(global_mat_index, mat_index);
-		}
+			bool added_global_var = false;
+			vc::ui16 var_index = _addVariable(mat, IOShaderVariableType::LOCAL_TYPE);
+			vc::ui16 global_var_index;
 
-		void _addOutputMatrix(const std::shared_ptr<MatrixVariable>& mat, vc::ui16 binding, bool add_binding)
-		{
-			auto ndim1 = mat->getNDim1();
-			auto ndim2 = mat->getNDim2();
-
-			auto global_mat = std::make_shared<MatrixVariable>(
-				"global_" + mat->getName(), ndim1, ndim2, mat->getType());
-
-			vc::ui16 mat_index = _addVariable(mat, false);
-			vc::ui16 global_mat_index = _addVariable(global_mat, true);
-
-			if (add_binding) {
-				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(mat->getType()), mat->getName()));
+			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::INPUT_TYPE)) {
+				global_var_index = _addVariable(global_var, type);
+				added_global_var = true;
+				_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+				m_Inputs.emplace_back(global_var_index, var_index);
 			}
 
-			m_Outputs.emplace_back(mat_index, global_mat_index);
+			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::OUTPUT_TYPE)) {
+				if (!added_global_var) {
+					global_var_index = _addVariable(global_var, type);
+					added_global_var = true;
+					_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+				}
+				m_Outputs.emplace_back(var_index, global_var_index);
+			}
+
 		}
 
-		void _addInputVector(const std::shared_ptr<VectorVariable>& vec, vc::ui16 binding, bool add_binding)
+		void _addVector(const std::shared_ptr<VectorVariable>& vec, vc::ui16 binding, const IOShaderVariableType& type)
 		{
 			auto ndim = vec->getNDim();
 
-			auto global_vec = std::make_shared<VectorVariable>(
+			std::shared_ptr<VectorVariable> global_var = std::make_shared<VectorVariable>(
 				"global_" + vec->getName(), ndim, vec->getType());
 
-			vc::ui16 vec_index = _addVariable(vec, false);
-			vc::ui16 global_vec_index = _addVariable(global_vec, true);
-
-			if (add_binding) {
-				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(vec->getType()), vec->getName()));
+			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::CONST_TYPE)) {
+				_addBinding(std::make_unique<ConstBufferBinding>(binding, vec->getType(), vec->getName(), vec->getNDim()));
+				_addVariable(vec, IOShaderVariableType::CONST_TYPE);
+				return;
 			}
 
-			m_Inputs.emplace_back(global_vec_index, vec_index);
+			bool added_global_var = false;
+			vc::ui16 var_index = _addVariable(vec, IOShaderVariableType::LOCAL_TYPE);
+			vc::ui16 global_var_index;
+
+			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::INPUT_TYPE)) {
+				global_var_index = _addVariable(global_var, type);
+				added_global_var = true;
+				_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+				m_Inputs.emplace_back(global_var_index, var_index);
+			}
+
+			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::OUTPUT_TYPE)) {
+				if (!added_global_var) {
+					global_var_index = _addVariable(global_var, type);
+					added_global_var = true;
+					_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+				}
+				m_Outputs.emplace_back(var_index, global_var_index);
+			}
 		}
 
-		void _addOutputVector(const std::shared_ptr<VectorVariable>& vec, vc::ui16 binding, bool add_binding)
+		void _addSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding, const IOShaderVariableType& type)
 		{
-			auto ndim = vec->getNDim();
+			std::shared_ptr<SingleVariable> global_var = std::make_shared<SingleVariable>(
+				"global_" + var->getName(), var->getType(), var->getValue());
 
-			auto global_vec = std::make_shared<VectorVariable>(
-				"global_" + vec->getName(), ndim, vec->getType());
-
-			vc::ui16 vec_index = _addVariable(vec, false);
-			vc::ui16 global_vec_index = _addVariable(global_vec, true);
-
-			if (add_binding) {
-				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(vec->getType()), vec->getName()));
+			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::CONST_TYPE)) {
+				_addBinding(std::make_unique<ConstBinding>(binding, var->getType(), var->getName()));
+				_addVariable(var, IOShaderVariableType::CONST_TYPE);
+				return;
 			}
 
-			m_Outputs.emplace_back(vec_index, global_vec_index);
-		}
-
-		void _addInputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding, bool add_binding)
-		{
-			auto global_vec = std::make_shared<SingleVariable>(
-				"global_" + var->getName(), var->getType(), std::nullopt);
-
-			vc::ui16 var_index = _addVariable(var, false);
-			vc::ui16 global_var_index = _addVariable(global_vec, true);
-
-			if (add_binding) {
-				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(var->getType()), var->getName()));
+			bool added_global_var = false;
+			vc::ui16 var_index = _addVariable(var, IOShaderVariableType::LOCAL_TYPE);
+			vc::ui16 global_var_index;
+			
+			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::INPUT_TYPE)) {
+				global_var_index = _addVariable(global_var, type);
+				added_global_var = true;
+				_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+				m_Inputs.emplace_back(global_var_index, var_index);
 			}
 
-			m_Inputs.emplace_back(global_var_index, var_index);
-		}
-
-		void _addOutputSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding, bool add_binding)
-		{
-			auto global_var = std::make_shared<SingleVariable>(
-				"global_" + var->getName(), var->getType(), std::nullopt);
-
-			vc::ui16 var_index = _addVariable(var, false);
-			vc::ui16 global_var_index = _addVariable(global_var, true);
-
-			if (add_binding) {
-				_addBinding(std::make_unique<BufferBinding>(binding, shader_variable_type_to_str(var->getType()), var->getName()));
+			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::OUTPUT_TYPE)) {
+				if (!added_global_var) {
+					global_var_index = _addVariable(global_var, type);
+					added_global_var = true;
+					_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+				}
+				m_Outputs.emplace_back(var_index, global_var_index);
 			}
 
-			m_Outputs.emplace_back(var_index, global_var_index);
 		}
 
 	private:
@@ -515,7 +463,8 @@ layout (local_size_x = 1) in;
 		std::vector<std::unique_ptr<Binding>> m_Bindings;
 		std::vector<std::shared_ptr<Function>> m_Functions;
 
-		std::vector<std::pair<std::shared_ptr<ShaderVariable>, bool>> m_Variables;
+		std::vector<IOShaderVariableType> m_VariableTypes;
+		std::vector<std::shared_ptr<ShaderVariable>> m_Variables;
 
 		std::string m_BeforeCopyingFrom;
 		std::string m_AfterCopyingFrom;
@@ -524,10 +473,6 @@ layout (local_size_x = 1) in;
 
 		std::vector<std::pair<vc::ui16, vc::ui16>> m_Inputs;
 		std::vector<std::pair<vc::ui16, vc::ui16>> m_Outputs;
-		// m_Calls[0] is index to function in m_Functions
-		// m_Calls[i] for i > 0 is variable to use in function call, index is to
-		// m_Variables
-		std::vector<std::tuple<vc::ui16, vc::i16, std::vector<vc::ui16>>> m_Calls;
 
 	};
 

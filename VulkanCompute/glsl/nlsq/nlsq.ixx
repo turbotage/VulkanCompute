@@ -351,6 +351,45 @@ bool nlsq_clamping_UNIQUEID(inout float params[nparam],
 	}
 
 
+	export std::string nlsq_error_convergence_uniqueid(bool single_precision)
+	{
+		return (single_precision ? "S" : "D");
+	}
+
+	export std::shared_ptr<::glsl::Function> nlsq_error_convergence(bool single_precision)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+bool nlsq_error_convergence_UNIQUEID(in float error, in float new_error, in float tol) 
+{
+	if (abs(new_error - error) < tol*error) {
+		return true;
+	}
+	return false;
+}
+)glsl";
+
+		std::string uniqueid = nlsq_error_convergence_uniqueid(single_precision);
+
+		std::function<std::string()> code_func = [single_precision, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			if (!single_precision) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<Function>(
+			"nlsq_clamping_" + uniqueid,
+			std::vector<size_t>{ size_t(single_precision) },
+			code_func,
+			std::nullopt
+			);
+	}
+
+
 	export enum class StepType {
 		NO_STEP = 1,
 		DAMPING_INCREASED = 2,

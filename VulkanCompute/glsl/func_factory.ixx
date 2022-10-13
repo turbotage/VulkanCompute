@@ -30,11 +30,11 @@ namespace glsl {
 
 		virtual vc::ui16 scope_level() const = 0;
 
-		virtual std::vector<std::shared_ptr<ShaderVariable>>& variables() = 0;
-		virtual const std::vector<std::shared_ptr<ShaderVariable>>& variables() const = 0;
+		virtual vc::ui16 addVariable(const std::shared_ptr<ShaderVariable>& var) = 0;
+		virtual const std::shared_ptr<ShaderVariable>& getVariable(vc::ui16 index) const = 0;
 
-		virtual std::vector<std::shared_ptr<Function>>& functions() = 0;
-		virtual const std::vector<std::shared_ptr<Function>>& functions() const = 0;
+		virtual vc::ui16 addFunction(const std::shared_ptr<Function>& func) = 0;
+		virtual const std::shared_ptr<Function>& getFunction(vc::ui16 index) const = 0;
 
 		virtual std::string build() const = 0;
 
@@ -115,24 +115,20 @@ namespace glsl {
 			return m_Parent->scope_level() + 1;
 		}
 
-		virtual std::vector<std::shared_ptr<ShaderVariable>>& variables() override
-		{
-			return m_Parent->variables();
+		virtual vc::ui16 addVariable(const std::shared_ptr<ShaderVariable>& var) override {
+			return m_Parent->addVariable(var);
 		}
 
-		virtual const std::vector<std::shared_ptr<ShaderVariable>>& variables() const override
-		{
-			return m_Parent->variables();
+		virtual const std::shared_ptr<ShaderVariable>& getVariable(vc::ui16 index) const override {
+			return m_Parent->getVariable(index);
 		}
 
-		virtual std::vector<std::shared_ptr<Function>>& functions() override
-		{
-			return m_Parent->functions();
+		virtual vc::ui16 addFunction(const std::shared_ptr<Function>& func) override {
+			return m_Parent->addFunction(func);
 		}
 
-		virtual const std::vector<std::shared_ptr<Function>>& functions() const override
-		{
-			return m_Parent->functions();
+		virtual const std::shared_ptr<Function>& getFunction(vc::ui16 index) const override {
+			return m_Parent->getFunction(index);
 		}
 
 		virtual std::string build() const override {
@@ -203,25 +199,20 @@ namespace glsl {
 			return m_Parent->scope_level() + 1;
 		}
 
-		virtual std::vector<std::shared_ptr<ShaderVariable>>& variables() override
-		{
-			return m_Parent->variables();
+		virtual vc::ui16 addVariable(const std::shared_ptr<ShaderVariable>& var) override {
+			return m_Parent->addVariable(var);
 		}
 
-		virtual const std::vector<std::shared_ptr<ShaderVariable>>& variables() const override
-		{
-			return m_Parent->variables();
+		virtual const std::shared_ptr<ShaderVariable>& getVariable(vc::ui16 index) const override {
+			return m_Parent->getVariable(index);
 		}
 
-
-		virtual std::vector<std::shared_ptr<Function>>& functions() override
-		{
-			return m_Parent->functions();
+		virtual vc::ui16 addFunction(const std::shared_ptr<Function>& func) override {
+			return m_Parent->addFunction(func);
 		}
 
-		virtual const std::vector<std::shared_ptr<Function>>& functions() const override
-		{
-			return m_Parent->functions();
+		virtual const std::shared_ptr<Function>& getFunction(vc::ui16 index) const override {
+			return m_Parent->getFunction(index);
 		}
 
 		std::string build() const override {
@@ -231,11 +222,11 @@ namespace glsl {
 
 			util::add_n_str(code_str, "\t", slevel);
 
-			auto& func = (functions())[std::get<0>(m_Call)];
+			const auto& func = getFunction(std::get<0>(m_Call));
 
 			auto ret_idx = std::get<1>(m_Call);
 			if (ret_idx >= 0) {
-				auto& ret_var = (variables())[ret_idx];
+				auto& ret_var = getVariable(ret_idx);
 				code_str += ret_var->getName() + " = ";
 			}
 
@@ -244,7 +235,7 @@ namespace glsl {
 			// add input variables
 			auto& inputs = std::get<2>(m_Call);
 			for (int i = 0; i < inputs.size(); ++i) {
-				code_str += (variables())[inputs[i]]->getName();
+				code_str += getVariable(inputs[i])->getName();
 				if (i < inputs.size() - 1) {
 					code_str += ", ";
 				}
@@ -379,24 +370,20 @@ namespace glsl {
 			return 0;
 		}
 
-		std::vector<std::shared_ptr<ShaderVariable>>& variables() override
-		{
-			return m_Variables;
+		virtual vc::ui16 addVariable(const std::shared_ptr<ShaderVariable>& var) override {
+			return ShaderVariable::add_variable(m_Variables, var);
 		}
 
-		const std::vector<std::shared_ptr<ShaderVariable>>& variables() const override
-		{
-			return m_Variables;
+		virtual const std::shared_ptr<ShaderVariable>& getVariable(vc::ui16 index) const override {
+			return m_Variables[index];
 		}
 
-		std::vector<std::shared_ptr<Function>>& functions() override
-		{
-			return m_Functions;
+		virtual vc::ui16 addFunction(const std::shared_ptr<Function>& func) override {
+			return Function::add_function(m_Functions, func);
 		}
 
-		const std::vector<std::shared_ptr<Function>>& functions() const override
-		{
-			return m_Functions;
+		virtual const std::shared_ptr<Function>& getFunction(vc::ui16 index) const override {
+			return m_Functions[index];
 		}
 
 		void addMatrix(const std::shared_ptr<MatrixVariable>& mat, const std::optional<FunctionFactory::InputType>& input)
@@ -422,11 +409,6 @@ namespace glsl {
 			if (input.has_value()) {
 				m_Inputs.emplace_back(varidx, input.value());
 			}
-		}
-
-		void addFunction(const std::shared_ptr<Function>& func)
-		{
-			Function::add_function(m_Functions, func);
 		}
 
 		std::shared_ptr<::glsl::Function> build_function() const
@@ -618,11 +600,11 @@ namespace glsl {
 		{
 			on_apply();
 
-			vc::ui16 func_pos = Function::add_function(functions(), func);
+			vc::ui16 func_pos = addFunction(func);
 
 			vc::i16 ret_pos = -1;
 			if (ret) {
-				ret_pos = ShaderVariable::add_variable(variables(), ret);
+				ret_pos = addVariable(ret);
 			}
 
 			std::vector<vc::ui16> input_pos;
@@ -631,7 +613,7 @@ namespace glsl {
 				size_t ninputs = std::distance(its.first, its.second);
 				input_pos.reserve(ninputs);
 				for (auto it = its.first; it != its.second; ++it) {
-					input_pos.emplace_back(ShaderVariable::add_variable(variables(), *it));
+					input_pos.emplace_back(addVariable(*it));
 				}
 			}
 
