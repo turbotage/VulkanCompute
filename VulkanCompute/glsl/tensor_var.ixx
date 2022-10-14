@@ -31,6 +31,15 @@ namespace glsl {
 		const std::shared_ptr<glsl::SingleVariable>& var, vc::ui32 nelem);
 
 
+	//export std::shared_ptr<kp::Tensor> tensor_from_matrix_file(const std::shared_ptr<kp::Manager>& mgr,
+	//	const std::shared_ptr<glsl::MatrixVariable>& mat, const std::string& filename);
+	//
+	//export std::shared_ptr<kp::Tensor> tensor_from_vector_file(const std::shared_ptr<kp::Manager>& mgr,
+	//	const std::shared_ptr<glsl::VectorVariable>& mat, const std::string& filename);
+	//
+	//export std::shared_ptr<kp::Tensor> tensor_from_single_file(const std::shared_ptr<kp::Manager>& mgr,
+	//	const std::shared_ptr<glsl::SingleVariable>& mat, const std::string& filename);
+
 
 	export std::string print_shader_variable(const std::shared_ptr<kp::Tensor>& tensor,
 		const std::shared_ptr<glsl::MatrixVariable>& mat, vc::ui32 index);
@@ -40,5 +49,7 @@ namespace glsl {
 
 	export std::string print_shader_variable(const std::shared_ptr<kp::Tensor>& tensor,
 		const std::shared_ptr<glsl::SingleVariable>& var, vc::ui32 index);
+
+
 
 }

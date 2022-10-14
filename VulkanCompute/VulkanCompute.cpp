@@ -16,6 +16,7 @@ import <random>;
 import <chrono>;
 import <string>;
 import <iomanip>;
+import <filesystem>;
 
 import vc;
 import util;
@@ -868,7 +869,10 @@ void test_new_autogen() {
 
 int main() {
 	
-	test_new_autogen();
+	namespace fs = std::filesystem;
+
+	std::cout << fs::current_path() << std::endl;
+	//test_new_autogen();
 
 	return 0;
 }

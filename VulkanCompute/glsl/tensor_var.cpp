@@ -105,6 +105,51 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_single(const std::shared_ptr<kp::M
 }
 
 
+//
+//std::shared_ptr<kp::Tensor> tensor_from_matrix_file(const std::shared_ptr<kp::Manager>& mgr,
+//	const std::shared_ptr<glsl::MatrixVariable>& mat, const std::string& filename)
+//{
+//	switch (mat->getType()) {
+//	case glsl::ShaderVariableType::INT:
+//	{
+//		//std::vector<int32_t> v(nelem * mat->getNDim1() * mat->getNDim2());
+//		return mgr->tensor(v.data(), v.size(), sizeof(int32_t),
+//			kp::Tensor::TensorDataTypes::eInt);
+//	}
+//	break;
+//	case glsl::ShaderVariableType::FLOAT:
+//	{
+//		//std::vector<float> v(nelem * mat->getNDim1() * mat->getNDim2());
+//		return mgr->tensor(v.data(), v.size(), sizeof(float),
+//			kp::Tensor::TensorDataTypes::eFloat);
+//	}
+//	break;
+//	case glsl::ShaderVariableType::DOUBLE:
+//	{
+//		//std::vector<double> v(nelem * mat->getNDim1() * mat->getNDim2());
+//		return mgr->tensor(v.data(), v.size(), sizeof(double),
+//			kp::Tensor::TensorDataTypes::eDouble);
+//	}
+//	break;
+//	default:
+//		throw std::runtime_error("Unsupported type - tensor_from_variable");
+//	}
+//}
+//
+//std::shared_ptr<kp::Tensor> tensor_from_vector_file(const std::shared_ptr<kp::Manager>& mgr,
+//	const std::shared_ptr<glsl::VectorVariable>& mat, const std::string& filename)
+//{
+//
+//}
+//
+//std::shared_ptr<kp::Tensor> tensor_from_single_file(const std::shared_ptr<kp::Manager>& mgr,
+//	const std::shared_ptr<glsl::SingleVariable>& mat, const std::string& filename)
+//{
+//
+//}
+//
+
+
 
 std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tensor, 
 	const std::shared_ptr<glsl::MatrixVariable>& mat, vc::ui32 index)
