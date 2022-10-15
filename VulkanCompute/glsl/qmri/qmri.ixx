@@ -17,7 +17,9 @@ import variable;
 import function;
 import lsq;
 
+import func_factory;
 import shader;
+
 
 import expr;
 import nlsq;
@@ -58,8 +60,12 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 	
 	params[0] = lin_param2[0];
 	params[1] = 1.0 - (lin_param1[0] / lin_param2[0]);
-	params[2] = -lin_param2[1];
-	params[3] = -lin_param1[1];
+	params[1] = clamp(params[1], 0.0, 1.0);
+
+	params[2] = abs(lin_param2[1]);
+	params[3] = abs(lin_param1[1]);
+	
+	params[2] = max(params[2], 1.2*params[3]);
 }
 )glsl";
 
@@ -186,35 +192,66 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 		pShader->addVector(data, 2, IOShaderVariableType::INPUT_TYPE);
 		pShader->addVector(weights, 4, IOShaderVariableType::CONST_TYPE);
 		pShader->addSingle(lambda, 5, IOShaderVariableType::INPUT_OUTPUT_TYPE);
-		pShader->addSingle(step_type, 6, IOShaderVariableType::INPUT_OUTPUT_TYPE);
+		pShader->addSingle(step_type, 6, IOShaderVariableType::OUTPUT_TYPE);
 		pShader->addVector(nlstep, 7, IOShaderVariableType::OUTPUT_TYPE);
 		pShader->addSingle(error, 8, IOShaderVariableType::OUTPUT_TYPE);
 		pShader->addSingle(new_error, 9, IOShaderVariableType::OUTPUT_TYPE);
 		pShader->addVector(residuals, 10, IOShaderVariableType::OUTPUT_TYPE);
 		pShader->addMatrix(jacobian, 11, IOShaderVariableType::OUTPUT_TYPE);
 		pShader->addMatrix(hessian, 12, IOShaderVariableType::OUTPUT_TYPE);
-		pShader->addMatrix(lambda_hessian, 13, IOShaderVariableType::LOCAL_TYPE);
-		pShader->addVector(upper_bound, 14, IOShaderVariableType::LOCAL_TYPE);
-		pShader->addVector(lower_bound, 15, IOShaderVariableType::LOCAL_TYPE);
+		pShader->addMatrix(lambda_hessian, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
+		pShader->addVector(upper_bound, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
+		pShader->addVector(lower_bound, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
 
 		std::vector<std::string> vars = { "s0","f","d1","d2","b" };
 		std::string expresh = "s0*(f*exp(-b*d1)+(1-f)*exp(-b*d2))";
 		expression::Expression expr(expresh, vars);
 		SymbolicContext context;
+
 		context.insert_const(std::make_pair("b", 0));
 		context.insert_param(std::make_pair("s0", 0));
 		context.insert_param(std::make_pair("f", 1));
 		context.insert_param(std::make_pair("d1", 2));
 		context.insert_param(std::make_pair("d2", 3));
 
-		pShader->apply_scope(ForScope::make("int i = 0; i < 5; ++i"))
-			.apply(nlsq::nlsq_slmh_w_step(
+		pShader->apply_scope(glsl::TextedScope::make(
+R"glsl(
+step_type = 12;
+
+lower_bound[0] = 0;
+upper_bound[0] = data[0] * 20;
+
+lower_bound[1] = 0.0;
+upper_bound[1] = 1.0;
+
+lower_bound[2] = 0.0;
+upper_bound[2] = 10000.0;
+
+lower_bound[3] = 0.0;
+upper_bound[3] = 10000.0;
+)glsl"
+));
+
+		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 8; ++i"));
+
+		for_scope.apply(nlsq::nlsq_slmh_w_step(
 				expr, context,
 				params, consts, data, weights,
 				lambda, step_type, mu, eta, acc, dec,
 				nlstep, error, new_error,
 				residuals, jacobian, hessian, lambda_hessian
 			));
+
+		auto was_clamped = std::make_shared<glsl::SingleVariable>("was_clamped", ShaderVariableType::INT, std::nullopt);
+
+		for_scope.apply(nlsq::nlsq_clamping(
+			was_clamped,
+			params,
+			upper_bound,
+			lower_bound));
+
+		auto& if_scope = for_scope.apply_scope(glsl::IfScope::make("was_clamped == 1"));
+		if_scope.apply_scope(glsl::TextedScope::make(R"glsl(lambda *= 1.0;)glsl"));
 
 		return pShader;
 	}

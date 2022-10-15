@@ -5,7 +5,12 @@ module;
 
 module tensor_var;
 
+import <ostream>;
+import <fstream>;
+import <filesystem>;
+
 import vc;
+import glsl;
 import variable;
 import util;
 
@@ -105,49 +110,240 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_single(const std::shared_ptr<kp::M
 }
 
 
-//
-//std::shared_ptr<kp::Tensor> tensor_from_matrix_file(const std::shared_ptr<kp::Manager>& mgr,
-//	const std::shared_ptr<glsl::MatrixVariable>& mat, const std::string& filename)
-//{
-//	switch (mat->getType()) {
-//	case glsl::ShaderVariableType::INT:
-//	{
-//		//std::vector<int32_t> v(nelem * mat->getNDim1() * mat->getNDim2());
-//		return mgr->tensor(v.data(), v.size(), sizeof(int32_t),
-//			kp::Tensor::TensorDataTypes::eInt);
-//	}
-//	break;
-//	case glsl::ShaderVariableType::FLOAT:
-//	{
-//		//std::vector<float> v(nelem * mat->getNDim1() * mat->getNDim2());
-//		return mgr->tensor(v.data(), v.size(), sizeof(float),
-//			kp::Tensor::TensorDataTypes::eFloat);
-//	}
-//	break;
-//	case glsl::ShaderVariableType::DOUBLE:
-//	{
-//		//std::vector<double> v(nelem * mat->getNDim1() * mat->getNDim2());
-//		return mgr->tensor(v.data(), v.size(), sizeof(double),
-//			kp::Tensor::TensorDataTypes::eDouble);
-//	}
-//	break;
-//	default:
-//		throw std::runtime_error("Unsupported type - tensor_from_variable");
-//	}
-//}
-//
-//std::shared_ptr<kp::Tensor> tensor_from_vector_file(const std::shared_ptr<kp::Manager>& mgr,
-//	const std::shared_ptr<glsl::VectorVariable>& mat, const std::string& filename)
-//{
-//
-//}
-//
-//std::shared_ptr<kp::Tensor> tensor_from_single_file(const std::shared_ptr<kp::Manager>& mgr,
-//	const std::shared_ptr<glsl::SingleVariable>& mat, const std::string& filename)
-//{
-//
-//}
-//
+
+std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix_file(const std::shared_ptr<kp::Manager>& mgr,
+	const std::shared_ptr<glsl::MatrixVariable>& mat, const std::filesystem::path& filepath)
+{
+	auto file_size = std::filesystem::file_size(filepath);
+	std::ifstream infile(filepath.string(), std::fstream::binary);
+
+	switch (mat->getType()) {
+	case glsl::ShaderVariableType::INT:
+	{
+		if (file_size % sizeof(int32_t) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(int)");
+		auto num_elem = file_size / sizeof(int32_t);
+
+		std::vector<int32_t> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(int32_t));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(int32_t),
+			kp::Tensor::TensorDataTypes::eInt);
+	}
+	break;
+	case glsl::ShaderVariableType::FLOAT:
+	{
+		if (file_size % sizeof(float) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(float)");
+		auto num_elem = file_size / sizeof(float);
+
+		std::vector<float> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(float));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(float),
+			kp::Tensor::TensorDataTypes::eFloat);
+	}
+	break;
+	case glsl::ShaderVariableType::DOUBLE:
+	{
+		if (file_size % sizeof(double) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(double)");
+		auto num_elem = file_size / sizeof(double);
+
+		std::vector<double> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(double));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(double),
+			kp::Tensor::TensorDataTypes::eDouble);
+	}
+	break;
+	default:
+		throw std::runtime_error("Unsupported type - tensor_from_variable");
+	}
+}
+
+std::shared_ptr<kp::Tensor> glsl::tensor_from_vector_file(const std::shared_ptr<kp::Manager>& mgr,
+	const std::shared_ptr<glsl::VectorVariable>& vec, const std::filesystem::path& filepath)
+{
+	auto file_size = std::filesystem::file_size(filepath);
+	std::ifstream infile(filepath.string(), std::fstream::binary);
+
+	switch (vec->getType()) {
+	case glsl::ShaderVariableType::INT:
+	{
+		if (file_size % sizeof(int32_t) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(int)");
+		auto num_elem = file_size / sizeof(int32_t);
+
+		std::vector<int32_t> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(int32_t));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(int32_t),
+			kp::Tensor::TensorDataTypes::eInt);
+	}
+	break;
+	case glsl::ShaderVariableType::FLOAT:
+	{
+		if (file_size % sizeof(float) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(float)");
+		auto num_elem = file_size / sizeof(float);
+
+		std::vector<float> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(float));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(float),
+			kp::Tensor::TensorDataTypes::eFloat);
+	}
+	break;
+	case glsl::ShaderVariableType::DOUBLE:
+	{
+		if (file_size % sizeof(double) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(double)");
+		auto num_elem = file_size / sizeof(double);
+
+		std::vector<double> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(double));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(double),
+			kp::Tensor::TensorDataTypes::eDouble);
+	}
+	break;
+	default:
+		throw std::runtime_error("Unsupported type - tensor_from_variable");
+	}
+}
+
+std::shared_ptr<kp::Tensor> glsl::tensor_from_single_file(const std::shared_ptr<kp::Manager>& mgr,
+	const std::shared_ptr<glsl::SingleVariable>& var, const std::filesystem::path& filepath)
+{
+	auto file_size = std::filesystem::file_size(filepath);
+	std::ifstream infile(filepath.string(), std::fstream::binary);
+
+	switch (var->getType()) {
+	case glsl::ShaderVariableType::INT:
+	{
+		if (file_size % sizeof(int32_t) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(int)");
+		auto num_elem = file_size / sizeof(int32_t);
+
+		std::vector<int32_t> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(int32_t));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(int32_t),
+			kp::Tensor::TensorDataTypes::eInt);
+	}
+	break;
+	case glsl::ShaderVariableType::FLOAT:
+	{
+		if (file_size % sizeof(float) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(float)");
+		auto num_elem = file_size / sizeof(float);
+
+		std::vector<float> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(float));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(float),
+			kp::Tensor::TensorDataTypes::eFloat);
+	}
+	break;
+	case glsl::ShaderVariableType::DOUBLE:
+	{
+		if (file_size % sizeof(double) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(double)");
+		auto num_elem = file_size / sizeof(double);
+
+		std::vector<double> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(double));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(double),
+			kp::Tensor::TensorDataTypes::eDouble);
+	}
+	break;
+	default:
+		throw std::runtime_error("Unsupported type - tensor_from_variable");
+	}
+}
+
+
+std::shared_ptr<kp::Tensor> glsl::tensor_from_file(const std::shared_ptr<kp::Manager>& mgr,
+	const glsl::ShaderVariableType& type, const std::filesystem::path& filepath)
+{
+	auto file_size = std::filesystem::file_size(filepath);
+	std::ifstream infile(filepath.string(), std::fstream::binary);
+
+	switch (type) {
+	case glsl::ShaderVariableType::INT:
+	{
+		if (file_size % sizeof(int32_t) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(int)");
+		auto num_elem = file_size / sizeof(int32_t);
+
+		std::vector<int32_t> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(int32_t));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(int32_t),
+			kp::Tensor::TensorDataTypes::eInt);
+	}
+	break;
+	case glsl::ShaderVariableType::FLOAT:
+	{
+		if (file_size % sizeof(float) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(float)");
+		auto num_elem = file_size / sizeof(float);
+
+		std::vector<float> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(float));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(float),
+			kp::Tensor::TensorDataTypes::eFloat);
+	}
+	break;
+	case glsl::ShaderVariableType::DOUBLE:
+	{
+		if (file_size % sizeof(double) != 0)
+			throw std::runtime_error("File contents was not divisible by sizeof(double)");
+		auto num_elem = file_size / sizeof(double);
+
+		std::vector<double> v(num_elem);
+		infile.read(reinterpret_cast<char*>(v.data()), v.size() * sizeof(double));
+
+		return mgr->tensor(v.data(), v.size(), sizeof(double),
+			kp::Tensor::TensorDataTypes::eDouble);
+	}
+	break;
+	default:
+		throw std::runtime_error("Unsupported type - tensor_from_variable");
+	}
+}
+
+void glsl::tensor_to_file(const std::shared_ptr<kp::Tensor>& tensor,
+	const glsl::ShaderVariableType& type, const std::filesystem::path& filepath)
+{
+	std::ofstream outfile(filepath.string(), std::ios::out | std::ios::binary);
+
+	switch (type) {
+	case glsl::ShaderVariableType::INT:
+	{
+		outfile.write(reinterpret_cast<char*>(tensor->data<int32_t>()), tensor->size() * sizeof(int32_t));
+		outfile.close();
+	}
+	break;
+	case glsl::ShaderVariableType::FLOAT:
+	{
+		outfile.write(reinterpret_cast<char*>(tensor->data<float>()), tensor->size() * sizeof(float));
+		outfile.close();
+	}
+	break;
+	case glsl::ShaderVariableType::DOUBLE:
+	{
+		outfile.write(reinterpret_cast<char*>(tensor->data<double>()), tensor->size() * sizeof(double));
+		outfile.close();
+	}
+	break;
+	default:
+		throw std::runtime_error("Unsupported type - tensor_from_variable");
+	}
+}
 
 
 

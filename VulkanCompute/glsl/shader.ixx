@@ -179,19 +179,19 @@ R"glsl(
 		}
 
 		// MATRIX
-		void addMatrix(const std::shared_ptr<MatrixVariable>& mat, vc::ui16 binding, const IOShaderVariableType& type)
+		void addMatrix(const std::shared_ptr<MatrixVariable>& mat, const std::optional<vc::ui16>& binding, const IOShaderVariableType& type)
 		{
 			_addMatrix(mat, binding, type);
 		}
 
 		// VECTOR
-		void addVector(const std::shared_ptr<VectorVariable>& vec, vc::ui16 binding, const IOShaderVariableType& type)
+		void addVector(const std::shared_ptr<VectorVariable>& vec, const std::optional<vc::ui16>& binding, const IOShaderVariableType& type)
 		{
 			_addVector(vec, binding, type);
 		}
 
 		// SINGLE
-		void addSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding, const IOShaderVariableType& type)
+		void addSingle(const std::shared_ptr<SingleVariable>& var, const std::optional<vc::ui16>& binding, const IOShaderVariableType& type)
 		{
 			_addSingle(var, binding, type);
 		}
@@ -355,7 +355,7 @@ layout (local_size_x = 1) in;
 			return pos;
 		}
 
-		void _addMatrix(const std::shared_ptr<MatrixVariable>& mat, vc::ui16 binding, const IOShaderVariableType& type)
+		void _addMatrix(const std::shared_ptr<MatrixVariable>& mat, const std::optional<vc::ui16>& binding, const IOShaderVariableType& type)
 		{
 			auto ndim1 = mat->getNDim1();
 			auto ndim2 = mat->getNDim2();
@@ -364,7 +364,7 @@ layout (local_size_x = 1) in;
 				"global_" + mat->getName(), ndim1, ndim2, mat->getType());
 
 			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::CONST_TYPE)) {
-				_addBinding(std::make_unique<ConstBufferBinding>(binding, mat->getType(), mat->getName(), mat->getNDim1() * mat->getNDim2()));
+				_addBinding(std::make_unique<ConstBufferBinding>(binding.value(), mat->getType(), mat->getName(), mat->getNDim1() * mat->getNDim2()));
 				_addVariable(mat, IOShaderVariableType::CONST_TYPE);
 				return;
 			}
@@ -376,7 +376,7 @@ layout (local_size_x = 1) in;
 			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::INPUT_TYPE)) {
 				global_var_index = _addVariable(global_var, type);
 				added_global_var = true;
-				_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+				_addBinding(std::make_unique<BufferBinding>(binding.value(), global_var->getType(), global_var->getName()));
 				m_Inputs.emplace_back(global_var_index, var_index);
 			}
 
@@ -384,14 +384,14 @@ layout (local_size_x = 1) in;
 				if (!added_global_var) {
 					global_var_index = _addVariable(global_var, type);
 					added_global_var = true;
-					_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+					_addBinding(std::make_unique<BufferBinding>(binding.value(), global_var->getType(), global_var->getName()));
 				}
 				m_Outputs.emplace_back(var_index, global_var_index);
 			}
 
 		}
 
-		void _addVector(const std::shared_ptr<VectorVariable>& vec, vc::ui16 binding, const IOShaderVariableType& type)
+		void _addVector(const std::shared_ptr<VectorVariable>& vec, const std::optional<vc::ui16>& binding, const IOShaderVariableType& type)
 		{
 			auto ndim = vec->getNDim();
 
@@ -399,7 +399,7 @@ layout (local_size_x = 1) in;
 				"global_" + vec->getName(), ndim, vec->getType());
 
 			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::CONST_TYPE)) {
-				_addBinding(std::make_unique<ConstBufferBinding>(binding, vec->getType(), vec->getName(), vec->getNDim()));
+				_addBinding(std::make_unique<ConstBufferBinding>(binding.value(), vec->getType(), vec->getName(), vec->getNDim()));
 				_addVariable(vec, IOShaderVariableType::CONST_TYPE);
 				return;
 			}
@@ -411,7 +411,7 @@ layout (local_size_x = 1) in;
 			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::INPUT_TYPE)) {
 				global_var_index = _addVariable(global_var, type);
 				added_global_var = true;
-				_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+				_addBinding(std::make_unique<BufferBinding>(binding.value(), global_var->getType(), global_var->getName()));
 				m_Inputs.emplace_back(global_var_index, var_index);
 			}
 
@@ -419,19 +419,19 @@ layout (local_size_x = 1) in;
 				if (!added_global_var) {
 					global_var_index = _addVariable(global_var, type);
 					added_global_var = true;
-					_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+					_addBinding(std::make_unique<BufferBinding>(binding.value(), global_var->getType(), global_var->getName()));
 				}
 				m_Outputs.emplace_back(var_index, global_var_index);
 			}
 		}
 
-		void _addSingle(const std::shared_ptr<SingleVariable>& var, vc::ui16 binding, const IOShaderVariableType& type)
+		void _addSingle(const std::shared_ptr<SingleVariable>& var, const std::optional<vc::ui16>& binding, const IOShaderVariableType& type)
 		{
 			std::shared_ptr<SingleVariable> global_var = std::make_shared<SingleVariable>(
 				"global_" + var->getName(), var->getType(), var->getValue());
 
 			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::CONST_TYPE)) {
-				_addBinding(std::make_unique<ConstBinding>(binding, var->getType(), var->getName()));
+				_addBinding(std::make_unique<ConstBinding>(binding.value(), var->getType(), var->getName()));
 				_addVariable(var, IOShaderVariableType::CONST_TYPE);
 				return;
 			}
@@ -443,7 +443,7 @@ layout (local_size_x = 1) in;
 			if (static_cast<int>(type) & static_cast<int>(IOShaderVariableType::INPUT_TYPE)) {
 				global_var_index = _addVariable(global_var, type);
 				added_global_var = true;
-				_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+				_addBinding(std::make_unique<BufferBinding>(binding.value(), global_var->getType(), global_var->getName()));
 				m_Inputs.emplace_back(global_var_index, var_index);
 			}
 
@@ -451,7 +451,7 @@ layout (local_size_x = 1) in;
 				if (!added_global_var) {
 					global_var_index = _addVariable(global_var, type);
 					added_global_var = true;
-					_addBinding(std::make_unique<BufferBinding>(binding, global_var->getType(), global_var->getName()));
+					_addBinding(std::make_unique<BufferBinding>(binding.value(), global_var->getType(), global_var->getName()));
 				}
 				m_Outputs.emplace_back(var_index, global_var_index);
 			}

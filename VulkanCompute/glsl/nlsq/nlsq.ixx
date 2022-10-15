@@ -271,7 +271,7 @@ float nlsq_weighted_error_UNIQUEID(in float res[ndata], in float weights[ndata])
 	{
 		static const std::string code = // compute shader
 R"glsl(
-bool nlsq_clamping_UNIQUEID(inout float params[nparam], 
+int nlsq_clamping_UNIQUEID(inout float params[nparam], 
 	in float upper_bound[nparam], in float lower_bound[nparam]) 
 {
 	bool clamped = false;
@@ -280,12 +280,12 @@ bool nlsq_clamping_UNIQUEID(inout float params[nparam],
 			params[i] = 0.5 * (upper_bound[i] - lower_bound[i]);
 			clamped = true;
 		}
-		if (params[i] < lower_bound[i] || upper_bound[i] < upper_bound[i]) {
+		else if (params[i] < lower_bound[i] || upper_bound[i] < params[i]) {
 			params[i] = clamp(params[i], lower_bound[i], upper_bound[i]);
 			clamped = true;
 		}
 	}
-	return clamped;
+	return int(clamped);
 }
 )glsl";
 
@@ -344,8 +344,8 @@ bool nlsq_clamping_UNIQUEID(inout float params[nparam],
 		if (lower_bound->getType() == ShaderVariableType::DOUBLE)
 			single_precision = false;
 
-		auto func = nlsq_error(ndim, single_precision);
-		auto uniqueid = nlsq_error_uniqueid(ndim, single_precision);
+		auto func = nlsq_clamping(ndim, single_precision);
+		auto uniqueid = nlsq_clamping_uniqueid(ndim, single_precision);
 
 		return FunctionApplier{ func, was_clamped, {params, upper_bound, lower_bound}, uniqueid };
 	}
@@ -382,7 +382,7 @@ bool nlsq_error_convergence_UNIQUEID(in float error, in float new_error, in floa
 		};
 
 		return std::make_shared<Function>(
-			"nlsq_clamping_" + uniqueid,
+			"nlsq_error_convergence_" + uniqueid,
 			std::vector<size_t>{ size_t(single_precision) },
 			code_func,
 			std::nullopt

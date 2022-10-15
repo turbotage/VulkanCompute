@@ -14,7 +14,7 @@ fraw, fbval, fbvec = get_fnames('ivim')
 data = load_nifti_data(fraw)
 bvals,bvecs = read_bvals_bvecs(fbval, fbvec)
 
-z = 1
+z = 25
 b=0
 x1, x2 = 45, 210
 y1, y2 = 30, 230
@@ -26,15 +26,17 @@ plt.imshow(data[x1:x2, y1:y2, z, b].T, origin='lower',
 plt.close()
 
 abs_path = os.path.dirname(__file__)
-rel_path = 'export/ivim_data.vcdat'
+rel_path = 'export/data/ivim_data.vcdat'
 full_path = os.path.join(abs_path, rel_path)
+
+
 
 with open(full_path, 'wb') as of:
     for i in range(data_slice.shape[0]):
         for j in range(data_slice.shape[1]):
             of.write(data_slice[i,j,:].astype(np.float32).tobytes())
 
-rel_path = 'export/ivim_bvals.vcdat'
+rel_path = 'export/data/ivim_bvals.vcdat'
 full_path = os.path.join(abs_path, rel_path)
 
 with open(full_path, 'wb') as of:
