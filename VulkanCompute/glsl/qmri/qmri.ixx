@@ -159,7 +159,107 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 		return std::move(pShader);
 	}
 	
-	export std::shared_ptr<glsl::AutogenShader> ivim_nlsq_shader(vc::ui16 ndata, bool single_precision)
+	export std::shared_ptr<glsl::AutogenShader> ivim_partial_nlsq_shader(vc::ui16 ndata, bool single_precision)
+	{
+		using namespace nlsq;
+
+		std::shared_ptr<AutogenShader> pShader = std::make_shared<AutogenShader>();
+
+		auto params = std::make_shared<glsl::VectorVariable>("params", 4, ShaderVariableType::FLOAT);
+		auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, 1, ShaderVariableType::FLOAT);
+		auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::FLOAT);
+		auto weights = std::make_shared<glsl::VectorVariable>("weights", ndata, ShaderVariableType::FLOAT);
+		auto lambda = std::make_shared<glsl::SingleVariable>("lambda", ShaderVariableType::FLOAT, std::nullopt);
+		auto step_type = std::make_shared<glsl::SingleVariable>("step_type", ShaderVariableType::INT, std::nullopt);
+
+		auto mu = std::make_shared<glsl::SingleVariable>("mu", ShaderVariableType::FLOAT, "0.25");
+		auto eta = std::make_shared<glsl::SingleVariable>("eta", ShaderVariableType::FLOAT, "0.75");
+		auto acc = std::make_shared<glsl::SingleVariable>("acc", ShaderVariableType::FLOAT, "0.2");
+		auto dec = std::make_shared<glsl::SingleVariable>("dec", ShaderVariableType::FLOAT, "5.0");
+
+		auto local_params = std::make_shared<glsl::VectorVariable>("local_params", 2, ShaderVariableType::FLOAT);
+		auto local_consts = std::make_shared<glsl::MatrixVariable>("local_consts", ndata, 3, ShaderVariableType::FLOAT);
+		auto nlstep = std::make_shared<glsl::VectorVariable>("nlstep", 2, ShaderVariableType::FLOAT);
+		auto error = std::make_shared<glsl::SingleVariable>("error", ShaderVariableType::FLOAT, std::nullopt);
+		auto new_error = std::make_shared<glsl::SingleVariable>("new_error", ShaderVariableType::FLOAT, std::nullopt);
+		auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::FLOAT);
+		auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, 2, ShaderVariableType::FLOAT);
+		auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", 2, 2, ShaderVariableType::FLOAT);
+		auto lambda_hessian = std::make_shared<glsl::MatrixVariable>("lambda_hessian", 2, 2, ShaderVariableType::FLOAT);
+		auto upper_bound = std::make_shared<glsl::VectorVariable>("upper_bound", 2, ShaderVariableType::FLOAT);
+		auto lower_bound = std::make_shared<glsl::VectorVariable>("lower_bound", 2, ShaderVariableType::FLOAT);
+
+		pShader->addVector(params, 0, IOShaderVariableType::INPUT_OUTPUT_TYPE);
+		pShader->addMatrix(consts, 1, IOShaderVariableType::CONST_TYPE);
+		pShader->addVector(data, 2, IOShaderVariableType::INPUT_TYPE);
+		pShader->addVector(weights, 4, IOShaderVariableType::CONST_TYPE);
+
+		std::vector<std::string> vars = { "s0","f","d1","d2","b" };
+		std::string expresh = "s0*(f*exp(-b*d1)+(1-f)*exp(-b*d2))";
+		expression::Expression expr(expresh, vars);
+		SymbolicContext context;
+
+		context.insert_const(std::make_pair("b", 0));
+		context.insert_const(std::make_pair("s0", 1));
+		context.insert_const(std::make_pair("d2", 2));
+		context.insert_param(std::make_pair("f", 0));
+		context.insert_param(std::make_pair("d1", 1));
+
+
+		std::string begin_str =
+			R"glsl(
+step_type = 12;
+
+lower_bound[0] = 0;
+upper_bound[0] = 1;
+
+lower_bound[1] = 0.0;
+upper_bound[1] = 1.0;
+
+for (int i = 0; i < ndata; ++i) {
+	local_consts[i*3 + 0] = consts[i];
+	local_consts[i*3 + 1] = params[0];
+	local_consts[i*3 + 2] = params[3];
+}
+
+local_params[0] = params[1];
+local_params[1] = params[2];
+)glsl";
+		util::replace_all(begin_str, "ndata", std::to_string(ndata));
+
+		pShader->apply_scope(glsl::TextedScope::make(begin_str));
+
+		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 8; ++i"));
+
+		for_scope.apply(nlsq::nlsq_slmh_w_step(
+			expr, context,
+			local_params, local_consts, data, weights,
+			lambda, step_type, mu, eta, acc, dec,
+			nlstep, error, new_error,
+			residuals, jacobian, hessian, lambda_hessian
+		));
+
+		auto was_clamped = std::make_shared<glsl::SingleVariable>("was_clamped", ShaderVariableType::INT, std::nullopt);
+
+		for_scope.apply(nlsq::nlsq_clamping(
+			was_clamped,
+			local_params,
+			upper_bound,
+			lower_bound));
+
+		auto& if_scope = for_scope.apply_scope(glsl::IfScope::make("was_clamped == 1"));
+		if_scope.apply_scope(glsl::TextedScope::make(R"glsl(lambda *= 1.0;)glsl"));
+
+		pShader->apply_scope(glsl::TextedScope::make(
+R"glsl(
+params[1] = local_params[0];
+params[2] = local_params[1];
+)glsl"));
+
+		return pShader;
+	}
+
+	export std::shared_ptr<glsl::AutogenShader> ivim_full_nlsq_shader(vc::ui16 ndata, bool single_precision)
 	{
 		using namespace nlsq;
 
@@ -232,7 +332,7 @@ upper_bound[3] = 10000.0;
 )glsl"
 ));
 
-		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 8; ++i"));
+		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 0; ++i"));
 
 		for_scope.apply(nlsq::nlsq_slmh_w_step(
 				expr, context,

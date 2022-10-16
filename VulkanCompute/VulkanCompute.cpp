@@ -847,7 +847,7 @@ void test_new_autogen() {
 	using namespace glsl;
 
 	auto shader1 = qmri::ivim_guess_shader(21, true);
-	auto shader2 = qmri::ivim_nlsq_shader(21, true);
+	auto shader2 = qmri::ivim_full_nlsq_shader(21, true);
 
 	auto sh1_compiled = shader1->compile();
 	std::cout << util::add_line_numbers(
@@ -872,7 +872,6 @@ void run_qmri_ivim() {
 	uint32_t ndata = 21;
 	uint32_t nconst = 1;
 
-	auto mgr = std::make_shared<kp::Manager>();
 
 	auto params = std::make_shared<glsl::VectorVariable>("params", 4, glsl::ShaderVariableType::FLOAT);
 	auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, nconst, glsl::ShaderVariableType::FLOAT);
@@ -891,11 +890,29 @@ void run_qmri_ivim() {
 	auto upper_bound = std::make_shared<glsl::VectorVariable>("upper_bound", 4, glsl::ShaderVariableType::FLOAT);
 	auto lower_bound = std::make_shared<glsl::VectorVariable>("lower_bound", 4, glsl::ShaderVariableType::FLOAT);
 
+	auto pShader1 = glsl::qmri::ivim_guess_shader(ndata, true);
+	auto shaderStr1 = pShader1->compile();
+	std::cout << shaderStr1 << std::endl;
+	std::cout << "\n\n\n" << std::endl;
+
+	auto pShader2 = glsl::qmri::ivim_partial_nlsq_shader(ndata, true);
+	auto shaderStr2 = pShader2->compile();
+	std::cout << shaderStr2 << std::endl;
+	std::cout << "\n\n\n" << std::endl;
+
+	auto pShader3 = glsl::qmri::ivim_full_nlsq_shader(ndata, true);
+	auto shaderStr3 = pShader3->compile();
+
+	std::cout << shaderStr3 << std::endl;
+	std::cout << "\n\n\n" << std::endl;
+
 	namespace fs = std::filesystem;
 	auto d_path = fs::current_path() / "data" / "ivim_data.vcdat";
 	auto c_path = fs::current_path() / "data" / "ivim_bvals.vcdat";
 
 	size_t nelem = fs::file_size(d_path) / ndata / sizeof(float);
+
+	auto mgr = std::make_shared<kp::Manager>();
 
 	auto kp_params = glsl::tensor_from_vector(mgr, params, nelem);
 	auto kp_consts = glsl::tensor_from_file(mgr, glsl::ShaderVariableType::FLOAT, c_path);
@@ -920,18 +937,10 @@ void run_qmri_ivim() {
 	auto kp_jacobian = glsl::tensor_from_matrix(mgr, jacobian, nelem);
 	auto kp_hessian = glsl::tensor_from_matrix(mgr, hessian, nelem);
 
-	auto pShader1 = glsl::qmri::ivim_guess_shader(ndata, true);
-	auto shaderStr1 = pShader1->compile();
-
-	auto pShader2 = glsl::qmri::ivim_nlsq_shader(ndata, true);
-	auto shaderStr2 = pShader2->compile();
-
-	std::cout << shaderStr1 << std::endl;
-	std::cout << "\n\n\n" << std::endl;
-	std::cout << shaderStr2 << std::endl;
 
 	auto spirv1 = glsl::compileSource(shaderStr1);
 	auto spirv2 = glsl::compileSource(shaderStr2);
+	auto spirv3 = glsl::compileSource(shaderStr3);
 
 	std::vector<std::shared_ptr<kp::Tensor>> shader_inputs = {
 		kp_params, kp_consts, kp_data, kp_bsplit, kp_weights, kp_lambda, kp_step_type,
@@ -942,6 +951,7 @@ void run_qmri_ivim() {
 	
 	std::shared_ptr<kp::Algorithm> algo1 = mgr->algorithm(shader_inputs, spirv1, wg);
 	std::shared_ptr<kp::Algorithm> algo2 = mgr->algorithm(shader_inputs, spirv2, wg);
+	std::shared_ptr<kp::Algorithm> algo3 = mgr->algorithm(shader_inputs, spirv3, wg);
 
 	auto start = std::chrono::steady_clock::now();
 
@@ -951,6 +961,9 @@ void run_qmri_ivim() {
 		->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
 			vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader)
 		->record<kp::OpAlgoDispatch>(algo2)
+		->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
+			vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader)
+		->record<kp::OpAlgoDispatch>(algo3)
 		->record<kp::OpTensorSyncLocal>(shader_inputs)
 		->eval();
 
