@@ -205,9 +205,8 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 		context.insert_param(std::make_pair("f", 0));
 		context.insert_param(std::make_pair("d1", 1));
 
-
 		std::string begin_str =
-			R"glsl(
+R"glsl(
 step_type = 12;
 
 lower_bound[0] = 0;
@@ -229,7 +228,7 @@ local_params[1] = params[2];
 
 		pShader->apply_scope(glsl::TextedScope::make(begin_str));
 
-		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 8; ++i"));
+		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 5; ++i"));
 
 		for_scope.apply(nlsq::nlsq_slmh_w_step(
 			expr, context,
