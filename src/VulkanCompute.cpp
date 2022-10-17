@@ -1,14 +1,6 @@
 ﻿// VulkanCompute.cpp : Defines the entry point for the application.
 //
 
-#define KOMPUTE_LOG_LEVEL KOMPUTE_LOG_LEVEL_OFF
-#include <kompute/Kompute.hpp>
-#include <symengine/expression.h>
-#include <symengine/refine.h>
-#include <symengine/simplify.h>
-#include <symengine/parser.h>
-#include <symengine/parser/parser.h>
-
 import <vector>;
 import <memory>;
 import <optional>;

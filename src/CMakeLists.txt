@@ -1,15 +1,12 @@
 ﻿# CMakeList.txt : CMake project for VulkanCompute, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.14)
+cmake_minimum_required (VERSION 3.20)
 
-set(DKOMPUTE_VK_API_MAJOR_VERSION 1)
-set(DKOMPUTE_VK_API_MINOR_VERSION 3)
 
-add_subdirectory("external/kompute" ${CMAKE_CURRENT_BINARY_DIR}/kompute_build)
+#add_subdirectory("external/kompute" ${CMAKE_CURRENT_BINARY_DIR}/kompute_build)
 # Add source to this project's executable.
-add_executable(VulkanCompute
-	"VulkanCompute.cpp"
+target_sources(VulkanCompute PUBLIC
 	"util.ixx"
 	"glsl/glsl.ixx"
 	"glsl/glsl.cpp"
@@ -46,22 +43,3 @@ add_executable(VulkanCompute
 	"expression/expr.ixx" 
 	"expression/expr.cpp"
 )
-
-set_property(TARGET VulkanCompute PROPERTY CXX_STANDARD 20)
-
-target_link_libraries(VulkanCompute
-				# Libraries from kompute
-				kompute)
-
-find_package(SymEngine CONFIG REQUIRED)
-message(${SYMENGINE_LIBRARIES})
-target_link_libraries(VulkanCompute symengine)
-
-message("SOURCE_DIR")
-message(${CMAKE_SOURCE_DIR})
-
-add_custom_command(TARGET VulkanCompute PRE_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_directory
-		${CMAKE_SOURCE_DIR}/VulkanCompute/python/export/ $<TARGET_FILE_DIR:VulkanCompute>)
-
-# TODO: Add tests and install targets if needed.
