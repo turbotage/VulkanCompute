@@ -20,4 +20,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(avk_toolkit)
 
-target_compile_options(Auto_Vk_Toolkit PUBLIC /Zc:preprocessor)
+if (MSVC)
+	target_compile_options(Auto_Vk_Toolkit PUBLIC /Zc:preprocessor)
+endif(MSVC)
