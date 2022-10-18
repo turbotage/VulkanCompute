@@ -18,22 +18,22 @@ import util;
 namespace glsl {
 
 	export enum class ShaderVariableType {
-		FLOAT = 1,
-		DOUBLE = 2,
-		INT = 4,
-		VOID = 8,
+		eFloat = 1,
+		eDouble = 2,
+		eInt = 4,
+		eVoid = 8,
 	};
 
 	export std::string shader_variable_type_to_str(const ShaderVariableType& type)
 	{
 		switch (type) {
-		case ShaderVariableType::FLOAT:
+		case ShaderVariableType::eFloat:
 			return "float";
-		case ShaderVariableType::DOUBLE:
+		case ShaderVariableType::eDouble:
 			return "double";
-		case ShaderVariableType::INT:
+		case ShaderVariableType::eInt:
 			return "int";
-		case ShaderVariableType::VOID:
+		case ShaderVariableType::eVoid:
 			return "void";
 		default:
 			throw std::runtime_error("Unsupported type");
@@ -244,13 +244,13 @@ namespace glsl {
 		{
 			std::string ret;
 			switch (m_Type) {
-			case ShaderVariableType::FLOAT:
+			case ShaderVariableType::eFloat:
 				ret += "float ";
 				break;
-			case ShaderVariableType::DOUBLE:
+			case ShaderVariableType::eDouble:
 				ret += "double ";
 				break;
-			case ShaderVariableType::INT:
+			case ShaderVariableType::eInt:
 				ret += "int ";
 				break;
 			default:
@@ -315,13 +315,13 @@ namespace glsl {
 		{
 			std::string ret;
 			switch (m_Type) {
-			case ShaderVariableType::FLOAT:
+			case ShaderVariableType::eFloat:
 				ret += "float ";
 				break;
-			case ShaderVariableType::DOUBLE:
+			case ShaderVariableType::eDouble:
 				ret += "double ";
 				break;
-			case ShaderVariableType::INT:
+			case ShaderVariableType::eInt:
 				ret += "int ";
 				break;
 			default:
@@ -345,13 +345,13 @@ namespace glsl {
 		{
 			auto ret = std::to_string(m_NDim) + "_";
 			switch (m_Type) {
-			case ShaderVariableType::FLOAT:
+			case ShaderVariableType::eFloat:
 				ret += "S";
 				break;
-			case ShaderVariableType::DOUBLE:
+			case ShaderVariableType::eDouble:
 				ret += "D";
 				break;
-			case ShaderVariableType::INT:
+			case ShaderVariableType::eInt:
 				ret += "I";
 				break;
 			default:
@@ -398,13 +398,13 @@ namespace glsl {
 		{
 			std::string ret;
 			switch (m_Type) {
-			case ShaderVariableType::FLOAT:
+			case ShaderVariableType::eFloat:
 				ret += "float ";
 				break;
-			case ShaderVariableType::DOUBLE:
+			case ShaderVariableType::eDouble:
 				ret += "double ";
 				break;
-			case ShaderVariableType::INT:
+			case ShaderVariableType::eInt:
 				ret += "int ";
 				break;
 			default:
@@ -430,13 +430,13 @@ namespace glsl {
 		{
 			auto ret = std::to_string(m_NDim1) + "_" + std::to_string(m_NDim2) + "_";
 			switch (m_Type) {
-			case ShaderVariableType::FLOAT:
+			case ShaderVariableType::eFloat:
 				ret += "S";
 				break;
-			case ShaderVariableType::DOUBLE:
+			case ShaderVariableType::eDouble:
 				ret += "D";
 				break;
-			case ShaderVariableType::INT:
+			case ShaderVariableType::eInt:
 				ret += "I";
 				break;
 			default:

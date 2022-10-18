@@ -115,12 +115,12 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 				throw std::runtime_error("All inputs must have same type");
 			}
 
-			if (!((params->getType() == ShaderVariableType::FLOAT) ||
-				(params->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((params->getType() == ShaderVariableType::eFloat) ||
+				(params->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 
-			if (bsplit->getType() != ShaderVariableType::INT) {
+			if (bsplit->getType() != ShaderVariableType::eInt) {
 				throw std::runtime_error("bsplit must have integer type");
 			}
 
@@ -129,7 +129,7 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 		ui16 ndim = data->getNDim();
 
 		bool single_precision = true;
-		if (params->getType() == ShaderVariableType::DOUBLE)
+		if (params->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = ivim_guess(ndim, single_precision);
@@ -144,10 +144,10 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 	{
 		std::shared_ptr<AutogenShader> pShader = std::make_shared<AutogenShader>();
 
-		auto params = std::make_shared<glsl::VectorVariable>("params", 4, ShaderVariableType::FLOAT);
-		auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, 1, ShaderVariableType::FLOAT);
-		auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::FLOAT);
-		auto bsplit = std::make_shared<glsl::VectorVariable>("bsplit", 2, ShaderVariableType::INT);
+		auto params = std::make_shared<glsl::VectorVariable>("params", 4, ShaderVariableType::eFloat);
+		auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, 1, ShaderVariableType::eFloat);
+		auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::eFloat);
+		auto bsplit = std::make_shared<glsl::VectorVariable>("bsplit", 2, ShaderVariableType::eInt);
 
 		pShader->addVector(params, 0, IOShaderVariableType::INPUT_OUTPUT_TYPE);
 		pShader->addMatrix(consts, 1, IOShaderVariableType::CONST_TYPE);
@@ -165,29 +165,29 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 
 		std::shared_ptr<AutogenShader> pShader = std::make_shared<AutogenShader>();
 
-		auto params = std::make_shared<glsl::VectorVariable>("params", 4, ShaderVariableType::FLOAT);
-		auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, 1, ShaderVariableType::FLOAT);
-		auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::FLOAT);
-		auto weights = std::make_shared<glsl::VectorVariable>("weights", ndata, ShaderVariableType::FLOAT);
-		auto lambda = std::make_shared<glsl::SingleVariable>("lambda", ShaderVariableType::FLOAT, std::nullopt);
-		auto step_type = std::make_shared<glsl::SingleVariable>("step_type", ShaderVariableType::INT, std::nullopt);
+		auto params = std::make_shared<glsl::VectorVariable>("params", 4, ShaderVariableType::eFloat);
+		auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, 1, ShaderVariableType::eFloat);
+		auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::eFloat);
+		auto weights = std::make_shared<glsl::VectorVariable>("weights", ndata, ShaderVariableType::eFloat);
+		auto lambda = std::make_shared<glsl::SingleVariable>("lambda", ShaderVariableType::eFloat, std::nullopt);
+		auto step_type = std::make_shared<glsl::SingleVariable>("step_type", ShaderVariableType::eInt, std::nullopt);
 
-		auto mu = std::make_shared<glsl::SingleVariable>("mu", ShaderVariableType::FLOAT, "0.25");
-		auto eta = std::make_shared<glsl::SingleVariable>("eta", ShaderVariableType::FLOAT, "0.75");
-		auto acc = std::make_shared<glsl::SingleVariable>("acc", ShaderVariableType::FLOAT, "0.2");
-		auto dec = std::make_shared<glsl::SingleVariable>("dec", ShaderVariableType::FLOAT, "5.0");
+		auto mu = std::make_shared<glsl::SingleVariable>("mu", ShaderVariableType::eFloat, "0.25");
+		auto eta = std::make_shared<glsl::SingleVariable>("eta", ShaderVariableType::eFloat, "0.75");
+		auto acc = std::make_shared<glsl::SingleVariable>("acc", ShaderVariableType::eFloat, "0.2");
+		auto dec = std::make_shared<glsl::SingleVariable>("dec", ShaderVariableType::eFloat, "5.0");
 
-		auto local_params = std::make_shared<glsl::VectorVariable>("local_params", 2, ShaderVariableType::FLOAT);
-		auto local_consts = std::make_shared<glsl::MatrixVariable>("local_consts", ndata, 3, ShaderVariableType::FLOAT);
-		auto nlstep = std::make_shared<glsl::VectorVariable>("nlstep", 2, ShaderVariableType::FLOAT);
-		auto error = std::make_shared<glsl::SingleVariable>("error", ShaderVariableType::FLOAT, std::nullopt);
-		auto new_error = std::make_shared<glsl::SingleVariable>("new_error", ShaderVariableType::FLOAT, std::nullopt);
-		auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::FLOAT);
-		auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, 2, ShaderVariableType::FLOAT);
-		auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", 2, 2, ShaderVariableType::FLOAT);
-		auto lambda_hessian = std::make_shared<glsl::MatrixVariable>("lambda_hessian", 2, 2, ShaderVariableType::FLOAT);
-		auto upper_bound = std::make_shared<glsl::VectorVariable>("upper_bound", 2, ShaderVariableType::FLOAT);
-		auto lower_bound = std::make_shared<glsl::VectorVariable>("lower_bound", 2, ShaderVariableType::FLOAT);
+		auto local_params = std::make_shared<glsl::VectorVariable>("local_params", 2, ShaderVariableType::eFloat);
+		auto local_consts = std::make_shared<glsl::MatrixVariable>("local_consts", ndata, 3, ShaderVariableType::eFloat);
+		auto nlstep = std::make_shared<glsl::VectorVariable>("nlstep", 2, ShaderVariableType::eFloat);
+		auto error = std::make_shared<glsl::SingleVariable>("error", ShaderVariableType::eFloat, std::nullopt);
+		auto new_error = std::make_shared<glsl::SingleVariable>("new_error", ShaderVariableType::eFloat, std::nullopt);
+		auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::eFloat);
+		auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, 2, ShaderVariableType::eFloat);
+		auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", 2, 2, ShaderVariableType::eFloat);
+		auto lambda_hessian = std::make_shared<glsl::MatrixVariable>("lambda_hessian", 2, 2, ShaderVariableType::eFloat);
+		auto upper_bound = std::make_shared<glsl::VectorVariable>("upper_bound", 2, ShaderVariableType::eFloat);
+		auto lower_bound = std::make_shared<glsl::VectorVariable>("lower_bound", 2, ShaderVariableType::eFloat);
 
 		pShader->addVector(params, 0, IOShaderVariableType::INPUT_OUTPUT_TYPE);
 		pShader->addMatrix(consts, 1, IOShaderVariableType::CONST_TYPE);
@@ -207,8 +207,6 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 
 		std::string begin_str =
 R"glsl(
-step_type = 12;
-
 lower_bound[0] = 0;
 upper_bound[0] = 1;
 
@@ -238,7 +236,7 @@ local_params[1] = params[2];
 			residuals, jacobian, hessian, lambda_hessian
 		));
 
-		auto was_clamped = std::make_shared<glsl::SingleVariable>("was_clamped", ShaderVariableType::INT, std::nullopt);
+		auto was_clamped = std::make_shared<glsl::SingleVariable>("was_clamped", ShaderVariableType::eInt, std::nullopt);
 
 		for_scope.apply(nlsq::nlsq_clamping(
 			was_clamped,
@@ -264,27 +262,27 @@ params[2] = local_params[1];
 
 		std::shared_ptr<AutogenShader> pShader = std::make_shared<AutogenShader>();
 
-		auto params = std::make_shared<glsl::VectorVariable>("params", 4, ShaderVariableType::FLOAT);
-		auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, 1, ShaderVariableType::FLOAT);
-		auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::FLOAT);
-		auto weights = std::make_shared<glsl::VectorVariable>("weights", ndata, ShaderVariableType::FLOAT);
-		auto lambda = std::make_shared<glsl::SingleVariable>("lambda", ShaderVariableType::FLOAT, std::nullopt);
-		auto step_type = std::make_shared<glsl::SingleVariable>("step_type", ShaderVariableType::INT, std::nullopt);
+		auto params = std::make_shared<glsl::VectorVariable>("params", 4, ShaderVariableType::eFloat);
+		auto consts = std::make_shared<glsl::MatrixVariable>("consts", ndata, 1, ShaderVariableType::eFloat);
+		auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::eFloat);
+		auto weights = std::make_shared<glsl::VectorVariable>("weights", ndata, ShaderVariableType::eFloat);
+		auto lambda = std::make_shared<glsl::SingleVariable>("lambda", ShaderVariableType::eFloat, std::nullopt);
+		auto step_type = std::make_shared<glsl::SingleVariable>("step_type", ShaderVariableType::eInt, std::nullopt);
 
-		auto mu = std::make_shared<glsl::SingleVariable>("mu", ShaderVariableType::FLOAT, "0.25");
-		auto eta = std::make_shared<glsl::SingleVariable>("eta", ShaderVariableType::FLOAT, "0.75");
-		auto acc = std::make_shared<glsl::SingleVariable>("acc", ShaderVariableType::FLOAT, "0.2");
-		auto dec = std::make_shared<glsl::SingleVariable>("dec", ShaderVariableType::FLOAT, "5.0");
+		auto mu = std::make_shared<glsl::SingleVariable>("mu", ShaderVariableType::eFloat, "0.25");
+		auto eta = std::make_shared<glsl::SingleVariable>("eta", ShaderVariableType::eFloat, "0.75");
+		auto acc = std::make_shared<glsl::SingleVariable>("acc", ShaderVariableType::eFloat, "0.2");
+		auto dec = std::make_shared<glsl::SingleVariable>("dec", ShaderVariableType::eFloat, "5.0");
 
-		auto nlstep = std::make_shared<glsl::VectorVariable>("nlstep", 4, ShaderVariableType::FLOAT);
-		auto error = std::make_shared<glsl::SingleVariable>("error", ShaderVariableType::FLOAT, std::nullopt);
-		auto new_error = std::make_shared<glsl::SingleVariable>("new_error", ShaderVariableType::FLOAT, std::nullopt);
-		auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::FLOAT);
-		auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, 4, ShaderVariableType::FLOAT);
-		auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", 4, 4, ShaderVariableType::FLOAT);
-		auto lambda_hessian = std::make_shared<glsl::MatrixVariable>("lambda_hessian", 4, 4, ShaderVariableType::FLOAT);
-		auto upper_bound = std::make_shared<glsl::VectorVariable>("upper_bound", 4, ShaderVariableType::FLOAT);
-		auto lower_bound = std::make_shared<glsl::VectorVariable>("lower_bound", 4, ShaderVariableType::FLOAT);
+		auto nlstep = std::make_shared<glsl::VectorVariable>("nlstep", 4, ShaderVariableType::eFloat);
+		auto error = std::make_shared<glsl::SingleVariable>("error", ShaderVariableType::eFloat, std::nullopt);
+		auto new_error = std::make_shared<glsl::SingleVariable>("new_error", ShaderVariableType::eFloat, std::nullopt);
+		auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::eFloat);
+		auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, 4, ShaderVariableType::eFloat);
+		auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", 4, 4, ShaderVariableType::eFloat);
+		auto lambda_hessian = std::make_shared<glsl::MatrixVariable>("lambda_hessian", 4, 4, ShaderVariableType::eFloat);
+		auto upper_bound = std::make_shared<glsl::VectorVariable>("upper_bound", 4, ShaderVariableType::eFloat);
+		auto lower_bound = std::make_shared<glsl::VectorVariable>("lower_bound", 4, ShaderVariableType::eFloat);
 
 		pShader->addVector(params, 0, IOShaderVariableType::INPUT_OUTPUT_TYPE);
 		pShader->addMatrix(consts, 1, IOShaderVariableType::CONST_TYPE);
@@ -315,8 +313,6 @@ params[2] = local_params[1];
 
 		pShader->apply_scope(glsl::TextedScope::make(
 R"glsl(
-step_type = 12;
-
 lower_bound[0] = 0;
 upper_bound[0] = data[0] * 20;
 
@@ -341,7 +337,7 @@ upper_bound[3] = 10000.0;
 				residuals, jacobian, hessian, lambda_hessian
 			));
 
-		auto was_clamped = std::make_shared<glsl::SingleVariable>("was_clamped", ShaderVariableType::INT, std::nullopt);
+		auto was_clamped = std::make_shared<glsl::SingleVariable>("was_clamped", ShaderVariableType::eInt, std::nullopt);
 
 		for_scope.apply(nlsq::nlsq_clamping(
 			was_clamped,

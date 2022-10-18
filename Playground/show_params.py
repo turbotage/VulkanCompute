@@ -69,3 +69,4 @@ plt.show()
 rel_path = 'data/d2_image.png'
 full_path = os.path.join(abs_path, rel_path)
 plt.savefig(full_path)
+

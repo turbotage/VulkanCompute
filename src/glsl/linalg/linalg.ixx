@@ -70,8 +70,8 @@ void mag_neg_UNIQUEID(inout float mat[nrow*ncol]) {
 	{
 		// type checks and dims
 		{
-			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
-				(mat->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((mat->getType() == ShaderVariableType::eFloat) ||
+				(mat->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -80,7 +80,7 @@ void mag_neg_UNIQUEID(inout float mat[nrow*ncol]) {
 		ui16 ncol = mat->getNDim2();
 
 		bool single_precision = true;
-		if (mat->getType() == ShaderVariableType::DOUBLE)
+		if (mat->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = mat_neg(nrow, ncol, single_precision);
@@ -131,8 +131,8 @@ void vec_neg_UNIQUEID(inout float vec[ndim]) {
 	{
 		// type checks and dims
 		{
-			if (!((vec->getType() == ShaderVariableType::FLOAT) ||
-				(vec->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((vec->getType() == ShaderVariableType::eFloat) ||
+				(vec->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -140,7 +140,7 @@ void vec_neg_UNIQUEID(inout float vec[ndim]) {
 		ui16 ndim = vec->getNDim();
 
 		bool single_precision = true;
-		if (vec->getType() == ShaderVariableType::DOUBLE)
+		if (vec->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = vec_neg(ndim, single_precision);
@@ -672,8 +672,8 @@ void mul_transpose_vec_UNIQUEID(in float mat[nrow*ncol], in float vec[nrow], out
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
-				(mat->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((mat->getType() == ShaderVariableType::eFloat) ||
+				(mat->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -682,7 +682,7 @@ void mul_transpose_vec_UNIQUEID(in float mat[nrow*ncol], in float vec[nrow], out
 		ui16 ncol = mat->getNDim2();
 
 		bool single_precision = true;
-		if (mat->getType() == ShaderVariableType::DOUBLE)
+		if (mat->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = mul_transpose_vec(nrow, ncol, single_precision);
@@ -758,8 +758,8 @@ void mul_transpose_diag_vec_UNIQUEID(in float mat[nrow*ncol], in float diag[nrow
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
-				(mat->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((mat->getType() == ShaderVariableType::eFloat) ||
+				(mat->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -768,7 +768,7 @@ void mul_transpose_diag_vec_UNIQUEID(in float mat[nrow*ncol], in float diag[nrow
 		ui16 ncol = mat->getNDim2();
 
 		bool single_precision = true;
-		if (mat->getType() == ShaderVariableType::DOUBLE)
+		if (mat->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = mul_transpose_vec(nrow, ncol, single_precision);
@@ -872,8 +872,8 @@ void add_vec_vec_UNIQUEID(in float lvec[ndim], in float rvec[ndim], out float ov
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((lvec->getType() == ShaderVariableType::FLOAT) ||
-				(lvec->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((lvec->getType() == ShaderVariableType::eFloat) ||
+				(lvec->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -881,7 +881,7 @@ void add_vec_vec_UNIQUEID(in float lvec[ndim], in float rvec[ndim], out float ov
 		ui16 ndim = lvec->getNDim();
 
 		bool single_precision = true;
-		if (lvec->getType() == ShaderVariableType::DOUBLE)
+		if (lvec->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = add_vec_vec(ndim, single_precision);
@@ -1000,8 +1000,8 @@ void add_mat_mat_ldiag_UNIQUEID(inout float mat[ndim*ndim], float lambda, inout 
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((mat1->getType() == ShaderVariableType::FLOAT) ||
-				(mat1->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((mat1->getType() == ShaderVariableType::eFloat) ||
+				(mat1->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -1009,7 +1009,7 @@ void add_mat_mat_ldiag_UNIQUEID(inout float mat[ndim*ndim], float lambda, inout 
 		ui16 ndim = mat1->getNDim1();
 
 		bool single_precision = true;
-		if (mat2->getType() == ShaderVariableType::DOUBLE)
+		if (mat2->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = add_mat_mat_ldiag(ndim, single_precision);
@@ -1148,8 +1148,8 @@ void mat_add_ldiag_UNIQUEID(inout float mat[ndim*ndim], float lambda) {
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
-				(mat->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((mat->getType() == ShaderVariableType::eFloat) ||
+				(mat->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -1157,7 +1157,7 @@ void mat_add_ldiag_UNIQUEID(inout float mat[ndim*ndim], float lambda) {
 		ui16 ndim = mat->getNDim1();
 
 		bool single_precision = true;
-		if (mat->getType() == ShaderVariableType::DOUBLE)
+		if (mat->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = mat_add_ldiag(ndim, single_precision);
@@ -1229,8 +1229,8 @@ void mat_add_ldiag_out_UNIQUEID(in float mat[ndim*ndim], float lambda, out float
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((in->getType() == ShaderVariableType::FLOAT) ||
-				(in->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((in->getType() == ShaderVariableType::eFloat) ||
+				(in->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -1238,7 +1238,7 @@ void mat_add_ldiag_out_UNIQUEID(in float mat[ndim*ndim], float lambda, out float
 		ui16 ndim = in->getNDim1();
 
 		bool single_precision = true;
-		if (in->getType() == ShaderVariableType::DOUBLE)
+		if (in->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 		
 		auto func = mat_add_ldiag_out(ndim, single_precision);
@@ -1518,8 +1518,8 @@ void mul_transpose_mat_UNIQUEID(in float mat[nrow*ncol], out float omat[ncol*nco
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((in->getType() == ShaderVariableType::FLOAT) ||
-				(in->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((in->getType() == ShaderVariableType::eFloat) ||
+				(in->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -1528,7 +1528,7 @@ void mul_transpose_mat_UNIQUEID(in float mat[nrow*ncol], out float omat[ncol*nco
 		ui16 ncol = in->getNDim2();
 
 		bool single_precision = true;
-		if (in->getType() == ShaderVariableType::DOUBLE)
+		if (in->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = mul_transpose_mat(nrow, ncol, single_precision);
@@ -1610,8 +1610,8 @@ void mul_transpose_diag_mat_UNIQUEID(in float mat[nrow*ncol], in float diag[nrow
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((in->getType() == ShaderVariableType::FLOAT) ||
-				(in->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((in->getType() == ShaderVariableType::eFloat) ||
+				(in->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -1620,7 +1620,7 @@ void mul_transpose_diag_mat_UNIQUEID(in float mat[nrow*ncol], in float diag[nrow
 		ui16 ncol = in->getNDim2();
 
 		bool single_precision = true;
-		if (in->getType() == ShaderVariableType::DOUBLE)
+		if (in->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = mul_transpose_diag_mat(nrow, ncol, single_precision);

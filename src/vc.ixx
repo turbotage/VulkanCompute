@@ -1,6 +1,5 @@
 module;
 
-
 export module vc;
 
 import <cmath>;
@@ -111,15 +110,15 @@ export namespace vc {
 		if (shape1.size() == 0 || shape2.size() == 0)
 			throw std::runtime_error("shapes must have atleast one dimension to be broadcastable");
 
-		auto& small = (shape1.size() > shape2.size()) ? shape2 : shape1;
-		auto& big = (shape1.size() > shape2.size()) ? shape1 : shape2;
+		auto& small_shape = (shape1.size() > shape2.size()) ? shape2 : shape1;
+		auto& big_shape = (shape1.size() > shape2.size()) ? shape1 : shape2;
 
-		std::vector<int64_t> ret(big.size());
+		std::vector<int64_t> ret(big_shape.size());
 
 		auto retit = ret.rbegin();
-		auto smallit = small.rbegin();
-		for (auto bigit = big.rbegin(); bigit != big.rend(); ) {
-			if (smallit != small.rend()) {
+		auto smallit = small_shape.rbegin();
+		for (auto bigit = big_shape.rbegin(); bigit != big_shape.rend(); ) {
+			if (smallit != small_shape.rend()) {
 				if (*smallit == *bigit) {
 					*retit = *bigit;
 				}

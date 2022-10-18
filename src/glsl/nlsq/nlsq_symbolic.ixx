@@ -105,8 +105,8 @@ RESIDUAL_EXPRESSION
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((params->getType() == ShaderVariableType::FLOAT) ||
-				(params->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((params->getType() == ShaderVariableType::eFloat) ||
+				(params->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -116,7 +116,7 @@ RESIDUAL_EXPRESSION
 		ui16 nconst = consts->getNDim2();
 
 		bool single_precision = true;
-		if (residuals->getType() == ShaderVariableType::DOUBLE)
+		if (residuals->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_residuals(expr, context, ndata, nparam, nconst, single_precision);
@@ -233,8 +233,8 @@ JACOBIAN_EXPRESSIONS
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((params->getType() == ShaderVariableType::FLOAT) ||
-				(params->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((params->getType() == ShaderVariableType::eFloat) ||
+				(params->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -244,7 +244,7 @@ JACOBIAN_EXPRESSIONS
 		ui16 nconst = consts->getNDim2();
 
 		bool single_precision = true;
-		if (residuals->getType() == ShaderVariableType::DOUBLE)
+		if (residuals->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_residuals_jacobian(expr, context, ndata, nparam, nconst, single_precision);
@@ -408,8 +408,8 @@ HESSIAN_EXPRESSIONS
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((params->getType() == ShaderVariableType::FLOAT) ||
-				(params->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((params->getType() == ShaderVariableType::eFloat) ||
+				(params->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -419,7 +419,7 @@ HESSIAN_EXPRESSIONS
 		ui16 nconst = consts->getNDim2();
 
 		bool single_precision = true;
-		if (residuals->getType() == ShaderVariableType::DOUBLE)
+		if (residuals->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_residuals_jacobian_hessian(expr, context, ndata, nparam, nconst, single_precision);
@@ -601,8 +601,8 @@ HESSIAN_EXPRESSIONS
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((params->getType() == ShaderVariableType::FLOAT) ||
-				(params->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((params->getType() == ShaderVariableType::eFloat) ||
+				(params->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -612,7 +612,7 @@ HESSIAN_EXPRESSIONS
 		ui16 nconst = consts->getNDim2();
 
 		bool single_precision = true;
-		if (residuals->getType() == ShaderVariableType::DOUBLE)
+		if (residuals->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_residuals_jacobian_hessian_l(expr, context, ndata, nparam, nconst, single_precision);
@@ -799,8 +799,8 @@ HESSIAN_EXPRESSIONS
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((params->getType() == ShaderVariableType::FLOAT) ||
-				(params->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((params->getType() == ShaderVariableType::eFloat) ||
+				(params->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -810,7 +810,7 @@ HESSIAN_EXPRESSIONS
 		ui16 nconst = consts->getNDim2();
 
 		bool single_precision = true;
-		if (residuals->getType() == ShaderVariableType::DOUBLE)
+		if (residuals->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_residuals_jacobian_hessian_lw(expr, context, ndata, nparam, nconst, single_precision);

@@ -114,8 +114,8 @@ void copy_mat_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((imat->getType() == ShaderVariableType::FLOAT) ||
-				(imat->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((imat->getType() == ShaderVariableType::eFloat) ||
+				(imat->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -124,7 +124,7 @@ void copy_mat_UNIQUEID(in float imat[nrow*ncol], out float omat[nrow*ncol]) {
 		ui16 ncol = imat->getNDim2();
 
 		bool single_precision = true;
-		if (imat->getType() == ShaderVariableType::DOUBLE)
+		if (imat->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = copy_mat(nrow, ncol, single_precision);
@@ -339,8 +339,8 @@ void copy_vec_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((imat->getType() == ShaderVariableType::FLOAT) ||
-				(imat->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((imat->getType() == ShaderVariableType::eFloat) ||
+				(imat->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -348,7 +348,7 @@ void copy_vec_UNIQUEID(in float ivec[ndim], out float ovec[ndim]) {
 		ui16 ndim = imat->getNDim();
 
 		bool single_precision = true;
-		if (imat->getType() == ShaderVariableType::DOUBLE)
+		if (imat->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = copy_vec(ndim, single_precision);

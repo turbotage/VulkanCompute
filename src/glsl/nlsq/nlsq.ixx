@@ -102,12 +102,12 @@ float nlsq_gain_ratio_UNIQUEID(in float nlstep[nparam], in float neg_gradient[np
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((ratio->getType() == ShaderVariableType::FLOAT) ||
-				(ratio->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((ratio->getType() == ShaderVariableType::eFloat) ||
+				(ratio->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
-			if (!((step->getType() == ShaderVariableType::FLOAT) ||
-				(step->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((step->getType() == ShaderVariableType::eFloat) ||
+				(step->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -115,7 +115,7 @@ float nlsq_gain_ratio_UNIQUEID(in float nlstep[nparam], in float neg_gradient[np
 		ui16 ndim = step->getNDim();
 
 		bool single_precision = true;
-		if (step->getType() == ShaderVariableType::DOUBLE)
+		if (step->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_gain_ratio(ndim, single_precision);
@@ -169,8 +169,8 @@ float nlsq_error_UNIQUEID(in float res[ndata]) {
 	{
 		// type and dims check
 		{
-			if (!((res->getType() == ShaderVariableType::FLOAT) ||
-				(res->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((res->getType() == ShaderVariableType::eFloat) ||
+				(res->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -178,7 +178,7 @@ float nlsq_error_UNIQUEID(in float res[ndata]) {
 		ui16 ndim = res->getNDim();
 
 		bool single_precision = true;
-		if (res->getType() == ShaderVariableType::DOUBLE)
+		if (res->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_error(ndim, single_precision);
@@ -243,8 +243,8 @@ float nlsq_weighted_error_UNIQUEID(in float res[ndata], in float weights[ndata])
 				throw std::runtime_error("All inputs must have same type");
 			}
 
-			if (!((res->getType() == ShaderVariableType::FLOAT) ||
-				(res->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((res->getType() == ShaderVariableType::eFloat) ||
+				(res->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -252,7 +252,7 @@ float nlsq_weighted_error_UNIQUEID(in float res[ndata], in float weights[ndata])
 		ui16 ndim = res->getNDim();
 
 		bool single_precision = true;
-		if (res->getType() == ShaderVariableType::DOUBLE)
+		if (res->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_error(ndim, single_precision);
@@ -332,8 +332,8 @@ int nlsq_clamping_UNIQUEID(inout float params[nparam],
 				throw std::runtime_error("All inputs must have same type");
 			}
 
-			if (!((lower_bound->getType() == ShaderVariableType::FLOAT) ||
-				(lower_bound->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((lower_bound->getType() == ShaderVariableType::eFloat) ||
+				(lower_bound->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -341,7 +341,7 @@ int nlsq_clamping_UNIQUEID(inout float params[nparam],
 		ui16 ndim = lower_bound->getNDim();
 
 		bool single_precision = true;
-		if (lower_bound->getType() == ShaderVariableType::DOUBLE)
+		if (lower_bound->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_clamping(ndim, single_precision);
@@ -595,8 +595,8 @@ void nlsq_slmj_step_UNIQUEID(
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((params->getType() == ShaderVariableType::FLOAT) ||
-				(params->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((params->getType() == ShaderVariableType::eFloat) ||
+				(params->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -606,7 +606,7 @@ void nlsq_slmj_step_UNIQUEID(
 		ui16 nconst = consts->getNDim2();
 
 		bool single_precision = true;
-		if (residuals->getType() == ShaderVariableType::DOUBLE)
+		if (residuals->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_slmj_step(expr, context, ndata, nparam, nconst, single_precision);
@@ -818,8 +818,8 @@ float nlsq_slmh_step_UNIQUEID(
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((params->getType() == ShaderVariableType::FLOAT) ||
-				(params->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((params->getType() == ShaderVariableType::eFloat) ||
+				(params->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -829,7 +829,7 @@ float nlsq_slmh_step_UNIQUEID(
 		ui16 nconst = consts->getNDim2();
 
 		bool single_precision = true;
-		if (residuals->getType() == ShaderVariableType::DOUBLE)
+		if (residuals->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_slmh_step(expr, context, ndata, nparam, nconst, single_precision);
@@ -1041,8 +1041,8 @@ float nlsq_slmh_w_step_UNIQUEID(
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((params->getType() == ShaderVariableType::FLOAT) ||
-				(params->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((params->getType() == ShaderVariableType::eFloat) ||
+				(params->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 		}
@@ -1052,7 +1052,7 @@ float nlsq_slmh_w_step_UNIQUEID(
 		ui16 nconst = consts->getNDim2();
 
 		bool single_precision = true;
-		if (residuals->getType() == ShaderVariableType::DOUBLE)
+		if (residuals->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = nlsq_slmh_w_step(expr, context, ndata, nparam, nconst, single_precision);
@@ -1065,8 +1065,6 @@ float nlsq_slmh_w_step_UNIQUEID(
 			jacobian, hessian, lambda_hessian },
 			uniqueid };
 	}
-
-
 
 }
 }

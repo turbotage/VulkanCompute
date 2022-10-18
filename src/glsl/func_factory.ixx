@@ -357,9 +357,9 @@ namespace glsl {
 	public:
 
 		enum class InputType {
-			IN = 1,
-			OUT = 2,
-			INOUT = IN + OUT
+			eIn = 1,
+			eOut = 2,
+			eInout = eIn + eOut
 		};
 
 		FunctionFactory(const std::string& name, const ShaderVariableType& return_type)
@@ -444,13 +444,13 @@ namespace glsl {
 					input_idxs.insert(input.first);
 
 					switch (input.second) {
-					case FunctionFactory::InputType::IN:
+					case FunctionFactory::InputType::eIn:
 						code_str += "in ";
 						break;
-					case FunctionFactory::InputType::OUT:
+					case FunctionFactory::InputType::eOut:
 						code_str += "out ";
 						break;
-					case FunctionFactory::InputType::INOUT:
+					case FunctionFactory::InputType::eInout:
 						code_str += "inout ";
 						break;
 					default:
@@ -525,13 +525,13 @@ namespace glsl {
 					input_idxs.insert(input.first);
 
 					switch (input.second) {
-					case FunctionFactory::InputType::IN:
+					case FunctionFactory::InputType::eIn:
 						code_str += "in ";
 						break;
-					case FunctionFactory::InputType::OUT:
+					case FunctionFactory::InputType::eOut:
 						code_str += "out ";
 						break;
-					case FunctionFactory::InputType::INOUT:
+					case FunctionFactory::InputType::eInout:
 						code_str += "inout ";
 						break;
 					default:

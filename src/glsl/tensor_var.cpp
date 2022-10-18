@@ -23,21 +23,21 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix(const std::shared_ptr<kp::M
 	const std::shared_ptr<glsl::MatrixVariable>& mat, vc::ui32 nelem)
 {
 	switch (mat->getType()) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		std::vector<int32_t> v(nelem * mat->getNDim1() * mat->getNDim2());
 		return mgr->tensor(v.data(), v.size(), sizeof(int32_t),
 			kp::Tensor::TensorDataTypes::eInt);
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		std::vector<float> v(nelem * mat->getNDim1() * mat->getNDim2());
 		return mgr->tensor(v.data(), v.size(), sizeof(float),
 			kp::Tensor::TensorDataTypes::eFloat);
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		std::vector<double> v(nelem * mat->getNDim1() * mat->getNDim2());
 		return mgr->tensor(v.data(), v.size(), sizeof(double),
@@ -53,21 +53,21 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_vector(const std::shared_ptr<kp::M
 	const std::shared_ptr<glsl::VectorVariable>& vec, vc::ui32 nelem)
 {
 	switch (vec->getType()) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		std::vector<int32_t> v(nelem * vec->getNDim());
 		return mgr->tensor(v.data(), v.size(), sizeof(int32_t),
 			kp::Tensor::TensorDataTypes::eInt);
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		std::vector<float> v(nelem * vec->getNDim());
 		return mgr->tensor(v.data(), v.size(), sizeof(float),
 			kp::Tensor::TensorDataTypes::eFloat);
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		std::vector<double> v(nelem * vec->getNDim());
 		return mgr->tensor(v.data(), v.size(), sizeof(double),
@@ -83,21 +83,21 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_single(const std::shared_ptr<kp::M
 	const std::shared_ptr<glsl::SingleVariable>& var, vc::ui32 nelem)
 {
 	switch (var->getType()) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		std::vector<int32_t> v(nelem);
 		return mgr->tensor(v.data(), v.size(), sizeof(int32_t),
 			kp::Tensor::TensorDataTypes::eInt);
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		std::vector<float> v(nelem);
 		return mgr->tensor(v.data(), v.size(), sizeof(float),
 			kp::Tensor::TensorDataTypes::eFloat);
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		std::vector<double> v(nelem);
 		return mgr->tensor(v.data(), v.size(), sizeof(double),
@@ -118,7 +118,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix_file(const std::shared_ptr<
 	std::ifstream infile(filepath.string(), std::fstream::binary);
 
 	switch (mat->getType()) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		if (file_size % sizeof(int32_t) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(int)");
@@ -131,7 +131,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix_file(const std::shared_ptr<
 			kp::Tensor::TensorDataTypes::eInt);
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		if (file_size % sizeof(float) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(float)");
@@ -144,7 +144,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix_file(const std::shared_ptr<
 			kp::Tensor::TensorDataTypes::eFloat);
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		if (file_size % sizeof(double) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(double)");
@@ -169,7 +169,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_vector_file(const std::shared_ptr<
 	std::ifstream infile(filepath.string(), std::fstream::binary);
 
 	switch (vec->getType()) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		if (file_size % sizeof(int32_t) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(int)");
@@ -182,7 +182,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_vector_file(const std::shared_ptr<
 			kp::Tensor::TensorDataTypes::eInt);
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		if (file_size % sizeof(float) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(float)");
@@ -195,7 +195,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_vector_file(const std::shared_ptr<
 			kp::Tensor::TensorDataTypes::eFloat);
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		if (file_size % sizeof(double) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(double)");
@@ -220,7 +220,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_single_file(const std::shared_ptr<
 	std::ifstream infile(filepath.string(), std::fstream::binary);
 
 	switch (var->getType()) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		if (file_size % sizeof(int32_t) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(int)");
@@ -233,7 +233,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_single_file(const std::shared_ptr<
 			kp::Tensor::TensorDataTypes::eInt);
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		if (file_size % sizeof(float) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(float)");
@@ -246,7 +246,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_single_file(const std::shared_ptr<
 			kp::Tensor::TensorDataTypes::eFloat);
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		if (file_size % sizeof(double) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(double)");
@@ -272,7 +272,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_file(const std::shared_ptr<kp::Man
 	std::ifstream infile(filepath.string(), std::fstream::binary);
 
 	switch (type) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		if (file_size % sizeof(int32_t) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(int)");
@@ -285,7 +285,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_file(const std::shared_ptr<kp::Man
 			kp::Tensor::TensorDataTypes::eInt);
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		if (file_size % sizeof(float) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(float)");
@@ -298,7 +298,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_file(const std::shared_ptr<kp::Man
 			kp::Tensor::TensorDataTypes::eFloat);
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		if (file_size % sizeof(double) != 0)
 			throw std::runtime_error("File contents was not divisible by sizeof(double)");
@@ -322,19 +322,19 @@ void glsl::tensor_to_file(const std::shared_ptr<kp::Tensor>& tensor,
 	std::ofstream outfile(filepath.string(), std::ios::out | std::ios::binary);
 
 	switch (type) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		outfile.write(reinterpret_cast<char*>(tensor->data<int32_t>()), tensor->size() * sizeof(int32_t));
 		outfile.close();
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		outfile.write(reinterpret_cast<char*>(tensor->data<float>()), tensor->size() * sizeof(float));
 		outfile.close();
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		outfile.write(reinterpret_cast<char*>(tensor->data<double>()), tensor->size() * sizeof(double));
 		outfile.close();
@@ -366,7 +366,7 @@ std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tenso
 	};
 
 	switch (mat->getType()) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		if (tensor->dataType() != kp::Tensor::TensorDataTypes::eInt) {
 			throw std::runtime_error("TensorDataType and ShaderVariableType did not agree");
@@ -374,7 +374,7 @@ std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tenso
 		return printer_lambda(tensor->data<int32_t>());
 	}
 		break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		if (tensor->dataType() != kp::Tensor::TensorDataTypes::eFloat) {
 			throw std::runtime_error("TensorDataType and ShaderVariableType did not agree");
@@ -382,7 +382,7 @@ std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tenso
 		return printer_lambda(tensor->data<float>());
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		if (tensor->dataType() != kp::Tensor::TensorDataTypes::eDouble) {
 			throw std::runtime_error("TensorDataType and ShaderVariableType did not agree");
@@ -410,7 +410,7 @@ std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tenso
 	};
 
 	switch (vec->getType()) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		if (tensor->dataType() != kp::Tensor::TensorDataTypes::eInt) {
 			throw std::runtime_error("TensorDataType and ShaderVariableType did not agree");
@@ -418,7 +418,7 @@ std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tenso
 		return printer_lambda(tensor->data<int32_t>());
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		if (tensor->dataType() != kp::Tensor::TensorDataTypes::eFloat) {
 			throw std::runtime_error("TensorDataType and ShaderVariableType did not agree");
@@ -426,7 +426,7 @@ std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tenso
 		return printer_lambda(tensor->data<float>());
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		if (tensor->dataType() != kp::Tensor::TensorDataTypes::eDouble) {
 			throw std::runtime_error("TensorDataType and ShaderVariableType did not agree");
@@ -450,7 +450,7 @@ std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tenso
 	};
 
 	switch (var->getType()) {
-	case glsl::ShaderVariableType::INT:
+	case glsl::ShaderVariableType::eInt:
 	{
 		if (tensor->dataType() != kp::Tensor::TensorDataTypes::eInt) {
 			throw std::runtime_error("TensorDataType and ShaderVariableType did not agree");
@@ -458,7 +458,7 @@ std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tenso
 		return printer_lambda(tensor->data<int32_t>());
 	}
 	break;
-	case glsl::ShaderVariableType::FLOAT:
+	case glsl::ShaderVariableType::eFloat:
 	{
 		if (tensor->dataType() != kp::Tensor::TensorDataTypes::eFloat) {
 			throw std::runtime_error("TensorDataType and ShaderVariableType did not agree");
@@ -466,7 +466,7 @@ std::string glsl::print_shader_variable(const std::shared_ptr<kp::Tensor>& tenso
 		return printer_lambda(tensor->data<float>());
 	}
 	break;
-	case glsl::ShaderVariableType::DOUBLE:
+	case glsl::ShaderVariableType::eDouble:
 	{
 		if (tensor->dataType() != kp::Tensor::TensorDataTypes::eDouble) {
 			throw std::runtime_error("TensorDataType and ShaderVariableType did not agree");

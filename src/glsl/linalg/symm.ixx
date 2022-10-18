@@ -89,8 +89,8 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 				throw std::runtime_error("matrices must be square");
 			}
 
-			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
-				(mat->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((mat->getType() == ShaderVariableType::eFloat) ||
+				(mat->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 
@@ -98,7 +98,7 @@ void ldl_UNIQUEID(inout float mat[ndim*ndim]) {
 
 		ui16 ndim = mat->getNDim1();
 		bool single_precision = true;
-		if (mat->getType() == ShaderVariableType::DOUBLE)
+		if (mat->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = ldl(ndim, single_precision);
@@ -212,8 +212,8 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 				throw std::runtime_error("matrices must be square");
 			}
 
-			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
-				(mat->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((mat->getType() == ShaderVariableType::eFloat) ||
+				(mat->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 
@@ -221,7 +221,7 @@ void gmw81_UNIQUEID(inout float mat[ndim*ndim]) {
 
 		ui16 ndim = mat->getNDim1();
 		bool single_precision = true;
-		if (mat->getType() == ShaderVariableType::DOUBLE)
+		if (mat->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = gmw81(ndim, single_precision);
@@ -295,8 +295,8 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 			{
 				throw std::runtime_error("All inputs must have same type");
 			}
-			if (!((mat->getType() == ShaderVariableType::FLOAT) ||
-				(mat->getType() == ShaderVariableType::DOUBLE))) {
+			if (!((mat->getType() == ShaderVariableType::eFloat) ||
+				(mat->getType() == ShaderVariableType::eDouble))) {
 				throw std::runtime_error("Inputs must have float or double type");
 			}
 
@@ -304,7 +304,7 @@ void ldl_solve_UNIQUEID(in float mat[ndim*ndim], in float rhs[ndim], inout float
 
 		ui16 ndim = mat->getNDim1();
 		bool single_precision = true;
-		if (mat->getType() == ShaderVariableType::DOUBLE)
+		if (mat->getType() == ShaderVariableType::eDouble)
 			single_precision = false;
 
 		auto func = ldl_solve(ndim, single_precision);
