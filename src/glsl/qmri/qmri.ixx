@@ -327,7 +327,7 @@ upper_bound[3] = 10000.0;
 )glsl"
 ));
 
-		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 0; ++i"));
+		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 5; ++i"));
 
 		for_scope.apply(nlsq::nlsq_slmh_w_step(
 				expr, context,

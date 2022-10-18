@@ -91,7 +91,6 @@ void run_qmri_ivim() {
 
 	auto pShader3 = glsl::qmri::ivim_full_nlsq_shader(ndata, true);
 	auto shaderStr3 = pShader3->compile();
-
 	std::cout << shaderStr3 << std::endl;
 	std::cout << "\n\n\n" << std::endl;
 

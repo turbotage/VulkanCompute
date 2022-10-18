@@ -1,8 +1,6 @@
 module;
 
-#include <symengine/expression.h>
-#include <symengine/simplify.h>
-#include <symengine/parser.h>
+#include "../../vc.hpp"
 
 export module nlsq_symbolic;
 
