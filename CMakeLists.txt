@@ -39,4 +39,8 @@ add_custom_command(TARGET VulkanCompute PRE_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_directory
 		${CMAKE_SOURCE_DIR}/src/python/export/ $<TARGET_FILE_DIR:VulkanCompute>)
 
+add_custom_command(TARGET VulkanCompute PRE_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		${CMAKE_SOURCE_DIR}/src/copy/ $<TARGET_FILE_DIR:VulkanCompute>)
+
 # TODO: Add tests and install targets if needed.

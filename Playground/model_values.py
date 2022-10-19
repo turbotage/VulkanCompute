@@ -18,8 +18,6 @@ def mul_transpose_mat_add(mat):
             if i != j:
                 omat[j*m + i] += entry
 
-            
-
 
 b = np.array([0, 100, 400, 800])
 S0 = 100

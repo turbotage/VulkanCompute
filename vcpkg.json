@@ -4,6 +4,7 @@
 	"dependencies": [
 		"fmt",
 		"gmp",
-		"symengine"
+		"symengine",
+		"glm"
 	]
 }
