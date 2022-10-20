@@ -1,6 +1,6 @@
 module;
 
-#include "../../vc.hpp"
+#include "../../VulkanCompute.hpp"
 
 export module nlsq_symbolic;
 

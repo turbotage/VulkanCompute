@@ -1,7 +1,7 @@
 ﻿// VulkanCompute.cpp : Defines the entry point for the application.
 //
 
-#include "vc.hpp"
+#include "VulkanCompute.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
@@ -347,8 +347,8 @@ public:
 		m_GraphicsPipeline = avk::context().create_graphics_pipeline_for(
 			avk::from_buffer_binding(0)->stream_per_vertex(&Vertex::pos)->to_location(0),
 			avk::from_buffer_binding(0)->stream_per_vertex(&Vertex::uv)->to_location(1),
-			"shaders/texture.vert",
-			"shaders/texture.frag",
+			"shaders/texture1.vert",
+			"shaders/texture1.frag",
 			avk::cfg::front_face::define_front_faces_to_be_clockwise(),
 			avk::cfg::culling_mode::disabled,
 			avk::cfg::viewport_depth_scissors_config::from_framebuffer(avk::context().main_window()->backbuffer_reference_at_index(0)).enable_dynamic_viewport(),
