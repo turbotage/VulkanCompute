@@ -14,7 +14,7 @@ fraw, fbval, fbvec = get_fnames('ivim')
 data = load_nifti_data(fraw)
 bvals,bvecs = read_bvals_bvecs(fbval, fbvec)
 
-z = 25
+z = 33
 b=0
 x1, x2 = 45, 210
 y1, y2 = 30, 230

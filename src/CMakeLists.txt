@@ -42,4 +42,6 @@ target_sources(VulkanCompute PUBLIC
 	"expression/algebra/binary/sub.ixx"
 	"expression/expr.ixx" 
 	"expression/expr.cpp"
+	"app/compute_test_app.ixx"
+	"app/test_avk.ixx"
 )
