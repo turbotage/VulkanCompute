@@ -73,6 +73,57 @@ std::vector<ui32> glsl::compileSource(const std::string& source, OptimizationTyp
 			 (uint32_t*)(buffer.data() + buffer.size()) };
 }
 
+std::string glsl::compileSourceToFile(const std::string& source, OptimizationType opt_type)
+{
+	int opt_type_int = static_cast<int>(opt_type);
+
+	std::ofstream fileOut("tmpshader.comp");
+	fileOut << source;
+	fileOut.close();
+	std::ifstream fileStream;
+	if (system(std::string("glslangValidator -V tmpshader.comp -o tmpshader.comp.spv").c_str()))
+	{
+		throw std::runtime_error("Error running glslangValidator command");
+	}
+
+	if (opt_type_int & static_cast<int>(OptimizationType::OPTIMIZE_FOR_SPEED))
+	{
+		if (system(std::string("spirv-opt -O tmpshader.comp.spv -o tmpshader.comp.spv").c_str()))
+		{
+			throw std::runtime_error("Error running spirv-opt command");
+		}
+	}
+
+	if (opt_type_int & static_cast<int>(OptimizationType::OPTIMIZE_FOR_SIZE)) {
+		if (system(std::string("spirv-opt -Os tmpshader.comp.spv -o tmpshader.comp.spv").c_str()))
+		{
+			throw std::runtime_error("Error running spirv-opt command");
+		}
+	}
+
+	if (opt_type_int & static_cast<int>(OptimizationType::REMAP)) {
+
+		try {
+			system(std::string("mkdir tmp").c_str());
+		}
+		catch (...) {}
+
+		if (system(std::string("spirv-remap --do-everything --input tmpshader.comp.spv --output tmp").c_str()))
+		{
+			throw std::runtime_error("Error running spirv-opt command");
+		}
+
+		last_shader_name = "tmp/tmpshader.comp.spv";
+	}
+	else {
+		last_shader_name = "tmpshader.comp.spv";
+	}
+	return last_shader_name;
+}
+
+
+
+
 std::optional<std::string> glsl::decompileSPIRV(bool return_string)
 {
 	std::string cmd = "spirv-cross \"" + last_shader_name + "\" -V --output" + " \"tmpshader_built.comp\"";

@@ -316,7 +316,7 @@ public:
 			cmdBfr->handle_lifetime_of(std::move(m_UpdateToRenderDependency.value()));
 			m_UpdateToRenderDependency.reset();
 		}
-
+			
 		submission.submit();
 
 		// Use a convenience function of avk::window to take care of the command buffer's lifetime:

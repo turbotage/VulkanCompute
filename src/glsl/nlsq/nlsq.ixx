@@ -351,6 +351,43 @@ int nlsq_clamping_UNIQUEID(inout float params[nparam],
 	}
 
 
+	export std::string nlsq_bounded_convergence_uniqueid(ui16 nparam, bool single_precision)
+	{
+		return std::to_string(nparam) + "_" + (single_precision ? "S" : "D");
+	}
+
+	export std::string nlsq_bounded_convergence(ui16 nparam, bool single_precision)
+	{
+		static const std::string code = // compute shader
+R"glsl(
+bool nlsq_bounded_convergence_UNIQUEID(in float params[nparam], in float gradient[nparam], 
+	in float lower_bound[nparam], in float upper_bound[nparam]) 
+{
+	
+}
+)glsl";
+
+		std::string uniqueid = nlsq_error_convergence_uniqueid(single_precision);
+
+		std::function<std::string()> code_func = [single_precision, uniqueid]() -> std::string
+		{
+			std::string temp = code;
+			util::replace_all(temp, UNIQUE_ID, uniqueid);
+			if (!single_precision) {
+				util::replace_all(temp, "float", "double");
+			}
+			return temp;
+		};
+
+		return std::make_shared<Function>(
+			"nlsq_error_convergence_" + uniqueid,
+			std::vector<size_t>{ size_t(single_precision) },
+			code_func,
+			std::nullopt
+			);
+	}
+
+
 	export std::string nlsq_error_convergence_uniqueid(bool single_precision)
 	{
 		return (single_precision ? "S" : "D");
@@ -861,7 +898,7 @@ float nlsq_slmh_w_step_UNIQUEID(
 	inout float params[nparam], in float consts[ndata*nconst], in float data[ndata], in float weights[ndata],
 	inout float lambda, inout int step_type, float mu, float eta, float acc, float dec,
 	inout float nlstep[nparam], inout float error, inout float new_error,
-	inout float residuals[ndata], inout float jacobian[ndata*nparam], 
+	inout float residuals[ndata], inout float gradient[nparam], inout float jacobian[ndata*nparam], 
 	inout float hessian[nparam*nparam], inout float lambda_hessian[nparam*nparam]) 
 {
 	nlsq_residuals_jacobian_hessian_lw_NRJHLID(params, consts, data, weights, lambda, residuals, jacobian, hessian, lambda_hessian);
@@ -869,7 +906,6 @@ float nlsq_slmh_w_step_UNIQUEID(
 	diagonal_pivoting_DPID(lambda_hessian, perm);
 	gmw81_G81ID(lambda_hessian);
 	
-	float gradient[nparam];
 	mul_transpose_diag_vec_MTVID(jacobian, weights, residuals, gradient);
 	vec_neg_VNID(gradient);
 	
@@ -994,6 +1030,7 @@ float nlsq_slmh_w_step_UNIQUEID(
 		const std::shared_ptr<SingleVariable>& error,
 		const std::shared_ptr<SingleVariable>& new_error,
 		const std::shared_ptr<VectorVariable>& residuals,
+		const std::shared_ptr<VectorVariable>& gradient,
 		const std::shared_ptr<MatrixVariable>& jacobian,
 		const std::shared_ptr<MatrixVariable>& hessian,
 		const std::shared_ptr<MatrixVariable>& lambda_hessian)
@@ -1002,6 +1039,9 @@ float nlsq_slmh_w_step_UNIQUEID(
 		{
 			if (residuals->getNDim() != jacobian->getNDim1()) {
 				throw std::runtime_error("residuals dim and jacobian dim1 must agree");
+			}
+			if (gradient->getNDim() != params->getNDim()) {
+				throw std::runtime_error("gradient dim and params dim must agree");
 			}
 			if (jacobian->getNDim2() != hessian->getNDim1()) {
 				throw std::runtime_error("jacobian dim2 and hessian dim1 must agree");
@@ -1029,6 +1069,7 @@ float nlsq_slmh_w_step_UNIQUEID(
 			}
 
 			if (!((ui16)residuals->getType() &
+				(ui16)gradient->getType() &
 				(ui16)jacobian->getType() &
 				(ui16)hessian->getType() &
 				(ui16)params->getType() &
@@ -1061,7 +1102,7 @@ float nlsq_slmh_w_step_UNIQUEID(
 
 		return FunctionApplier{ func, nullptr,
 			{params, consts, data, weights, lambda, step_type, mu, eta,
-			acc, dec, nlstep, error, new_error, residuals,
+			acc, dec, nlstep, error, new_error, residuals, gradient,
 			jacobian, hessian, lambda_hessian },
 			uniqueid };
 	}

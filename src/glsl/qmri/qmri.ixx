@@ -183,6 +183,7 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 		auto error = std::make_shared<glsl::SingleVariable>("error", ShaderVariableType::eFloat, std::nullopt);
 		auto new_error = std::make_shared<glsl::SingleVariable>("new_error", ShaderVariableType::eFloat, std::nullopt);
 		auto residuals = std::make_shared<glsl::VectorVariable>("residuals", ndata, ShaderVariableType::eFloat);
+		auto gradient = std::make_shared<glsl::VectorVariable>("gradient", 2, ShaderVariableType::eFloat);
 		auto jacobian = std::make_shared<glsl::MatrixVariable>("jacobian", ndata, 2, ShaderVariableType::eFloat);
 		auto hessian = std::make_shared<glsl::MatrixVariable>("hessian", 2, 2, ShaderVariableType::eFloat);
 		auto lambda_hessian = std::make_shared<glsl::MatrixVariable>("lambda_hessian", 2, 2, ShaderVariableType::eFloat);
@@ -233,7 +234,7 @@ local_params[1] = params[2];
 			local_params, local_consts, data, weights,
 			lambda, step_type, mu, eta, acc, dec,
 			nlstep, error, new_error,
-			residuals, jacobian, hessian, lambda_hessian
+			residuals, gradient, jacobian, hessian, lambda_hessian
 		));
 
 		auto was_clamped = std::make_shared<glsl::SingleVariable>("was_clamped", ShaderVariableType::eInt, std::nullopt);
@@ -290,12 +291,12 @@ params[2] = local_params[1];
 		pShader->addVector(weights, 4, IOShaderVariableType::CONST_TYPE);
 		pShader->addSingle(lambda, 5, IOShaderVariableType::INPUT_OUTPUT_TYPE);
 		pShader->addSingle(step_type, 6, IOShaderVariableType::OUTPUT_TYPE);
-		pShader->addVector(nlstep, 7, IOShaderVariableType::OUTPUT_TYPE);
-		pShader->addSingle(error, 8, IOShaderVariableType::OUTPUT_TYPE);
-		pShader->addSingle(new_error, 9, IOShaderVariableType::OUTPUT_TYPE);
-		pShader->addVector(residuals, 10, IOShaderVariableType::OUTPUT_TYPE);
-		pShader->addMatrix(jacobian, 11, IOShaderVariableType::OUTPUT_TYPE);
-		pShader->addMatrix(hessian, 12, IOShaderVariableType::OUTPUT_TYPE);
+		pShader->addVector(nlstep, std::nullopt, IOShaderVariableType::OUTPUT_TYPE);
+		pShader->addSingle(error, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
+		pShader->addSingle(new_error, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
+		pShader->addVector(residuals, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
+		pShader->addMatrix(jacobian, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
+		pShader->addMatrix(hessian, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
 		pShader->addMatrix(lambda_hessian, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
 		pShader->addVector(upper_bound, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
 		pShader->addVector(lower_bound, std::nullopt, IOShaderVariableType::LOCAL_TYPE);

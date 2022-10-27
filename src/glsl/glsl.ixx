@@ -29,7 +29,15 @@ namespace glsl {
 			static_cast<int>(OptimizationType::OPTIMIZE_FOR_SPEED) | 
 			static_cast<int>(OptimizationType::REMAP)
 			)
-		);
+	);
+
+	export std::string compileSourceToFile(const std::string& source, OptimizationType opt_type = 
+		static_cast<OptimizationType>
+			(
+			static_cast<int>(OptimizationType::OPTIMIZE_FOR_SPEED) |
+			static_cast<int>(OptimizationType::REMAP)
+			)
+	);
 
 	export std::optional<std::string> decompileSPIRV(bool return_string = false);
 
