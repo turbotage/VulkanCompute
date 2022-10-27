@@ -103,28 +103,28 @@ void run_qmri_ivim() {
 
 	auto mgr = std::make_shared<kp::Manager>();
 
-	auto kp_params = glsl::tensor_from_vector(mgr, params, nelem);
-	auto kp_consts = glsl::tensor_from_file(mgr, glsl::ShaderVariableType::eFloat, c_path);
-	auto kp_data = glsl::tensor_from_file(mgr, glsl::ShaderVariableType::eFloat, d_path);
-	auto kp_bsplit = glsl::tensor_from_vector(mgr, bsplit, 1);
+	auto kp_params = glsl::kp_tensor_from_vector(mgr, params, nelem);
+	auto kp_consts = glsl::kp_tensor_from_file(mgr, glsl::ShaderVariableType::eFloat, c_path);
+	auto kp_data = glsl::kp_tensor_from_file(mgr, glsl::ShaderVariableType::eFloat, d_path);
+	auto kp_bsplit = glsl::kp_tensor_from_vector(mgr, bsplit, 1);
 	std::vector<int32_t> data_bsplit(2); data_bsplit[0] = 11; data_bsplit[1] = 15;
 	std::memcpy(kp_bsplit->data<int32_t>(), data_bsplit.data(), sizeof(int32_t) * data_bsplit.size());
 
-	auto kp_weights = glsl::tensor_from_vector(mgr, weights, 1);
+	auto kp_weights = glsl::kp_tensor_from_vector(mgr, weights, 1);
 	std::vector<float> data_weights(21, 1.0f);
 	std::memcpy(kp_weights->data<float>(), data_weights.data(), sizeof(float) * data_weights.size());
 
-	auto kp_lambda = glsl::tensor_from_single(mgr, lambda, nelem);
+	auto kp_lambda = glsl::kp_tensor_from_single(mgr, lambda, nelem);
 	std::vector<float> data_lambda(nelem, 1.0f);
 	std::memcpy(kp_lambda->data<float>(), data_lambda.data(), data_lambda.size() * sizeof(float));
 
-	auto kp_step_type = glsl::tensor_from_single(mgr, step_type, nelem);
-	auto kp_nlstep = glsl::tensor_from_vector(mgr, nlstep, nelem);
-	auto kp_error = glsl::tensor_from_single(mgr, error, nelem);
-	auto kp_new_error = glsl::tensor_from_single(mgr, new_error, nelem);
-	auto kp_residuals = glsl::tensor_from_vector(mgr, residuals, nelem);
-	auto kp_jacobian = glsl::tensor_from_matrix(mgr, jacobian, nelem);
-	auto kp_hessian = glsl::tensor_from_matrix(mgr, hessian, nelem);
+	auto kp_step_type = glsl::kp_tensor_from_single(mgr, step_type, nelem);
+	auto kp_nlstep = glsl::kp_tensor_from_vector(mgr, nlstep, nelem);
+	auto kp_error = glsl::kp_tensor_from_single(mgr, error, nelem);
+	auto kp_new_error = glsl::kp_tensor_from_single(mgr, new_error, nelem);
+	auto kp_residuals = glsl::kp_tensor_from_vector(mgr, residuals, nelem);
+	auto kp_jacobian = glsl::kp_tensor_from_matrix(mgr, jacobian, nelem);
+	auto kp_hessian = glsl::kp_tensor_from_matrix(mgr, hessian, nelem);
 
 
 	auto spirv1 = glsl::compileSource(shaderStr1);
@@ -230,17 +230,16 @@ void run_qmri_ivim() {
 	}
 
 	auto p_path = fs::current_path() / "data" / "ivim_params.vcdat";
-	glsl::tensor_to_file(kp_params, glsl::ShaderVariableType::eFloat, p_path);
+	glsl::kp_tensor_to_file(kp_params, glsl::ShaderVariableType::eFloat, p_path);
 
 }
 
 int main() {
 
-	std::cout << "test_avk: " << std::endl;
+	//std::cout << "test_avk: " << std::endl;
+	//return test_avk();
 
-	return test_avk();
-
-	//run_qmri_ivim();
+	run_qmri_ivim();
 
 	//run_compute_and_render_app();
 

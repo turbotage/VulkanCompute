@@ -288,40 +288,40 @@ public:
 				})),
 				avk::command::draw_indexed(m_IndexBuffer.as_reference(), m_VertexBuffer.as_reference()),
 
-					// Draw right viewport:
-					avk::command::custom_commands([&,this](avk::command_buffer_t& cb) { // If there is no avk::command::... struct for a particular command, we can always use avk::command::custom_commands
-						cb.handle().setViewport(0, 1, &vpRight);
-					}),
+				// Draw right viewport:
+				avk::command::custom_commands([&,this](avk::command_buffer_t& cb) { // If there is no avk::command::... struct for a particular command, we can always use avk::command::custom_commands
+					cb.handle().setViewport(0, 1, &vpRight);
+				}),
 
-					// Bind a pipeline and perform an indexed draw call:
-					avk::command::bind_pipeline(m_GraphicsPipeline.as_reference()),
-					avk::command::bind_descriptors(m_GraphicsPipeline->layout(), m_DescriptorCache->get_or_create_descriptor_sets({
-						avk::descriptor_binding(0, 0, m_Ubo[ifi]),
-						avk::descriptor_binding(0, 1, m_TargetImageAndSampler->as_combined_image_sampler(avk::layout::general))
-					})),
-					avk::command::draw_indexed(m_IndexBuffer.as_reference(), m_VertexBuffer.as_reference())
-				})
-
+				// Bind a pipeline and perform an indexed draw call:
+				avk::command::bind_pipeline(m_GraphicsPipeline.as_reference()),
+				avk::command::bind_descriptors(m_GraphicsPipeline->layout(), m_DescriptorCache->get_or_create_descriptor_sets({
+					avk::descriptor_binding(0, 0, m_Ubo[ifi]),
+					avk::descriptor_binding(0, 1, m_TargetImageAndSampler->as_combined_image_sampler(avk::layout::general))
+				})),
+				avk::command::draw_indexed(m_IndexBuffer.as_reference(), m_VertexBuffer.as_reference())
 			})
-			.into_command_buffer(cmdBfr)
-						.then_submit_to(*m_Queue)
-						// Do not start to render before the image has become available:
-						.waiting_for(imageAvailableSemaphore >> avk::stage::color_attachment_output)
-						.store_for_now();
 
-					if (m_UpdateToRenderDependency.has_value()) {
-						// If there are some (pending) updates submitted from update(), establish a dependency to them:
-						submission.waiting_for(m_UpdateToRenderDependency.value() >> avk::stage::fragment_shader); // Images are read in the fragment_shader stage
+		})
+		.into_command_buffer(cmdBfr)
+		.then_submit_to(*m_Queue)
+		// Do not start to render before the image has become available:
+		.waiting_for(imageAvailableSemaphore >> avk::stage::color_attachment_output)
+		.store_for_now();
 
-						cmdBfr->handle_lifetime_of(std::move(m_UpdateToRenderDependency.value()));
-						m_UpdateToRenderDependency.reset();
-					}
+		if (m_UpdateToRenderDependency.has_value()) {
+			// If there are some (pending) updates submitted from update(), establish a dependency to them:
+			submission.waiting_for(m_UpdateToRenderDependency.value() >> avk::stage::fragment_shader); // Images are read in the fragment_shader stage
 
-					submission.submit();
+			cmdBfr->handle_lifetime_of(std::move(m_UpdateToRenderDependency.value()));
+			m_UpdateToRenderDependency.reset();
+		}
 
-					// Use a convenience function of avk::window to take care of the command buffer's lifetime:
-					// It will get deleted in the future after #concurrent-frames have passed by.
-					avk::context().main_window()->handle_lifetime(std::move(cmdBfr));
+		submission.submit();
+
+		// Use a convenience function of avk::window to take care of the command buffer's lifetime:
+		// It will get deleted in the future after #concurrent-frames have passed by.
+		avk::context().main_window()->handle_lifetime(std::move(cmdBfr));
 	}
 
 private:

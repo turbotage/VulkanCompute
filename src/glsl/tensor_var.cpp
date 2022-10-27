@@ -19,7 +19,7 @@ namespace {
 	const char* whitespace_characters = "  ";
 }
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix(const std::shared_ptr<kp::Manager>& mgr,
+std::shared_ptr<kp::Tensor> glsl::kp_tensor_from_matrix(const std::shared_ptr<kp::Manager>& mgr,
 	const std::shared_ptr<glsl::MatrixVariable>& mat, vc::ui32 nelem)
 {
 	switch (mat->getType()) {
@@ -49,7 +49,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix(const std::shared_ptr<kp::M
 	}
 }
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_vector(const std::shared_ptr<kp::Manager>& mgr,
+std::shared_ptr<kp::Tensor> glsl::kp_tensor_from_vector(const std::shared_ptr<kp::Manager>& mgr,
 	const std::shared_ptr<glsl::VectorVariable>& vec, vc::ui32 nelem)
 {
 	switch (vec->getType()) {
@@ -79,7 +79,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_vector(const std::shared_ptr<kp::M
 	}
 }
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_single(const std::shared_ptr<kp::Manager>& mgr,
+std::shared_ptr<kp::Tensor> glsl::kp_tensor_from_single(const std::shared_ptr<kp::Manager>& mgr,
 	const std::shared_ptr<glsl::SingleVariable>& var, vc::ui32 nelem)
 {
 	switch (var->getType()) {
@@ -111,7 +111,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_single(const std::shared_ptr<kp::M
 
 
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix_file(const std::shared_ptr<kp::Manager>& mgr,
+std::shared_ptr<kp::Tensor> glsl::kp_tensor_from_matrix_file(const std::shared_ptr<kp::Manager>& mgr,
 	const std::shared_ptr<glsl::MatrixVariable>& mat, const std::filesystem::path& filepath)
 {
 	auto file_size = std::filesystem::file_size(filepath);
@@ -162,7 +162,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_matrix_file(const std::shared_ptr<
 	}
 }
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_vector_file(const std::shared_ptr<kp::Manager>& mgr,
+std::shared_ptr<kp::Tensor> glsl::kp_tensor_from_vector_file(const std::shared_ptr<kp::Manager>& mgr,
 	const std::shared_ptr<glsl::VectorVariable>& vec, const std::filesystem::path& filepath)
 {
 	auto file_size = std::filesystem::file_size(filepath);
@@ -213,7 +213,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_vector_file(const std::shared_ptr<
 	}
 }
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_single_file(const std::shared_ptr<kp::Manager>& mgr,
+std::shared_ptr<kp::Tensor> glsl::kp_tensor_from_single_file(const std::shared_ptr<kp::Manager>& mgr,
 	const std::shared_ptr<glsl::SingleVariable>& var, const std::filesystem::path& filepath)
 {
 	auto file_size = std::filesystem::file_size(filepath);
@@ -265,7 +265,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_single_file(const std::shared_ptr<
 }
 
 
-std::shared_ptr<kp::Tensor> glsl::tensor_from_file(const std::shared_ptr<kp::Manager>& mgr,
+std::shared_ptr<kp::Tensor> glsl::kp_tensor_from_file(const std::shared_ptr<kp::Manager>& mgr,
 	const glsl::ShaderVariableType& type, const std::filesystem::path& filepath)
 {
 	auto file_size = std::filesystem::file_size(filepath);
@@ -316,7 +316,7 @@ std::shared_ptr<kp::Tensor> glsl::tensor_from_file(const std::shared_ptr<kp::Man
 	}
 }
 
-void glsl::tensor_to_file(const std::shared_ptr<kp::Tensor>& tensor,
+void glsl::kp_tensor_to_file(const std::shared_ptr<kp::Tensor>& tensor,
 	const glsl::ShaderVariableType& type, const std::filesystem::path& filepath)
 {
 	std::ofstream outfile(filepath.string(), std::ios::out | std::ios::binary);

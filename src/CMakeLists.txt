@@ -44,4 +44,6 @@ target_sources(VulkanCompute PUBLIC
 	"expression/expr.cpp"
 	"app/compute_test_app.ixx"
 	"app/test_avk.ixx"
+	"compute/vk_variable.ixx"
+	"compute/vk_function.ixx"
 )
