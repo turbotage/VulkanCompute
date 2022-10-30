@@ -356,7 +356,7 @@ int nlsq_clamping_UNIQUEID(inout float params[nparam],
 		return std::to_string(nparam) + "_" + (single_precision ? "S" : "D");
 	}
 
-	export std::string nlsq_bounded_convergence(ui16 nparam, bool single_precision)
+	export std::shared_ptr<::glsl::Function> nlsq_bounded_convergence(ui16 nparam, bool single_precision)
 	{
 		static const std::string code = // compute shader
 R"glsl(
@@ -367,7 +367,7 @@ bool nlsq_bounded_convergence_UNIQUEID(in float params[nparam], in float gradien
 }
 )glsl";
 
-		std::string uniqueid = nlsq_error_convergence_uniqueid(single_precision);
+		std::string uniqueid = nlsq_bounded_convergence_uniqueid(nparam, single_precision);
 
 		std::function<std::string()> code_func = [single_precision, uniqueid]() -> std::string
 		{

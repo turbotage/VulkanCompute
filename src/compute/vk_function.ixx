@@ -37,7 +37,7 @@ namespace compute {
 
 		// TODO add push constants
 
-		return avk::root::create_compute_pipeline(std::move(cfg));
+		return avk::context().create_compute_pipeline(std::move(cfg));
 	}
 
 	export class VkFunction {

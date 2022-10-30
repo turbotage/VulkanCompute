@@ -146,14 +146,23 @@ void run_qmri_ivim() {
 
 	auto seq = mgr->sequence()
 		->record<kp::OpTensorSyncDevice>(shader_inputs)
-		->record<kp::OpAlgoDispatch>(algo1)
-		->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
+		->record<kp::OpAlgoDispatch>(algo1);
+
+	// we run algo 2 (4 * 4 iterations)
+	for (int i = 0; i < 4; ++i) {
+		seq = seq->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
 			vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader)
-		->record<kp::OpAlgoDispatch>(algo2)
-		->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
+			->record<kp::OpAlgoDispatch>(algo2);
+	}
+
+	// we run algo 3 (4 * 4 iterations)
+	for (int i = 0; i < 1; ++i) {
+		seq = seq->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
 			vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader)
-		->record<kp::OpAlgoDispatch>(algo3)
-		->record<kp::OpTensorSyncLocal>(shader_inputs)
+			->record<kp::OpAlgoDispatch>(algo3);
+	}
+
+	seq = seq->record<kp::OpTensorSyncLocal>(shader_inputs)
 		->eval();
 
 	auto end = std::chrono::steady_clock::now();
