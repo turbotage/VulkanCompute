@@ -57,14 +57,14 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 	lsq_linear2_lower_LL2LID(bvals, log_data, bsplit[0], lin_param2);
 	lin_param2[0] = exp(lin_param2[0]);	
 	
-	params[0] = lin_param2[0];
+	params[0] = abs(lin_param2[0]);
 	params[1] = 1.0 - (lin_param1[0] / lin_param2[0]);
 	params[1] = clamp(params[1], 0.0, 1.0);
 
 	params[2] = abs(lin_param2[1]);
 	params[3] = abs(lin_param1[1]);
 	
-	params[2] = max(params[2], 1.2*params[3]);
+	//params[2] = max(params[2], 1.2*params[3]);
 }
 )glsl";
 
@@ -148,6 +148,10 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 		auto data = std::make_shared<glsl::VectorVariable>("data", ndata, ShaderVariableType::eFloat);
 		auto bsplit = std::make_shared<glsl::VectorVariable>("bsplit", 2, ShaderVariableType::eInt);
 		auto step_type = std::make_shared<glsl::SingleVariable>("step_type", ShaderVariableType::eInt, std::nullopt);
+		auto upper_bound = std::make_shared<glsl::VectorVariable>("upper_bound", 4, ShaderVariableType::eFloat);
+		auto lower_bound = std::make_shared<glsl::VectorVariable>("lower_bound", 4, ShaderVariableType::eFloat);
+
+
 
 		pShader->addVector(params, 0, IOShaderVariableType::INPUT_OUTPUT_TYPE);
 		pShader->addMatrix(consts, 1, IOShaderVariableType::CONST_TYPE);
@@ -237,6 +241,10 @@ upper_bound[3] = abs(params[3] * 100.0);
 
 		std::string begin_str =
 R"glsl(
+if (step_type == -10) {
+	lambda = 1.0;
+}
+
 local_upper_bound[0] = upper_bound[1];
 local_upper_bound[1] = upper_bound[2];
 
@@ -281,6 +289,8 @@ local_params[1] = params[2];
 R"glsl(
 params[1] = local_params[0];
 params[2] = local_params[1];
+
+step_type = -20;
 )glsl"));
 
 		return pShader;
@@ -321,7 +331,8 @@ params[2] = local_params[1];
 		pShader->addVector(weights, 4, IOShaderVariableType::CONST_TYPE);
 		pShader->addSingle(lambda, 5, IOShaderVariableType::INPUT_OUTPUT_TYPE);
 		pShader->addSingle(step_type, 6, IOShaderVariableType::OUTPUT_TYPE);
-		
+		pShader->addVector(lower_bound, 7, IOShaderVariableType::INPUT_OUTPUT_TYPE);
+		pShader->addVector(upper_bound, 8, IOShaderVariableType::INPUT_OUTPUT_TYPE);
 
 		/*
 		pShader->addVector(nlstep, std::nullopt, IOShaderVariableType::LOCAL_TYPE);
@@ -364,6 +375,13 @@ upper_bound[3] = min(params[3] * 10, 1.0);
 )glsl"
 ));
 		*/
+
+		pShader->apply_scope(glsl::TextedScope::make(
+R"glsl(
+if (step_type == -20) {
+	lambda = 1.0;
+}
+)glsl"));
 
 		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 4; ++i"));
 

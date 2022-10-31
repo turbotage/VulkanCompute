@@ -119,13 +119,18 @@ void run_qmri_ivim() {
 	std::memcpy(kp_lambda->data<float>(), data_lambda.data(), data_lambda.size() * sizeof(float));
 
 	auto kp_step_type = glsl::kp_tensor_from_single(mgr, step_type, nelem);
+
+	auto kp_lower_bound = glsl::kp_tensor_from_vector(mgr, lower_bound, nelem);
+	auto kp_upper_bound = glsl::kp_tensor_from_vector(mgr, upper_bound, nelem);
+
+	/*
 	auto kp_nlstep = glsl::kp_tensor_from_vector(mgr, nlstep, nelem);
 	auto kp_error = glsl::kp_tensor_from_single(mgr, error, nelem);
 	auto kp_new_error = glsl::kp_tensor_from_single(mgr, new_error, nelem);
 	auto kp_residuals = glsl::kp_tensor_from_vector(mgr, residuals, nelem);
 	auto kp_jacobian = glsl::kp_tensor_from_matrix(mgr, jacobian, nelem);
 	auto kp_hessian = glsl::kp_tensor_from_matrix(mgr, hessian, nelem);
-
+	*/
 
 	auto spirv1 = glsl::compileSource(shaderStr1);
 	auto spirv2 = glsl::compileSource(shaderStr2);
@@ -133,9 +138,9 @@ void run_qmri_ivim() {
 
 	std::vector<std::shared_ptr<kp::Tensor>> shader_inputs = {
 		kp_params, kp_consts, kp_data, kp_bsplit, kp_weights, kp_lambda, kp_step_type,
-		kp_nlstep, kp_error, kp_new_error, kp_residuals, kp_jacobian, kp_hessian
+		kp_lower_bound, kp_upper_bound
 	};
-
+	
 	kp::Workgroup wg{ (size_t)nelem, 1, 1 };
 	
 	std::shared_ptr<kp::Algorithm> algo1 = mgr->algorithm(shader_inputs, spirv1, wg);
@@ -149,14 +154,14 @@ void run_qmri_ivim() {
 		->record<kp::OpAlgoDispatch>(algo1);
 
 	// we run algo 2 (4 * 4 iterations)
-	for (int i = 0; i < 4; ++i) {
+	for (int i = 0; i < 6; ++i) {
 		seq = seq->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
 			vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader)
 			->record<kp::OpAlgoDispatch>(algo2);
 	}
 
 	// we run algo 3 (4 * 4 iterations)
-	for (int i = 0; i < 1; ++i) {
+	for (int i = 0; i < 2; ++i) {
 		seq = seq->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
 			vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader)
 			->record<kp::OpAlgoDispatch>(algo3);
@@ -182,12 +187,14 @@ void run_qmri_ivim() {
 
 
 		std::cout << "FIRST ELEMENTS" << std::endl;
+		/*
 		std::cout << "residuals: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_residuals, residuals, 0) << std::endl;
 		std::cout << "jacobian: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_jacobian, jacobian, 0) << std::endl;
 		std::cout << "hessian: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_hessian, hessian, 0) << std::endl;
+		*/
 		std::cout << "data: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_data, data, 0) << std::endl;
 		std::cout << "params: " << std::endl;
@@ -196,17 +203,19 @@ void run_qmri_ivim() {
 		std::cout << glsl::print_shader_variable(kp_lambda, lambda, 0) << std::endl;
 		std::cout << "step_type: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_step_type, step_type, 0) << std::endl;
-		std::cout << "step: " << std::endl;
-		std::cout << glsl::print_shader_variable(kp_nlstep, nlstep, 0) << std::endl;
+		//std::cout << "step: " << std::endl;
+		//std::cout << glsl::print_shader_variable(kp_nlstep, nlstep, 0) << std::endl;
 	
 
 		std::cout << "MID ELEMENTS" << std::endl;
+		/*
 		std::cout << "residuals: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_residuals, residuals, nelem / 2) << std::endl;
 		std::cout << "jacobian: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_jacobian, jacobian, nelem / 2) << std::endl;
 		std::cout << "hessian: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_hessian, hessian, nelem / 2) << std::endl;
+		*/
 		std::cout << "data: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_data, data, nelem / 2) << std::endl;
 		std::cout << "params: " << std::endl;
@@ -215,17 +224,19 @@ void run_qmri_ivim() {
 		std::cout << glsl::print_shader_variable(kp_lambda, lambda, nelem / 2) << std::endl;
 		std::cout << "step_type: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_step_type, step_type, nelem / 2) << std::endl;
-		std::cout << "step: " << std::endl;
-		std::cout << glsl::print_shader_variable(kp_nlstep, nlstep, nelem / 2) << std::endl;
+		//std::cout << "step: " << std::endl;
+		//std::cout << glsl::print_shader_variable(kp_nlstep, nlstep, nelem / 2) << std::endl;
 
 		
 		std::cout << "LAST ELEMENTS" << std::endl;
+		/*
 		std::cout << "residuals: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_residuals, residuals, nelem - 1) << std::endl;
 		std::cout << "jacobian: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_jacobian, jacobian, nelem - 1) << std::endl;
 		std::cout << "hessian: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_hessian, hessian, nelem - 1) << std::endl;
+		*/
 		std::cout << "data: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_data, data, nelem - 1) << std::endl;
 		std::cout << "params: " << std::endl;
@@ -234,8 +245,8 @@ void run_qmri_ivim() {
 		std::cout << glsl::print_shader_variable(kp_lambda, lambda, nelem - 1) << std::endl;
 		std::cout << "step_type: " << std::endl;
 		std::cout << glsl::print_shader_variable(kp_step_type, step_type, nelem - 1) << std::endl;
-		std::cout << "step: " << std::endl;
-		std::cout << glsl::print_shader_variable(kp_nlstep, nlstep, nelem - 1) << std::endl;
+		//std::cout << "step: " << std::endl;
+		//std::cout << glsl::print_shader_variable(kp_nlstep, nlstep, nelem - 1) << std::endl;
 	}
 
 	auto p_path = fs::current_path() / "data" / "ivim_params.vcdat";
