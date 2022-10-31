@@ -165,19 +165,19 @@ void ivim_guess_UNIQUEID(inout float params[4], in float bvals[ndata], in float 
 
 		std::string begin_str =
 R"glsl(
+lower_bound[0] = max(abs(params[0] / 4.0), 0.0);
+upper_bound[0] = min(abs(params[0] * 2.0), data[0] * 20.0);
+
+lower_bound[1] = max(abs(params[1] / 3.0), 0.0);
+upper_bound[1] = min(abs(params[1] * 1.5), 1.0);
+
+lower_bound[2] = max(abs(params[2] / 100.0), 0.0);
+upper_bound[2] = min(abs(params[2] * 100.0), 0.05);
+
+lower_bound[3] = max(abs(params[3] / 100.0), 0.0);
+upper_bound[3] = min(abs(params[3] * 100.0), 0.01);
+
 step_type = -10;
-
-lower_bound[0] = 0.0;
-upper_bound[0] = abs(data[0] * 20.0);
-
-lower_bound[1] = 0.0;
-upper_bound[1] = 1.0;
-
-lower_bound[2] = abs(params[2] / 100.0);
-upper_bound[2] = abs(params[2] * 100.0);
-
-lower_bound[3] = abs(params[3] / 100.0);
-upper_bound[3] = abs(params[3] * 100.0);
 )glsl";
 
 		pShader->apply_scope(glsl::TextedScope::make(begin_str));
@@ -242,7 +242,7 @@ upper_bound[3] = abs(params[3] * 100.0);
 		std::string begin_str =
 R"glsl(
 if (step_type == -10) {
-	lambda = 1.0;
+	lambda = 10.0;
 }
 
 local_upper_bound[0] = upper_bound[1];
@@ -264,7 +264,7 @@ local_params[1] = params[2];
 
 		pShader->apply_scope(glsl::TextedScope::make(begin_str));
 
-		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 4; ++i"));
+		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 2; ++i"));
 
 		for_scope.apply(nlsq::nlsq_slmh_w_step(
 			expr, context,
@@ -283,7 +283,7 @@ local_params[1] = params[2];
 			local_lower_bound));
 
 		auto& if_scope = for_scope.apply_scope(glsl::IfScope::make("was_clamped == 1"));
-		if_scope.apply_scope(glsl::TextedScope::make(R"glsl(lambda *= 1.0;)glsl"));
+		if_scope.apply_scope(glsl::TextedScope::make(R"glsl(lambda *= 1.05;)glsl"));
 
 		pShader->apply_scope(glsl::TextedScope::make(
 R"glsl(
@@ -358,8 +358,8 @@ step_type = -20;
 		context.insert_param(std::make_pair("d1", 2));
 		context.insert_param(std::make_pair("d2", 3));
 
-		/*
-		pShader->apply_scope(glsl::TextedScope::make(
+/*
+pShader->apply_scope(glsl::TextedScope::make(
 R"glsl(
 lower_bound[0] = 0;
 upper_bound[0] = params[0] * 20;
@@ -374,16 +374,16 @@ lower_bound[3] = 0.0;
 upper_bound[3] = min(params[3] * 10, 1.0);
 )glsl"
 ));
-		*/
+*/
 
 		pShader->apply_scope(glsl::TextedScope::make(
 R"glsl(
 if (step_type == -20) {
-	lambda = 1.0;
+	lambda = 10.0;
 }
 )glsl"));
 
-		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 4; ++i"));
+		auto& for_scope = pShader->apply_scope(ForScope::make("int i = 0; i < 2; ++i"));
 
 		for_scope.apply(nlsq::nlsq_slmh_w_step(
 				expr, context,
@@ -402,7 +402,7 @@ if (step_type == -20) {
 			lower_bound));
 
 		auto& if_scope = for_scope.apply_scope(glsl::IfScope::make("was_clamped == 1"));
-		if_scope.apply_scope(glsl::TextedScope::make(R"glsl(lambda *= 1.0;)glsl"));
+		if_scope.apply_scope(glsl::TextedScope::make(R"glsl(lambda *= 1.05;)glsl"));
 
 		return pShader;
 	}
