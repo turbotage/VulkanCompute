@@ -1,5 +1,6 @@
 import struct
 from matplotlib import pyplot as plt
+
 import numpy as np
 
 import os
@@ -39,6 +40,7 @@ abs_path = os.path.dirname(__file__)
 
 plt.figure(0)
 plt.imshow(params[:,:,0].T, origin='lower', cmap='gray', interpolation='nearest')
+#plt.show())
 rel_path = 'data/S0_image.png'
 full_path = os.path.join(abs_path, rel_path)
 fig = plt.gcf()
@@ -47,6 +49,7 @@ fig.savefig(full_path)
 
 plt.figure(1)
 plt.imshow(params[:,:,1].T, origin='lower', cmap='gray', interpolation='nearest')
+#plt.show()
 rel_path = 'data/f_image.png'
 full_path = os.path.join(abs_path, rel_path)
 fig = plt.gcf()
@@ -55,6 +58,7 @@ fig.savefig(full_path)
 
 plt.figure(2)
 plt.imshow(params[:,:,2].T, origin='lower', cmap='gray', interpolation='nearest')
+#plt.show()
 rel_path = 'data/d1_image.png'
 full_path = os.path.join(abs_path, rel_path)
 fig = plt.gcf()
@@ -63,6 +67,7 @@ fig.savefig(full_path)
 
 plt.figure(3)
 plt.imshow(params[:,:,3].T, origin='lower', cmap='gray', interpolation='nearest')
+#plt.show()
 rel_path = 'data/d2_image.png'
 full_path = os.path.join(abs_path, rel_path)
 fig = plt.gcf()

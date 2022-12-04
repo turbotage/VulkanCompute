@@ -154,14 +154,14 @@ void run_qmri_ivim() {
 		->record<kp::OpAlgoDispatch>(algo1);
 
 	// we run algo 2 (4 * 4 iterations)
-	for (int i = 0; i < 20; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		seq = seq->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
 			vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader)
 			->record<kp::OpAlgoDispatch>(algo2);
 	}
 
 	// we run algo 3 (4 * 4 iterations)
-	for (int i = 0; i < 20; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		seq = seq->record<kp::OpMemoryBarrier>(shader_inputs, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead,
 			vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader)
 			->record<kp::OpAlgoDispatch>(algo3);
